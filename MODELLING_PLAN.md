@@ -110,7 +110,7 @@ python src/scrape.py          # refresh nrl.com data (cached)
 python src/elo.py             # optional: re-tune Elo settings (features.py does this if none are saved)
 python src/features.py        # odds join + Elo + features
 python src/train.py           # cross-validation, tuning, dev 2025 report -> reports/
-python src/train.py --final   # ONE-TIME final test on 2026
+python src/train.py --final   # ONE-TIME final test on 2026 (writes reports/final.lock; re-running needs --force)
 python -m pytest tests        # leakage test
 ```
 
