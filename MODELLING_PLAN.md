@@ -70,7 +70,7 @@ Player names are **not** used as features. With about 700 players and about 800 
 ## 6. Training pipeline
 
 1. `src/ingest.py`: clean the odds sheet and join it to the scraped matches.
-2. `src/elo.py`: Elo engine. Settings are tuned on 2013–2020, and pre-match ratings are produced for every game since 2009.
+2. `src/elo.py`: Elo engine. Settings are tuned on 2013–2020 and saved to `data/processed/elo_params.json`; `features.py` runs the tuning automatically if that file is missing. Pre-match ratings are produced for every game since 2009.
 3. `src/features.py`: builds the feature table, written to `data/processed/features.csv`.
 4. `src/train.py`:
    - **Feature-set comparison** with walk-forward cross-validation and logistic regression: base → +player → +odds.
@@ -107,8 +107,13 @@ Player names are **not** used as features. With about 700 players and about 800 
 
 ```
 python src/scrape.py          # refresh nrl.com data (cached)
+python src/elo.py             # optional: re-tune Elo settings (features.py does this if none are saved)
 python src/features.py        # odds join + Elo + features
 python src/train.py           # cross-validation, tuning, dev 2025 report -> reports/
 python src/train.py --final   # ONE-TIME final test on 2026
 python -m pytest tests        # leakage test
 ```
+
+## 9. Future steps
+
+- **Betting simulation:** bet when the model's edge over the market exceeds a threshold, and track profit and ROI against closing odds. Not part of this stage.

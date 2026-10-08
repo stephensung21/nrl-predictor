@@ -15,8 +15,6 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 PARAMS_FILE = ROOT / "data" / "processed" / "elo_params.json"
 
-DEFAULT_PARAMS = {"k": 30, "hfa": 45, "neutral_hfa": 0, "regress": 0.3, "mov": True}
-
 
 def run_elo(games, k=30, hfa=45, neutral_hfa=0, regress=0.3, mov=True):
     """games: sorted DataFrame with season, home_team, away_team, home_score, away_score, neutral.
@@ -68,11 +66,23 @@ def tune(odds, seasons=range(2013, 2021)):
     return best
 
 
-if __name__ == "__main__":
-    from ingest import load_odds
-
-    odds = load_odds()
+def tune_and_save(odds):
     score, params = tune(odds)
     PARAMS_FILE.parent.mkdir(parents=True, exist_ok=True)
     PARAMS_FILE.write_text(json.dumps(params, indent=2))
     print(f"best Elo params (2013-2020 log loss {score:.4f}): {params}")
+    return params
+
+
+def load_params(odds):
+    """Saved Elo settings, tuning them first if they have not been saved yet."""
+    if PARAMS_FILE.exists():
+        return json.loads(PARAMS_FILE.read_text())
+    print("no saved Elo params, tuning on 2013-2020...")
+    return tune_and_save(odds)
+
+
+if __name__ == "__main__":
+    from ingest import load_odds
+
+    tune_and_save(load_odds())

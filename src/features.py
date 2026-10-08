@@ -8,13 +8,12 @@ expressed as home minus away differences.
 Usage: python src/features.py   ->  data/processed/features.csv
 """
 
-import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from elo import DEFAULT_PARAMS, PARAMS_FILE, run_elo
+from elo import load_params, run_elo
 from ingest import CITY_STATE, PROCESSED, TEAM_STATE, join_odds_to_matches, load_odds
 
 # Team stats averaged into form features (exponentially weighted, carried across seasons).
@@ -146,8 +145,7 @@ def player_team_features(matches, players):
     return team[["match_id", "team"] + PLAYER_TEAM_FEATURES]
 
 
-def build_features(matches, team_stats, players, odds, elo_params=None):
-    elo_params = elo_params or DEFAULT_PARAMS
+def build_features(matches, team_stats, players, odds, elo_params):
     matches = matches.copy()
     matches["start_time_utc"] = pd.to_datetime(matches["start_time_utc"], utc=True)
     team_stats = team_stats.copy()
@@ -200,12 +198,9 @@ def load_inputs():
     return matches, team_stats, players, load_odds()
 
 
-def load_elo_params():
-    return json.loads(PARAMS_FILE.read_text()) if PARAMS_FILE.exists() else DEFAULT_PARAMS
-
-
 if __name__ == "__main__":
-    feats = build_features(*load_inputs(), elo_params=load_elo_params())
+    matches, team_stats, players, odds = load_inputs()
+    feats = build_features(matches, team_stats, players, odds, elo_params=load_params(odds))
     feats.to_csv(PROCESSED / "features.csv", index=False)
     print(f"wrote features.csv: {feats.shape}")
     usable = feats[(feats["min_hist"] >= MIN_HISTORY) & ~feats["is_draw"]]
