@@ -318,9 +318,9 @@ From a second pass over the pipeline (October 2026):
 
   Every weekly variant is worse, most late in the season: weekly fitting chases a few rounds of noise (e.g. flattens predictions after early upsets). Week-to-week changes in form are **already handled by the features**, which update every round (Elo after every game, the team margin rating weekly, RAPM before every round with a 90-day half-life, this week's named 17, and the star rule's form part every round). The weights describe stable relationships and are best fitted once per season on complete earlier seasons. Not adopted.
 
-### 25. Pipeline: engineering ⬜
+### 25. Pipeline: engineering 🔶
 
-- **Pin dependencies** (`requirements.txt` or a lock file) so results reproduce.
+- ✅ **Pin dependencies:** `requirements.txt` (Python 3.12), pinned to the versions the backtest, the 2026 final test and the frozen models were made with.
 - **A single entry point and a config file** instead of module constants and a manual run order (scrape → features → train), recording which settings produced each report.
 - **Data checks** beyond the leakage test: unmatched odds joins, scores matching stat totals, duplicate games, and scrapes that silently drop games.
 
