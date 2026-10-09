@@ -21,6 +21,54 @@ The core model is built and tested (see [IMPROVEMENTS.md](IMPROVEMENTS.md) and [
 
 So the Elo-only stage in the milestones below is no longer needed: the website can publish the ensemble from the first run.
 
+### Build status
+
+✅ built · 🔶 partly built or run by hand · ❌ not started. Everything marked ✅ still runs by hand until the automation section is done.
+
+**Getting the data**
+
+| Step | Status | Where / notes |
+|---|---|---|
+| Results and match stats (nrl.com) | ✅ | `python src/scrape.py`; skips games already cached, so re-running is cheap |
+| State of Origin and reserve-grade stats | ✅ | `scrape.py` (`--reserve` for reserve grade) |
+| Live team lists, every version kept | ✅ | Fetched by `predict.py`; each fetch saved to `data/raw/teamlists_live/` with a timestamp |
+| Historical pre-kickoff (Tuesday) lists | ✅ | `python src/teamlists.py` (Internet Archive), 2023–2026 |
+| Historical betting odds (aussportsbetting.com sheet) | 🔶 | `data/nrl_betting odds.xlsx`, downloaded by hand. Needed for retraining and, until live odds exist, for the with-odds model. An automatic download is still to do. |
+| Live odds (The Odds API) | ❌ | §1.2 step 4. Without it, games not yet in the sheet get the no-odds prediction only. |
+| Elo, team rating, player ratings (RAPM), features | ✅ | Recomputed from the latest results by `features.py` and `predict.py` |
+
+**Predicting**
+
+| Step | Status | Where / notes |
+|---|---|---|
+| Pre-season model freeze | ✅ | `python src/train.py --freeze` → `models/2027/` (version `2027.1`, trained on 2021–2026). Rerun before Round 1 if more 2026 data or settings change. |
+| Predict a round from current team lists | ✅ | `python src/predict.py --round N` (live) |
+| Validation before publishing | ✅ | `predict.validate`: missing inputs, probabilities, 17 named per team, duplicate teams; margin/probability disagreement is a warning |
+| Replay a past round as a test | ✅ | `predict.py --replay --season 2026 --round N`; reproduces the backtest exactly; slow test in `tests/test_predict.py` |
+| Impossible-price check on live odds | 🔶 | In `betting.py` for the simulation; to add to the odds fetcher |
+| Edges and fair odds against live prices | ❌ | Needs live odds |
+
+**Scoring**
+
+| Step | Status | Where / notes |
+|---|---|---|
+| Grade last round's predictions (tips correct, margin error, log loss, Brier, vs the market) | ❌ | The metric code exists (`evaluate.py`, used for the backtest and the 2026 test) but no weekly step runs it. Can be built in Python now, writing a season record to a file, before Supabase exists. |
+| Prediction of record (last prediction before kickoff) and season record | 🔶 | Each run writes `reports/predictions/<season>_round<N>.*`; nothing yet picks the last one before kickoff or collects a season record. Later a database view (§2). |
+| Betting results and closing line value per round | 🔶 | `betting.py` does whole seasons, not week by week |
+| Tipping-comp scoring (points, auto-tips, bonus, margin, ladder) | ❌ | Needs the database (§2, §3.5) |
+
+**Automation and publishing**
+
+| Step | Status | Where / notes |
+|---|---|---|
+| `pipeline/run.py --job results / predict / refresh` | ❌ | Chains the steps above (§1.2) |
+| GitHub Actions workflows on the weekly schedule | ❌ | §1.1, §4 |
+| Run log, alerts on failure | 🔶 | Each `predict.py` run writes a JSON record (commit, model version, errors); no alerts yet |
+| Supabase schema, row-level security, publishing | ❌ | §2, milestone 1 |
+| Website and tipping comp | ❌ | §3, milestones 5–8 |
+
+**Suggested order for the rest:** `pipeline/run.py` with the weekly grading step (both testable now on 2026 replays), then The Odds API fetcher and the automatic odds-sheet download, then the GitHub Actions workflows, then Supabase and the website.
+
 ---
 
 ## Overview
