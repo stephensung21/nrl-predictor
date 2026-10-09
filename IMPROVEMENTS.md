@@ -6,22 +6,25 @@ The goal is to beat the bookmakers' closing odds.
 
 The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested Model B beat the market, and the backtest showed that was luck.
 
+**Main model: Model A linear** (logistic / ridge with the opening odds as inputs). It's the best on win probability and totals, and the simplest. The ensemble is still reported for comparison, but since the linear model improved it no longer adds anything.
+
 Pooled backtest results for the current setup:
 
 | | Win log loss | Margin MAE | Total MAE |
 |---|---|---|---|
-| **Model A ensemble** (with opening odds) | **0.628** | **13.58** | 10.80 |
-| Model A linear | 0.631 | 13.59 | **10.73** |
-| Model B ensemble (no odds) | 0.631 | 13.63 | 10.85 |
-| Model B linear | 0.633 | 13.61 | 10.80 |
+| **Model A linear** (main model) | **0.624** | 13.59 | **10.73** |
+| Model A ensemble | 0.625 | **13.59** | 10.80 |
+| Model B linear (no odds) | 0.628 | 13.61 | 10.80 |
+| Model B ensemble | 0.630 | 13.61 | 10.84 |
+| Model A LightGBM | 0.634 | 13.86 | 10.95 |
 | Market closing (Odds Portal average) | 0.620 | – | 10.72 |
 | Market opening | 0.633 | 13.66 | 10.84 |
 | Elo only | 0.638 | – | – |
 
-- **Win probability:** Model A ensemble is 0.008 behind the market average (95% interval −0.007 to +0.023). That's not conclusive, but the market is probably still slightly better. It beats the opening market and Elo.
-- **Margin:** the models beat the opening line.
+- **Win probability:** Model A linear is 0.004 behind the market average (95% interval −0.008 to +0.016), down from +0.024 at the start of the backtest work. By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
+- **Margin:** the models beat the opening line on average error, but not on line-cover probability (item 14).
 - **Totals:** Model A linear is level with the closing total and beats the opening total.
-- Over this work, the gap to the market on win probability narrowed from about +0.024 to +0.008.
+- **Caveat:** the backtest has now informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 `--final` run is the honest verdict.
 
 2026 stays untouched until `python src/train.py --final`. Settings for that run come from the dev run (`reports/params.json`).
 
@@ -93,9 +96,9 @@ The `--backtest` mode, described above.
 - ❌ **Referee records** (shrunk total points and penalties): no signal.
 - ⬜ **Line and total markets:** the models beat the opening line and opening total, so these markets may offer more edge than head-to-head. Closing lines are missing for most of 2024–25, so the comparison needs 2026 or another odds source.
 
-## 12. Fix the ensemble ⬜
+## 12. Fix the ensemble ❌
 
-Weight the linear and LightGBM models by backtest performance, or stack them, instead of a plain average.
+Tested (experiment 5): averaging in logit space, stacking learned on earlier seasons, and stacking all four models were all no better than the plain average (+0.0002 to +0.002). Since the linear model improved (item 22), the ensemble no longer beats the linear model on its own, so Model A linear is now the main model.
 
 ---
 
@@ -103,7 +106,7 @@ Weight the linear and LightGBM models by backtest performance, or stack them, in
 
 | Idea | Result |
 |---|---|
-| Win probability from the predicted margin (`Φ(margin / σ)`) | 0.653 at best on 2025 |
+| Win probability from the predicted margin (`Φ(margin / σ)`) | 0.653 at best on 2025; **reversed on the backtest and adopted (item 22)** |
 | Market price as a fixed starting point, learning adjustments on top | 0.658 at best on 2025 |
 | Weighting recent seasons more heavily | 0.655–0.657 on 2025 |
 | Elo plus opening odds model trained on the full 2013–2024 history | 0.654 on 2025 |
@@ -114,6 +117,13 @@ Weight the linear and LightGBM models by backtest performance, or stack them, in
 | RAPM shrunk towards a fantasy-points prior | CV 0.611 vs 0.606 without |
 | 2020 games as training rows | backtest slightly worse than 2020 as history only |
 | Referee records for totals | no change in total MAE |
+| Market as a fixed starting point (re-tested on the backtest) | −0.0003 |
+| Recency weighting (re-tested on the backtest) | −0.002 to +0.001 |
+| Elo retuned inside each backtest year | slightly worse (+0.001 to +0.003) |
+| Probabilistic margin vs the opening line | no better than a coin flip |
+| Team-specific home advantage on top of the team rating | −0.002, within noise |
+| Opponent-adjusted form | no help; the full block made margin worse |
+| Logit-average or stacked ensembles | no better than the plain average |
 
 ---
 
@@ -131,27 +141,36 @@ Weight the linear and LightGBM models by backtest performance, or stack them, in
 
 ---
 
-## Approaches not yet tested
+## Further approaches (items 13–22)
 
-### 13. Rerun the 2025-only rejections on the backtest ⬜
+### 13. Rerun the 2025-only rejections on the backtest ✅
 
-Win probability from the predicted margin (blended with the logistic model), the market as a fixed starting point with learned adjustments, recency weighting, and Elo retuned on the six-again era. All are cheap, and with the current features some may now help.
+Results are in `reports/experiments.md` (`python src/experiments.py`):
+- **Win probability from the predicted margin: reversed.** On its own it was −0.005 for Model A; blended with the logistic model −0.005 [−0.010, +0.0005]. That's a near miss, adopted as part of item 22.
+- ❌ Market as a fixed starting point with learned adjustments: −0.0003, no difference.
+- ❌ Recency weighting (half-life 1 or 2 seasons): −0.002 to +0.001, no difference.
+- ❌ Elo retuned inside each backtest year (2013+ or the six-again era 2020+): slightly **worse** (Model B +0.001 to +0.003). Keep the current Elo settings.
 
-### 14. Probabilistic margin and total model ⬜
+### 14. Probabilistic margin and total model 🔶
 
-Predict the **spread** of possible margins and totals as well as the mean (e.g. a Normal or t distribution whose spread depends on the mismatch and wet conditions). This gives P(cover line) and P(over total), which can be scored against the actual line and total outcomes (cover rate, log loss) and used directly for betting. It's probably the most valuable next model, since the backtest suggests the line and total markets may be where the edge is.
+Tested in `experiments.py`: a Normal or t distribution around the linear prediction, with constant spread or spread depending on mismatch and wet conditions, scored on covering the opening line and going over the opening total. The market is 50% by construction; break-even at $1.91 is 52.4%.
+- **Line: no edge.** Model A log loss −0.0007 vs a coin flip; hit rate 53.1%, and 53.8% when over 55% sure.
+- **Totals: the most promising signal so far.** Model A hit rate 54.5%, and **57.1% on the 308 games where it's over 55% sure**, about 1.7 standard errors above break-even. Not conclusive, and it relies on the rain flag (betting near kickoff).
+- Varying the spread or using a t-distribution made no difference.
 
-### 15. Team-level margin rating ⬜
+Next: the betting simulation on totals against the opening total (item 7).
 
-A team rating built directly on margins, such as a Kalman filter or an exponentially weighted ridge rating with separate attack and defence, either alongside Elo or replacing it. Elo here only uses win/loss with a margin multiplier, and margins carry more information.
+### 15. Team-level margin rating ✅
 
-### 16. Team-specific and venue-specific home advantage ⬜
+`team_ratings` in `features.py`: a ridge regression of capped margins since 2009 on team strengths, a league home advantage and each team's own home advantage (shrunk), refitted weekly with a two-year half-life (the setting chosen inside every backtest year). Adding it to the win model: −0.004 [−0.008, +0.0002] for Model A, a near miss, adopted as part of item 22. Using it instead of Elo was about the same, so both are kept.
 
-Elo uses one home advantage for every team. A per-team or per-venue home advantage, shrunk towards the league average, could capture grounds that are much harder to win at.
+### 16. Team-specific home advantage ❌
 
-### 17. Opponent-adjusted form ⬜
+Each team's own home advantage as a separate feature added nothing beyond the team margin rating (which already includes it): −0.002 for Model A, within noise.
 
-Express each team's recent stats relative to what its opponents usually allow (and concede), turning the form block into measures of strength.
+### 17. Opponent-adjusted form ❌
+
+Each team's recent stats relative to what its opponents usually allow (and concede). A single adjusted net-points feature made no difference; the full adjusted block made margin clearly **worse** (+0.16 and +0.25 MAE). Form stats, adjusted or not, don't add to RAPM and Elo.
 
 ### 18. More context features ⬜
 
@@ -172,15 +191,20 @@ A GAM or Explainable Boosting Machine: smooth non-linear effects with strong reg
 
 Re-choose the RAPM settings (and any other feature settings) inside each backtest year, so the backtest stays an honest out-of-sample test.
 
+### 22. Team margin rating + margin-blended win probability ✅ (adopted)
+
+The two near misses (items 13 and 15) tested together: `team_margin` in the linear win model, and the calibrated logistic probability averaged with Φ(predicted margin / σ) from the linear margin model (`MARGIN_BLEND` in `train.py`).
+- Linear harness: Model A −0.006 [−0.013, −0.0002], just clear; Model B −0.005 [−0.012, +0.0005].
+- Full backtest: Model A linear 0.631 → **0.624**, Model A ensemble 0.628 → 0.625, Model B linear 0.633 → 0.628.
+- This combination was chosen after seeing the individual results, out of about 50 comparisons, so part of the gain may be chance. Both parts point the same way independently and the idea is principled (margins carry more information than win/loss), which is why it was adopted.
+
 ---
 
 ## Suggested next steps
 
-1. **Rerun the 2025-only rejections on the backtest** (item 13): cheap, and they might reverse.
-2. **Probabilistic margin and total model** with line and total metrics (item 14), then the **betting simulation against opening prices** (item 7).
-3. **Team-level margin rating** and **team-specific home advantage** (items 15–16).
-4. **Opponent-adjusted form** (item 17).
-5. **Stacked or weighted ensemble** (item 12).
-6. **Mid-week odds** (item 6), to test the realistic betting window.
+1. **Betting simulation on totals against the opening total** (items 7 and 14): the most promising edge so far.
+2. **Mid-week odds** (item 6), to test the realistic betting window for early bets.
+3. **More context features** (item 18) and **position-specific stat ratings** (item 19), each needing a clear backtest gain.
+4. **Nested tuning in the backtest** (item 21), to make the backtest honest again before relying on it further.
 
-Each should beat the current setup clearly on the backtest before it's adopted. When development is finished, run the one-time **`--final` test on 2026**.
+When development is finished, run the one-time **`--final` test on 2026**, with Model A linear as the main model.
