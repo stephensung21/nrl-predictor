@@ -121,3 +121,44 @@ export type SeasonRound = {
   /** Each tipper's predicted winning margin for the featured game. */
   margins: { tipperId: string; team: TeamName; margin: number }[];
 };
+
+/** One game on the Model vs market page: the no-odds Model against the bookies' prices. */
+export type OddsGame = {
+  matchId: string;
+  kickoff: string;
+  home: TeamName;
+  away: TeamName;
+  venue: string;
+  homeScore: number;
+  awayScore: number;
+  /** The no-odds Model: independent of the bookies. */
+  modelHomeProb: number;
+  modelMargin: number | null;
+  modelTotal: number | null;
+  /** Bookies' prices with the margin removed; closing is null where the sheet's closing figures are unreliable. */
+  openHomeProb: number | null;
+  closeHomeProb: number | null;
+  /** Handicap on the home team (negative = home favoured). */
+  openLine: number | null;
+  closeLine: number | null;
+  openTotal: number | null;
+  closeTotal: number | null;
+  bookmaker: string | null;
+};
+
+export type OddsRound = { round: number; games: OddsGame[] };
+
+/** A 2026 test-season game for the season scoreboard. homeWin: 1, 0, or 0.5 for a draw. */
+export type SeasonGame = {
+  matchId: string;
+  round: string;
+  kickoff: string;
+  home: TeamName;
+  away: TeamName;
+  homeWin: number | null;
+  model: number;
+  market: number | null;
+  elo: number | null;
+};
+
+export type SeasonBet = { matchId: string; side: "home" | "away"; odds: number; won: boolean; profit: number };
