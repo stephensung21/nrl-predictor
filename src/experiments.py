@@ -998,6 +998,72 @@ def calibration_experiments():
     print("wrote reports/experiments_calibration.md")
 
 
+# ---------------------------------------------------------------- 20. weekly refit with weekly calibration
+
+WEEKLY_CALIB_MIN_GAMES = 50
+
+
+def weekly_recalibrate(preds, test, col, slope_only):
+    """Recalibrate a model's final win probabilities before every round, on all of its earlier
+    out-of-sample predictions (earlier backtest seasons and this season's earlier rounds):
+    logit(p') = a + b * logit(p), a = 0 if slope_only. Needs WEEKLY_CALIB_MIN_GAMES earlier games."""
+    t = test.loc[preds.index]
+    out = preds[col].copy()
+    z_all, y_all = logit(preds[col].to_numpy()), t["home_win"].to_numpy()
+    kickoff = t["start_time_utc"]
+    for (_, _), block in t.groupby(["season", "round"], sort=False):
+        start = block["start_time_utc"].min()
+        before = (kickoff < start).to_numpy()
+        if before.sum() < WEEKLY_CALIB_MIN_GAMES:
+            continue
+        m = LogisticRegression(C=1e6, fit_intercept=not slope_only).fit(z_all[before].reshape(-1, 1), y_all[before])
+        rows = preds.index.get_indexer(block.index)
+        out.iloc[rows] = m.predict_proba(z_all[rows].reshape(-1, 1))[:, 1]
+    return out
+
+
+def weekly2_experiments():
+    """Weekly refitting of the model weights and/or the calibration, against the current setup."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        season_fit = pipeline_backtest(df)
+        weekly_fit = weekly_backtest(df)
+    finally:
+        builtins.print = quiet
+    assert np.allclose(season_fit.to_numpy(), bt.loc[season_fit.index, season_fit.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    weekly_fit = weekly_fit.loc[season_fit.index]
+    t = test.loc[season_fit.index]
+    late = t["round"].ge(19).to_numpy()
+    rows = []
+    for v in VARIANTS:
+        for m in ("ensemble", "linear"):
+            col = f"{v}|{m}|home_win"
+            setups = {"B weekly model refit": weekly_fit[col]}
+            for slope_only, how in ((True, "slope only"), (False, "slope and intercept")):
+                setups[f"C weekly refit + weekly calibration ({how})"] = weekly_recalibrate(weekly_fit, test, col, slope_only)
+                setups[f"D weekly calibration only ({how})"] = weekly_recalibrate(season_fit, test, col, slope_only)
+            for name, p in setups.items():
+                record(f"20 {name}: {m}", v, "home_win", t, p, season_fit[col])
+                record(f"20 {name}: {m}, round 19+", v, "home_win", t[late], p[late], season_fit.loc[late, col])
+    res = pd.DataFrame(RESULTS)
+    report = ["# Weekly refitting with weekly calibration (2023–2025 backtest)", "",
+              "A (the baseline) fits the models and calibration once per season. B refits the model weights "
+              "before every round (each season's settings fixed). C also recalibrates the final win probability "
+              "before every round on all earlier out-of-sample predictions (earlier backtest seasons and this "
+              f"season's earlier rounds; at least {WEEKLY_CALIB_MIN_GAMES} games). D recalibrates weekly without "
+              "refitting the weights. `diff` is the set-up minus A (negative = better), with a paired bootstrap "
+              "95% interval; round 19+ rows cover the late season.", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_weekly_calibration.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_weekly_calibration.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -1123,7 +1189,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
-                                           "calibration"],
+                                           "calibration", "weekly2"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -1136,4 +1202,4 @@ if __name__ == "__main__":
                                                  "Key-position star absences"),
      "origin_stars": lambda: context2_experiments(ORIGIN_STAR_GROUPS, "18", "experiments_origin_stars.md",
                                                   "Origin-based star absences"),
-     "calibration": calibration_experiments}.get(args.only, main)()
+     "calibration": calibration_experiments, "weekly2": weekly2_experiments}.get(args.only, main)()

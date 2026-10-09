@@ -174,6 +174,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Star impact learned from each player's with/without history (V4) | no effect (item 38) |
 | Origin-only star absences (S1) | −0.0012 / −0.0007, not clear; S2 adopted instead (item 38) |
 | Recalibrating the final win probability on earlier backtest seasons | −0.001 (slope only), redundant after the BlueBet fix (item 23) |
+| Weekly refitting of the model weights and/or the calibration | +0.002 to +0.009 (worse), clearly worse late in the season (item 24) |
 
 ---
 
@@ -276,6 +277,16 @@ From a second pass over the pipeline (October 2026):
 - **`predict.py` for upcoming games.** The scraper only keeps finished matches and nothing builds features for unplayed fixtures, so the model can't currently be used. It needs to fetch the next round's fixtures and team lists, build features, and output probabilities, fair odds and edges against current prices.
 - **Two prediction snapshots:** a **Tuesday-list model** (built from Tuesday's announced squads) and a **final-17 model** (as now), each evaluated against prices from the same time. Includes scraping historical Tuesday team lists from nrl.com.
 - ❌ **Weekly refitting** (`python src/experiments.py --only weekly`, `reports/experiments_weekly.md`): each season's settings kept, but the models refitted before every round with that season's games so far. Main ensembles: win +0.001 to +0.002, margin about 0, total −0.02 to −0.03, none clear; **from round 19 it's worse** (with-odds win +0.006, clear). The calibration comes from complete earlier seasons, so in-season refits drift away from it. Not adopted. (`train.fit_predict_frames` now fits and predicts on any rows; results unchanged.)
+- ❌ **Weekly refitting with weekly calibration** (`python src/experiments.py --only weekly2`, `reports/experiments_weekly_calibration.md`): the model weights refitted every round, and the final win probability also recalibrated every round on all earlier out-of-sample predictions (earlier backtest seasons and this season's earlier rounds). Win log loss against the current once-a-season fit:
+
+  | Set-up | With-odds ensemble | No-odds ensemble | With-odds ensemble, rounds 19+ |
+  |---|---|---|---|
+  | Weekly model weights | +0.0033 | +0.0014 | +0.0083 (clearly worse) |
+  | Weekly weights + weekly calibration (slope only) | +0.0060 | +0.0038 | +0.0159 (clearly worse) |
+  | Weekly weights + weekly calibration (slope and intercept) | +0.0085 | +0.0065 | +0.0159 (clearly worse) |
+  | Weekly calibration only (slope only) | +0.0024 | +0.0021 | +0.0090 |
+
+  Every weekly variant is worse, most late in the season: weekly fitting chases a few rounds of noise (e.g. flattens predictions after early upsets). Week-to-week changes in form are **already handled by the features**, which update every round (Elo after every game, the team margin rating weekly, RAPM before every round with a 90-day half-life, this week's named 17, and the star rule's form part every round). The weights describe stable relationships and are best fitted once per season on complete earlier seasons. Not adopted.
 
 ### 25. Pipeline: engineering ⬜
 
