@@ -56,6 +56,7 @@ export type Standing = {
   tipper: Tipper;
   points: number;
   marginScore: number;
+  /** Place among the tippers; 0 for the Model, which isn't ranked. */
   position: number;
   roundCorrect: number;
   roundGraded: number;
@@ -137,8 +138,10 @@ export function buildRound(opts: {
     })
     // Most points, then the lowest accumulated margin score.
     .sort((a, b) => b.points - a.points || a.marginScore - b.marginScore);
-  ladder.forEach((s, i) => {
-    const prev = ladder[i - 1];
+  // Only tippers get places; the Model is the yardstick (position 0).
+  const humans = ladder.filter((s) => !s.tipper.isModel);
+  humans.forEach((s, i) => {
+    const prev = humans[i - 1];
     s.position = prev && prev.points === s.points && prev.marginScore === s.marginScore ? prev.position : i + 1;
   });
 

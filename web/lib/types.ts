@@ -1,6 +1,7 @@
 // Row shapes mirror the planned Supabase tables and views (PLAN_WEB.md §2),
 // so the sample data can be swapped for real queries without touching pages.
 
+import type { AutoTip } from "./rules";
 import type { TeamName } from "./teams";
 
 /** `matches` */
@@ -39,6 +40,10 @@ export type Tipper = {
   id: string;
   name: string;
   isModel?: boolean;
+  /** Chosen when joining; shown as a badge on the ladder. */
+  favTeam?: TeamName;
+  /** Fills untipped games at lockout. The Model never needs one. */
+  autoTip?: AutoTip;
 };
 
 export type Tip = { tipperId: string; matchId: string; team: TeamName };
@@ -66,7 +71,6 @@ export type RoundData = {
 export type ArchivedRound = {
   data: RoundData;
   tips: Tip[];
-  ladderBefore: LadderRow[];
 };
 
 export type ListedPlayer = {
@@ -97,4 +101,23 @@ export type MatchDetail = {
     homeScore: number;
     awayScore: number;
   }[];
+};
+
+/** A completed round for the ladder: games with results, everyone's tips and featured-game margins. */
+export type SeasonRound = {
+  round: number;
+  featuredMatchId: string;
+  games: {
+    matchId: string;
+    kickoff: string;
+    home: TeamName;
+    away: TeamName;
+    homeScore: number;
+    awayScore: number;
+    modelHomeProb: number;
+    modelMargin: number;
+  }[];
+  tips: Tip[];
+  /** Each tipper's predicted winning margin for the featured game. */
+  margins: { tipperId: string; team: TeamName; margin: number }[];
 };

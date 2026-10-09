@@ -8,7 +8,7 @@
 // as such on the page. The Model's record is the real 2026 test season
 // (reports/final_2026.md, with-odds ensemble, all 213 games).
 
-import type { LadderRow, Match, ModelRecord, Prediction, RoundData, Tip, Tipper } from "./types";
+import type { Match, ModelRecord, Prediction, RoundData, Tip, Tipper } from "./types";
 import type { TeamName } from "./teams";
 
 const matches: Match[] = [
@@ -52,22 +52,13 @@ export const YOU_ID = "sully";
 
 export const tippers: Tipper[] = [
   { id: MODEL_ID, name: "the Model", isModel: true },
-  { id: "mick", name: "Mick" },
-  { id: "dazza", name: "Dazza" },
-  { id: YOU_ID, name: "Sully" },
-  { id: "jacko", name: "Jacko" },
-  { id: "tom", name: "Tom" },
+  { id: "mick", name: "Mick", favTeam: "Sea Eagles", autoTip: "ladder" },
+  { id: "dazza", name: "Dazza", favTeam: "Panthers", autoTip: "crowd" },
+  { id: YOU_ID, name: "Sully", favTeam: "Rabbitohs", autoTip: "home" },
+  { id: "jacko", name: "Jacko", favTeam: "Titans", autoTip: "home" },
+  { id: "tom", name: "Tom", favTeam: "Wests Tigers", autoTip: "crowd" },
 ];
 
-/** Ladder after Round 9 (sample). */
-export const ladderBefore: LadderRow[] = [
-  { tipperId: "mick", points: 52, marginScore: 61 },
-  { tipperId: MODEL_ID, points: 51, marginScore: 48 },
-  { tipperId: "dazza", points: 50, marginScore: 74 },
-  { tipperId: YOU_ID, points: 50, marginScore: 82 },
-  { tipperId: "jacko", points: 47, marginScore: 66 },
-  { tipperId: "tom", points: 44, marginScore: 90 },
-];
 
 const order = matches.map((m) => m.id);
 const tipsFor = (tipperId: string, teams: TeamName[]): Tip[] =>
@@ -81,6 +72,16 @@ export const tips: Tip[] = [
   ...tipsFor(YOU_ID, ["Roosters", "Cowboys", "Knights", "Rabbitohs", "Broncos", "Storm", "Panthers"]),
   ...tipsFor("jacko", ["Titans", "Cowboys", "Knights", "Rabbitohs", "Sea Eagles", "Wests Tigers", "Panthers"]),
   ...tipsFor("tom", ["Roosters", "Cowboys", "Dragons", "Sharks", "Broncos", "Storm", "Raiders"]),
+];
+
+/** Round 10 margins for the featured game (Roosters v Titans). The Model's is its call. */
+export const margins: { tipperId: string; team: TeamName; margin: number }[] = [
+  { tipperId: MODEL_ID, team: "Roosters", margin: 14 },
+  { tipperId: "mick", team: "Roosters", margin: 8 },
+  { tipperId: "dazza", team: "Roosters", margin: 16 },
+  { tipperId: YOU_ID, team: "Roosters", margin: 10 },
+  { tipperId: "jacko", team: "Titans", margin: 4 },
+  { tipperId: "tom", team: "Roosters", margin: 20 },
 ];
 
 /** Before lockout on Tuesday night, the viewer has only tipped the first three. */

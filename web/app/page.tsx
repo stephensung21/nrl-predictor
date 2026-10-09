@@ -8,9 +8,10 @@ import {
   TippingStrip,
 } from "@/components/home-sections";
 import { SampleBar, type SampleState } from "@/components/sample-bar";
+import { ladderBefore } from "@/lib/ladder";
 import { buildRound } from "@/lib/round";
 import {
-  ladderBefore,
+  margins,
   modelRecord,
   NEXT_ROUND,
   round10,
@@ -23,8 +24,6 @@ import {
 
 const STATES: SampleState[] = ["recap", "open", "live", "pending", "offseason", "error"];
 
-/** Your margin for the featured game (sample). */
-const YOUR_MARGIN = 10;
 
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams;
@@ -47,7 +46,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     now: new Date(nowIso),
     tips,
     tippers,
-    ladderBefore,
+    ladderBefore: ladderBefore(round10.round),
     youId: signedIn ? YOU_ID : undefined,
     yourTipLimit: state === "open" ? YOUR_EARLY_TIP_COUNT : undefined,
   });
@@ -74,7 +73,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <main>
       <RoundHeading view={view} />
       {signedIn && <TippingStrip view={view} nowIso={nowIso} />}
-      <FeaturedGame game={view.featured} yourMargin={view.featured.yourTip ? YOUR_MARGIN : undefined} />
+      <FeaturedGame game={view.featured} yourMargin={view.featured.yourTip ? margins.find((m) => m.tipperId === YOU_ID)?.margin : undefined} />
       <h2 className="sr-only">Other games</h2>
       <ul className="mt-2 divide-y divide-line-soft">
         {others.map((g) => (

@@ -5,7 +5,7 @@ Run from the repo root:  python web/scripts/build_sample.py
 
 Real: matches, results, predictions (with and without odds), the bookies'
 opening price, Elo, Tuesday team lists, the 17 who played, head to head.
-Invented (and labelled as sample on the site): tippers' tips and ladders.
+Invented (and labelled as sample on the site): friends' tips and margins.
 """
 
 import json
@@ -19,9 +19,12 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "web" / "lib" / "sample-archive.ts"
 ROUNDS = [3, 5, 10]
 SEASON = 2026
+CURRENT_ROUND = 10  # the sample round in lib/sample.ts
 
 # Tippers from lib/sample.ts and how often each goes against the Model.
 TIPPERS = {"mick": 0.15, "dazza": 0.22, "sully": 0.2, "jacko": 0.3, "tom": 0.35}
+# How often each forgets to tip a game, so auto-tips get exercised (not in rounds with their own page).
+FORGETS = {"jacko": 0.04, "tom": 0.08}
 
 
 def display_scores(p_home, margin, total):
@@ -106,34 +109,74 @@ for rnd in ROUNDS:
             } for r in h2h.itertuples()],
         }
 
-    # Invented tips: each tipper goes against the Model on some games.
-    tips = []
     order = sorted(round_matches, key=lambda x: x["kickoff"])
-    for tipper, rate in [("model", 0.0), *TIPPERS.items()]:
-        rng = random.Random(f"{tipper}-{rnd}")
-        for m in order:
-            p = next(x for x in round_preds if x["matchId"] == m["id"])
-            model_tip = m["home"] if p["homeWinProb"] >= 0.5 else m["away"]
-            other = m["away"] if model_tip == m["home"] else m["home"]
-            tips.append({"tipperId": tipper, "matchId": m["id"], "team": other if rng.random() < rate else model_tip})
-    rng = random.Random(f"ladder-{rnd}")
-    ladder = [{"tipperId": t, "points": int((rnd - 1) * 4.6 + rng.randint(-3, 3)), "marginScore": rng.randint(5, 12) * (rnd - 1)}
-              for t in ["model", *TIPPERS]]
     rounds.append({
         "data": {"season": SEASON, "round": rnd, "featuredMatchId": order[0]["id"],
                  "matches": round_matches, "predictions": round_preds},
-        "tips": tips, "ladderBefore": ladder,
     })
+
+
+def invent_tips(rnd, games):
+    """Each tipper goes against the Model on some games; margins for the featured (first) game."""
+    tips, margins = [], []
+    for tipper, rate in [("model", 0.0), *TIPPERS.items()]:
+        rng = random.Random(f"{tipper}-{rnd}")
+        forget = random.Random(f"forget-{tipper}-{rnd}")
+        for i, g in enumerate(games):
+            model_tip = g["home"] if g["modelHomeProb"] >= 0.5 else g["away"]
+            other = g["away"] if model_tip == g["home"] else g["home"]
+            team = other if rng.random() < rate else model_tip
+            if i > 0 and rnd not in ROUNDS and forget.random() < FORGETS.get(tipper, 0):
+                continue
+            tips.append({"tipperId": tipper, "matchId": g["matchId"], "team": team})
+        first = games[0]
+        team = next(t["team"] for t in tips if t["tipperId"] == tipper and t["matchId"] == first["matchId"])
+        margin = max(1, round(abs(first["modelMargin"]))) if tipper == "model" else rng.randint(2, 20)
+        margins.append({"tipperId": tipper, "team": team, "margin": margin})
+    return tips, margins
+
+
+# The sample season before the current round: every game of rounds 1-9 with the Model's real
+# test-season prediction (the replay's 7 games for rounds with a replay, so their pages agree).
+season_preds = pd.read_csv(ROOT / f"reports/predictions_{SEASON}.csv")
+season_preds["match_id"] = season_preds["match_id"].astype(str)
+season = []
+for rnd in range(1, CURRENT_ROUND):
+    archived = next((r for r in rounds if r["data"]["round"] == rnd), None)
+    if archived:
+        preds = {p["matchId"]: p for p in archived["data"]["predictions"]}
+        games = [{"matchId": m["id"], "kickoff": m["kickoff"], "home": m["home"], "away": m["away"],
+                  "homeScore": m["homeScore"], "awayScore": m["awayScore"],
+                  "modelHomeProb": preds[m["id"]]["homeWinProb"], "modelMargin": preds[m["id"]]["margin"]}
+                 for m in archived["data"]["matches"]]
+    else:
+        ids = matches[(matches.season == SEASON) & (matches["round"] == rnd)].match_id
+        games = []
+        for _, r in season_preds[season_preds.match_id.isin(ids)].iterrows():
+            m = matches[matches.match_id == r.match_id].iloc[0]
+            prob, margin = r["with_odds|ensemble|home_win"], r["with_odds|ensemble|margin"]
+            games.append({"matchId": r.match_id, "kickoff": m.start_time_utc, "home": m.home_team, "away": m.away_team,
+                          "homeScore": int(m.home_score), "awayScore": int(m.away_score),
+                          "modelHomeProb": num(prob), "modelMargin": round(float(margin), 2)})
+    games.sort(key=lambda g: g["kickoff"])
+    tips, margins = invent_tips(rnd, games)
+    season.append({"round": rnd, "featuredMatchId": games[0]["matchId"], "games": games, "tips": tips, "margins": margins})
+    if archived:
+        archived["tips"] = tips
 
 js = lambda x: json.dumps(x, indent=2, ensure_ascii=False)
 OUT.write_text(f"""// GENERATED by web/scripts/build_sample.py. Do not edit by hand.
-// Real 2026 replays (rounds {", ".join(map(str, ROUNDS))}): results, predictions, odds, Elo,
-// team lists and head to head. Tips and ladders are invented sample data.
+// Real 2026 data: games, results and the Model's test-season predictions for rounds 1-{CURRENT_ROUND - 1},
+// plus the replays (rounds {", ".join(map(str, ROUNDS))}) with odds, Elo, team lists and head to head.
+// Friends' tips and margins are invented sample data.
 
-import type {{ ArchivedRound, MatchDetail }} from "./types";
+import type {{ ArchivedRound, MatchDetail, SeasonRound }} from "./types";
 
-export const ARCHIVE: ArchivedRound[] = {js(rounds)} as ArchivedRound[];
+export const ARCHIVE: ArchivedRound[] = {js([r for r in rounds if r["data"]["round"] < CURRENT_ROUND])} as ArchivedRound[];
+
+/** Rounds before the current one, for the ladder. */
+export const SEASON_ROUNDS: SeasonRound[] = {js(season)} as SeasonRound[];
 
 export const MATCH_DETAILS: Record<string, MatchDetail> = {js(details)} as Record<string, MatchDetail>;
 """, encoding="utf-8")
-print(f"wrote {OUT.relative_to(ROOT)}: {len(rounds)} rounds, {len(details)} matches")
+print(f"wrote {OUT.relative_to(ROOT)}: {len(season)} season rounds, {len(details)} matches")

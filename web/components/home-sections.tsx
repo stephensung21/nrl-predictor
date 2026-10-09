@@ -69,7 +69,7 @@ function StandingLine({ you, leader, model, seed }: { you: Standing; leader: Sta
 export function TippingStrip({ view, nowIso }: { view: RoundView; nowIso: string }) {
   const you = view.ladder.find((s) => s.tipper.id === YOU_ID)!;
   const model = view.ladder.find((s) => s.tipper.isModel)!;
-  const leader = view.ladder[0];
+  const leader = view.ladder.find((s) => !s.tipper.isModel)!;
   const open = view.games.filter((g) => g.status === "upcoming");
   const tipped = view.games.filter((g) => g.yourTip).length;
   const missing = open.filter((g) => !g.yourTip).length;

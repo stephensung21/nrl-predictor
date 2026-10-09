@@ -4,8 +4,9 @@
 
 import { buildRound, type Game, type RoundView } from "./round";
 import { ARCHIVE, MATCH_DETAILS } from "./sample-archive";
-import { ladderBefore, round10, SAMPLE_NOW, tippers, tips } from "./sample";
-import type { LadderRow, MatchDetail, RoundData, Tip } from "./types";
+import { ladderBefore } from "./ladder";
+import { round10, SAMPLE_NOW, tippers, tips } from "./sample";
+import type { MatchDetail, RoundData, Tip } from "./types";
 import type { TeamName } from "./teams";
 
 export type VoiceId = "model" | "noOdds" | "market" | "elo";
@@ -82,12 +83,12 @@ export function verdictFor(voices: Voice[], past: boolean): Verdict {
 
 /* ---------- Sample lookup (until Supabase) ---------- */
 
-type SampleRound = { data: RoundData; tips: Tip[]; ladderBefore: LadderRow[] };
+type SampleRound = { data: RoundData; tips: Tip[] };
 
 /** Round 10 comes from lib/sample.ts (it carries the "Updated" notes); the rest from the archive. */
 export const SAMPLE_ROUNDS: SampleRound[] = [
   ...ARCHIVE.filter((r) => r.data.round !== round10.round),
-  { data: round10, tips, ladderBefore },
+  { data: round10, tips },
 ].sort((a, b) => a.data.round - b.data.round);
 
 /** The current round in the sample, and the first round with no predictions yet. */
@@ -95,7 +96,7 @@ export const CURRENT_ROUND = round10.round;
 
 /** Graded view of a sample round, as seen after its last game. */
 export function sampleRoundView(r: SampleRound, now: string = SAMPLE_NOW.recap): RoundView {
-  return buildRound({ data: r.data, now: new Date(now), tips: r.tips, tippers, ladderBefore: r.ladderBefore, youId: "sully" });
+  return buildRound({ data: r.data, now: new Date(now), tips: r.tips, tippers, ladderBefore: ladderBefore(r.data.round), youId: "sully" });
 }
 
 export function findSampleMatch(id: string) {
