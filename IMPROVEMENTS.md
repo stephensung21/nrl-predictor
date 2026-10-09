@@ -48,6 +48,12 @@ The backtest procedure was run once on the unseen 2026 season (`reports/final_20
 - **Calibration** is reasonable where most games are (0.5–0.65: predicted 57%, actual 59%; above 0.65: 73% vs 71%). The two lower bands are noisy (26 and 35 games).
 - Caveat: before this run, summary margin figures for 2026 were seen once by accident (noted at the time); nothing was changed because of them.
 
+**2026 betting simulation** (`python src/betting.py --season 2026`, `reports/betting_2026.md`): the backtest's rules unchanged (flat stakes at opening prices, every threshold shown).
+- **Odds data problems found:** the 2026 sheet has impossible prices (implied probabilities summing to under 100%) for 15 opening lines (away prices of 13–19) and 9 opening / 67 closing totals. The simulation now drops any such price; no 2021–2025 price is affected and the backtest results are unchanged. The remaining 2026 totals prices are also doubtful (about a 1–2% margin instead of 5%; under prices up to 2.26). Head-to-head prices are clean. Note the with-odds models use `open_line` as an input, so the 15 games may also have slightly affected predictions.
+- **Head to head (clean prices): the opening-price edge held up.** With-odds ensemble: +24.5% ROI on 132 bets at a 0% edge (95% interval +3% to +46%), +27% at 2%. No-odds: +19% (−1% to +40%). The best evidence is closing line value: the price moved towards the bet 68% of the time (backtest: 69%), with a similar average move (+0.038 implied probability; backtest +0.044). ROI at closing prices was +16%, against −4% in the backtest; with about 130 bets that swing is within luck.
+- **Line: loses** (−4% to −10%), as in the backtest.
+- **Totals: +11% to +25%, but not trustworthy.** 161 of 167 bets were unders; 2026 games went under the opening total 57% of the time, the most of any season. At standard 1.90 prices the ROI would have been about +9%, not +18%. With doubtful prices and one-directional bets, this is not evidence of an edge.
+
 **Status:** ✅ done · 🔶 partly done · ⬜ not started · ❌ tried, didn't help
 
 ---

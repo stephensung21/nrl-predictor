@@ -2,7 +2,7 @@
 
 Flat 1-unit bets at the **opening** prices whenever probability × odds − 1 exceeds the minimum edge, using out-of-sample backtest predictions (each season predicted from earlier seasons only), using the main models: the ensemble (average of linear and LightGBM) for both variants. The with-odds models use the opening odds as inputs; the no-odds models use no odds. `linear (no rain flag)` totals don't use the wet-conditions flag, which is only known near kickoff (linear only: LightGBM would need retraining without it).
 
-CLV is the move to the closing price or line in the bet's favour: head to head in implied probability (2023 and part of 2024, where closing prices are reliable), line and total in points (line: 2023 and part of 2024; total: all seasons).
+CLV is the move to the closing price or line in the bet's favour: head to head in implied probability (only where closing prices are reliable), line and total in points.
 
 Caveats: draws were excluded from the backtest; the line-up features use the named 17, which may come out after the opening price; and the backtest has informed many modelling decisions, so these results are optimistic. Thresholds are all shown, not chosen.
 

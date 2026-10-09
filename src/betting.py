@@ -20,9 +20,13 @@ Caveats: draws were excluded from the backtest (a head-to-head bet loses on a dr
 models use the named 17, which may come out after the opening price; and the backtest informed
 many modelling decisions, so results are optimistic.
 
-Usage: python src/betting.py   ->  reports/betting.md
+Usage:
+    python src/betting.py                 ->  reports/betting.md (2023-2025 backtest)
+    python src/betting.py --season 2026   ->  reports/betting_2026.md (the final test season, same rules,
+                                              predictions checked against reports/predictions_2026.csv)
 """
 
+import argparse
 import warnings
 
 import numpy as np
@@ -43,27 +47,27 @@ PRICE_COLS = ["home_odds_open", "away_odds_open", "home_odds_close", "away_odds_
               "open_line", "close_line", "open_total", "close_total", "p_open", "p_close", "close_ok"]
 
 
-def load():
-    """Backtest predictions joined to prices, plus sigma per season for margin and total."""
+def load(seasons, check_file):
+    """Backtest predictions for `seasons` joined to prices, plus sigma per season for margin and total."""
     warnings.filterwarnings("ignore")
     df = models.load_data()
-    df = df[df["season"] <= max(BACKTEST_SEASONS)]
-    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    df = df[df["season"] <= max(seasons)]
+    bt = pd.read_csv(check_file).set_index("match_id")
     odds = load_odds()
-    test = df[df["season"].isin(BACKTEST_SEASONS)]
+    test = df[df["season"].isin(seasons)]
     ids = join_odds_to_matches(test[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
     prices = odds.set_index("odds_id")[[c for c in PRICE_COLS if c not in test.columns]]
     games = test.set_index("match_id").join(ids.set_index("match_id")["odds_id"]).join(prices, on="odds_id")
 
     # The main model's predictions for every market, from the shared backtest (rerun here, and checked
-    # against reports/backtest_predictions.csv). Sigma is the spread of the linear models' out-of-fold
+    # against the saved predictions). Sigma is the spread of the linear models' out-of-fold
     # errors on earlier seasons. Totals without the wet flag, for bets placed early in the week, are
     # linear only.
     no_wet = {**LINEAR_FEATURES, "total": [f for f in LINEAR_FEATURES["total"] if f != "wet_conditions"]}
     preds, sigma = {}, {}
     for name_fmt, settings in (("{v} " + MAIN_MODEL, {}), ("{v} linear (no rain flag)", {"LINEAR_FEATURES": no_wet})):
         with config.override(**settings):
-            p, details = models.backtest(df)
+            p, details = models.backtest(df, seasons)
             spreads = {s: models.margin_total_sigma(df, cfg, s) for s, (cfg, _) in details.items()}
         p.index = df.loc[p.index, "match_id"].to_numpy()
         if not settings:  # must reproduce the pipeline's backtest exactly
@@ -118,6 +122,12 @@ def candidate_bets(games, preds, sigma, model):
                                       "close_odds": close, "result": (sign + 1) / 2, "clv": clv,
                                       "season": s_season}))
     bets = pd.concat(rows)
+    # Impossible prices: a two-way market whose implied probabilities sum to under 100% is a data error
+    # (the 2026 sheet has some), not a real price. Such opening prices are not bet; such closing prices
+    # are ignored. (No 2021-2025 prices are affected.)
+    for col in ("odds", "close_odds"):
+        implied = (1 / bets[col]).groupby([bets.index, bets["market"]]).transform("sum", min_count=2)
+        bets[col] = bets[col].where(~(implied < 1))
     bets = bets[bets["odds"].notna() & bets["prob"].notna()]
     bets["edge"] = bets["prob"] * bets["odds"] - 1
     bets["profit"] = np.where(bets["result"] == 1, bets["odds"] - 1, np.where(bets["result"] == 0, -1.0, 0.0))
@@ -134,7 +144,7 @@ def label(model):
     return model
 
 
-def summarise(bets):
+def summarise(bets, seasons):
     rows = []
     for (model, market), b in bets.groupby(["model", "market"], sort=False):
         for thr in THRESHOLDS:
@@ -154,39 +164,56 @@ def summarise(bets):
                 "CLV positive": (clv > 0).mean() if len(clv) else np.nan,
                 "CLV negative": (clv < 0).mean() if len(clv) else np.nan,
                 "ROI at closing price": close["profit_close"].mean() if len(close) else np.nan,
-                **{f"ROI {s}": x.loc[x["season"] == s, "profit"].mean() for s in BACKTEST_SEASONS},
+                **({f"ROI {s}": x.loc[x["season"] == s, "profit"].mean() for s in seasons} if len(seasons) > 1 else {}),
             })
     return pd.DataFrame(rows)
 
 
 def main():
-    games, preds, sigma = load()
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--season", type=int, help="simulate one season (e.g. the final test season) instead "
+                                                    "of the backtest seasons")
+    args = parser.parse_args()
+    if args.season:
+        seasons, check_file, out = [args.season], REPORTS / f"predictions_{args.season}.csv", f"betting_{args.season}"
+        title = f"# Betting simulation, {args.season} (final test season)"
+        scope = (f"out-of-sample predictions for {args.season} (developed on {config.FIRST_SEASON}–{args.season - 1}, "
+                 "exactly as in the final test)")
+        caveat = ("Caveats: the rules (markets, thresholds, opening prices) are the backtest's, fixed before this "
+                  "season was simulated; draws were excluded; the line-up features use the named 17, which may come "
+                  "out after the opening price. Odds data: the 2026 sheet has impossible prices (implied "
+                  "probabilities summing to under 100%) for 15 opening lines and 9 opening / 67 closing totals; "
+                  "those are dropped. The other 2026 totals prices are also doubtful: about a 1–2% margin "
+                  "instead of the usual 5%, with under prices up to 2.26, so the totals ROI is overstated.")
+    else:
+        seasons, check_file, out = BACKTEST_SEASONS, REPORTS / "backtest_predictions.csv", "betting"
+        title = "# Betting simulation, 2023–2025 backtest"
+        scope = "out-of-sample backtest predictions (each season predicted from earlier seasons only)"
+        caveat = ("Caveats: draws were excluded from the backtest; the line-up features use the named 17, which "
+                  "may come out after the opening price; and the backtest has informed many modelling decisions, "
+                  "so these results are optimistic.")
+    games, preds, sigma = load(seasons, check_file)
     models = [*(f"{v} {MAIN_MODEL}" for v in VARIANTS), *(f"{v} linear (no rain flag)" for v in VARIANTS)]
     bets = pd.concat([candidate_bets(games, preds, sigma, m) for m in models])
     # The no-rain models only differ on totals.
     bets = bets[~(bets["model"].str.contains("no rain") & (bets["market"] != "total"))]
-    summary = summarise(bets)
+    summary = summarise(bets, seasons)
     pd.set_option("display.width", 250)
     print(summary.round(3).to_string(index=False))
 
     clv_note = ("CLV is the move to the closing price or line in the bet's favour: head to head in "
-                "implied probability (2023 and part of 2024, where closing prices are reliable), line and "
-                "total in points (line: 2023 and part of 2024; total: all seasons).")
-    report = ["# Betting simulation, 2023–2025 backtest", "",
+                "implied probability (only where closing prices are reliable), line and total in points.")
+    report = [title, "",
               "Flat 1-unit bets at the **opening** prices whenever probability × odds − 1 exceeds the minimum "
-              "edge, using out-of-sample backtest predictions (each season predicted from earlier seasons "
-              "only), using the main models: the ensemble (average of linear and LightGBM) for both variants. The "
+              f"edge, using {scope}, using the main models: the ensemble (average of linear and LightGBM) for both variants. The "
               "with-odds models use the opening odds as inputs; the no-odds models use no odds. "
               "`linear (no rain flag)` totals don't use the wet-conditions flag, which is only known near kickoff "
               "(linear only: LightGBM would need retraining without it).", "",
-              clv_note, "",
-              "Caveats: draws were excluded from the backtest; the line-up features use the named 17, which "
-              "may come out after the opening price; and the backtest has informed many modelling decisions, "
-              "so these results are optimistic. Thresholds are all shown, not chosen.", "",
+              clv_note, "", caveat + " Thresholds are all shown, not chosen.", "",
               md_table(summary.set_index("model").round(4)), ""]
-    (REPORTS / "betting.md").write_text("\n".join(report), encoding="utf-8")
-    bets.to_csv(REPORTS / "betting_candidates.csv", index=False)
-    print("wrote reports/betting.md")
+    (REPORTS / f"{out}.md").write_text("\n".join(report), encoding="utf-8")
+    bets.to_csv(REPORTS / f"{out}_candidates.csv", index=False)
+    print(f"wrote reports/{out}.md")
 
 
 if __name__ == "__main__":
