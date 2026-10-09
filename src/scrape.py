@@ -8,7 +8,7 @@ parsing the rendered HTML by position) gives labelled team and player stats and 
 no browser.
 
 Usage (from the repo root):
-    python src/scrape.py                       # 2021-2026, fetch + build CSVs
+    python src/scrape.py                       # 2020-2026, fetch + build CSVs
     python src/scrape.py --years 2025 2026
     python src/scrape.py --build-only          # rebuild CSVs from cached raw JSON
 
@@ -230,7 +230,7 @@ def build_tables(years):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--years", type=int, nargs="+", default=list(range(2021, 2027)))
+    parser.add_argument("--years", type=int, nargs="+", default=list(range(2020, 2027)))
     parser.add_argument("--build-only", action="store_true")
     args = parser.parse_args()
 

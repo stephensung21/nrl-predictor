@@ -69,7 +69,11 @@ FEATURE_GROUPS = {
     "odds": ["open_logit", "open_line", "open_total"],
 }
 
-MIN_HISTORY = 5  # both teams need this many earlier games in the scraped data (2021 warm-up)
+MIN_HISTORY = 5  # both teams need this many earlier games in the scraped data
+
+# Scraped games are used from the 2020 restart, when the six-again rule began: earlier games come
+# from a different style of game. Elo still uses every result since 2009 from the odds sheet.
+SIX_AGAIN_START = pd.Timestamp("2020-05-28", tz="UTC")
 
 
 def logit(p):
@@ -421,8 +425,11 @@ def build_features(matches, team_stats, players, odds, origin, elo_params):
 
 def load_inputs():
     matches = pd.read_csv(PROCESSED / "matches.csv")
+    matches = matches[pd.to_datetime(matches["start_time_utc"], utc=True) >= SIX_AGAIN_START]
     team_stats = pd.read_csv(PROCESSED / "team_match_stats.csv")
+    team_stats = team_stats[team_stats["match_id"].isin(matches["match_id"])]
     players = pd.read_csv(PROCESSED / "player_match_stats.csv")
+    players = players[players["match_id"].isin(matches["match_id"])]
     origin = pd.read_csv(PROCESSED / "origin_players.csv")
     return matches, team_stats, players, load_odds(), origin
 

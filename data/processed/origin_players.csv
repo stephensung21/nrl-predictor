@@ -1,4 +1,106 @@
 season,game,start_time_utc,state,player_id,player_name,position,minutesPlayed
+2020,game-1,2020-11-04T09:10:00Z,Blues,500002,Daniel Tupou,Winger,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,500013,Boyd Cordner,2nd Row,66
+2020,game-1,2020-11-04T09:10:00Z,Blues,500093,Luke Keary,Five-Eighth,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,500339,Jack Wighton,Centre,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,500611,Cody Walker,Interchange,19
+2020,game-1,2020-11-04T09:10:00Z,Blues,500622,Tyson Frizell,2nd Row,70
+2020,game-1,2020-11-04T09:10:00Z,Blues,500663,James Tedesco,Fullback,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,500687,Junior Paulo,Prop,42
+2020,game-1,2020-11-04T09:10:00Z,Blues,500729,Clinton Gutherson,Centre,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,500751,Jake Trbojevic,Lock,74
+2020,game-1,2020-11-04T09:10:00Z,Blues,501351,Josh Addo-Carr,Winger,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,501600,Damien Cook,Hooker,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,503240,Angus Crichton,Interchange,44
+2020,game-1,2020-11-04T09:10:00Z,Blues,503571,Daniel Saifiti,Prop,56
+2020,game-1,2020-11-04T09:10:00Z,Blues,504120,Nathan Cleary,Halfback,80
+2020,game-1,2020-11-04T09:10:00Z,Blues,504176,Cameron Murray,Interchange,5
+2020,game-1,2020-11-04T09:10:00Z,Blues,504300,Payne Haas,Interchange,25
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500009,Jake Friend,Hooker,80
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500024,Daly Cherry-Evans,Halfback,80
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500043,Dane Gagai,Centre,80
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500149,Jai Arrow,Interchange,50
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500257,Ben Hunt,Interchange,37
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500405,Coen Hess,2nd Row,33
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500598,Felise Kaufusi,2nd Row,80
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500786,Christian Welch,Prop,27
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500973,Josh Papalii,Prop,48
+2020,game-1,2020-11-04T09:10:00Z,Maroons,500992,Kurt Capewell,Centre,76
+2020,game-1,2020-11-04T09:10:00Z,Maroons,501459,Cameron Munster,Five-Eighth,80
+2020,game-1,2020-11-04T09:10:00Z,Maroons,501781,Lindsay Collins,Interchange,32
+2020,game-1,2020-11-04T09:10:00Z,Maroons,503528,Jaydn Su'A,Interchange,47
+2020,game-1,2020-11-04T09:10:00Z,Maroons,505918,Phillip Sami,Winger,80
+2020,game-1,2020-11-04T09:10:00Z,Maroons,506259,Alexander Brimson,Fullback,80
+2020,game-1,2020-11-04T09:10:00Z,Maroons,506513,Tino Fa'asuamaleaui,Lock,50
+2020,game-1,2020-11-04T09:10:00Z,Maroons,100001634,Xavier Coates,Winger,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,500002,Daniel Tupou,Winger,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,500222,Dale Finucane,Interchange,24
+2020,game-2,2020-11-11T09:10:00Z,Blues,500339,Jack Wighton,Centre,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,500534,Isaah Yeo,Interchange,40
+2020,game-2,2020-11-11T09:10:00Z,Blues,500611,Cody Walker,Five-Eighth,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,500622,Tyson Frizell,2nd Row,66
+2020,game-2,2020-11-11T09:10:00Z,Blues,500647,Nathan Brown,Interchange,17
+2020,game-2,2020-11-11T09:10:00Z,Blues,500663,James Tedesco,Fullback,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,500687,Junior Paulo,Interchange,21
+2020,game-2,2020-11-11T09:10:00Z,Blues,500729,Clinton Gutherson,Centre,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,500751,Jake Trbojevic,Lock,59
+2020,game-2,2020-11-11T09:10:00Z,Blues,501351,Josh Addo-Carr,Winger,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,501600,Damien Cook,Hooker,78
+2020,game-2,2020-11-11T09:10:00Z,Blues,503240,Angus Crichton,2nd Row,76
+2020,game-2,2020-11-11T09:10:00Z,Blues,503571,Daniel Saifiti,Prop,42
+2020,game-2,2020-11-11T09:10:00Z,Blues,504120,Nathan Cleary,Halfback,80
+2020,game-2,2020-11-11T09:10:00Z,Blues,504300,Payne Haas,Prop,49
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500009,Jake Friend,Hooker,74
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500024,Daly Cherry-Evans,Halfback,80
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500043,Dane Gagai,Centre,80
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500149,Jai Arrow,Interchange,48
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500257,Ben Hunt,Interchange,78
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500598,Felise Kaufusi,2nd Row,80
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500845,Valentine Holmes,Fullback,80
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500957,Dunamis Lui,Prop,25
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500973,Josh Papalii,Prop,43
+2020,game-2,2020-11-11T09:10:00Z,Maroons,500992,Kurt Capewell,Centre,80
+2020,game-2,2020-11-11T09:10:00Z,Maroons,501459,Cameron Munster,Five-Eighth,2
+2020,game-2,2020-11-11T09:10:00Z,Maroons,501781,Lindsay Collins,Interchange,52
+2020,game-2,2020-11-11T09:10:00Z,Maroons,503528,Jaydn Su'A,2nd Row,80
+2020,game-2,2020-11-11T09:10:00Z,Maroons,505918,Phillip Sami,Winger,80
+2020,game-2,2020-11-11T09:10:00Z,Maroons,506278,Moeaki Fotuaika,Interchange,26
+2020,game-2,2020-11-11T09:10:00Z,Maroons,506513,Tino Fa'asuamaleaui,Lock,44
+2020,game-2,2020-11-11T09:10:00Z,Maroons,100001634,Xavier Coates,Winger,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,500002,Daniel Tupou,Winger,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,500222,Dale Finucane,Interchange,31
+2020,game-3,2020-11-18T09:10:00Z,Blues,500339,Jack Wighton,Centre,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,500534,Isaah Yeo,Interchange,61
+2020,game-3,2020-11-18T09:10:00Z,Blues,500611,Cody Walker,Five-Eighth,75
+2020,game-3,2020-11-18T09:10:00Z,Blues,500622,Tyson Frizell,2nd Row,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,500647,Nathan Brown,Interchange,12
+2020,game-3,2020-11-18T09:10:00Z,Blues,500663,James Tedesco,Fullback,19
+2020,game-3,2020-11-18T09:10:00Z,Blues,500687,Junior Paulo,Interchange,35
+2020,game-3,2020-11-18T09:10:00Z,Blues,500729,Clinton Gutherson,Centre,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,500751,Jake Trbojevic,Lock,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,501351,Josh Addo-Carr,Winger,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,501600,Damien Cook,Hooker,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,503240,Angus Crichton,2nd Row,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,503571,Daniel Saifiti,Prop,46
+2020,game-3,2020-11-18T09:10:00Z,Blues,504120,Nathan Cleary,Halfback,80
+2020,game-3,2020-11-18T09:10:00Z,Blues,504300,Payne Haas,Prop,41
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500009,Jake Friend,Hooker,54
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500024,Daly Cherry-Evans,Halfback,80
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500043,Dane Gagai,Centre,80
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500149,Jai Arrow,Interchange,34
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500321,Brenko Lee,Centre,68
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500322,Edrick Lee,Winger,80
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500598,Felise Kaufusi,2nd Row,80
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500786,Christian Welch,Prop,37
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500845,Valentine Holmes,Winger,80
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500973,Josh Papalii,Prop,44
+2020,game-3,2020-11-18T09:10:00Z,Maroons,500992,Kurt Capewell,2nd Row,80
+2020,game-3,2020-11-18T09:10:00Z,Maroons,501459,Cameron Munster,Five-Eighth,80
+2020,game-3,2020-11-18T09:10:00Z,Maroons,501781,Lindsay Collins,Interchange,40
+2020,game-3,2020-11-18T09:10:00Z,Maroons,503528,Jaydn Su'A,Interchange,13
+2020,game-3,2020-11-18T09:10:00Z,Maroons,505904,Harry Grant,Interchange,56
+2020,game-3,2020-11-18T09:10:00Z,Maroons,505964,Corey Allan,Fullback,77
+2020,game-3,2020-11-18T09:10:00Z,Maroons,506513,Tino Fa'asuamaleaui,Lock,56
 2021,game-1,2021-06-09T10:10:00Z,Blues,500109,Apisai Koroisau,Reserve,0
 2021,game-1,2021-06-09T10:10:00Z,Blues,500298,Tariq Sims,2nd Row,62
 2021,game-1,2021-06-09T10:10:00Z,Blues,500339,Jack Wighton,Interchange,16

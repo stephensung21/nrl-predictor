@@ -3,20 +3,19 @@
     "B": {
       "linear": {
         "home_win": [
-          "diff_rapm_total",
           "elo_logit",
-          "diff_rapm_vs_usual",
+          "diff_rapm_total",
           "diff_rapm_defence",
-          "diff_rookies"
+          "diff_rapm_vs_usual"
         ],
         "margin": [
-          "diff_rapm_total",
           "elo_logit",
-          "diff_rapm_vs_usual",
+          "diff_rapm_total",
           "diff_rapm_defence",
-          "diff_rookies"
+          "diff_rapm_vs_usual"
         ],
         "total": [
+          "rapm_points",
           "origin_period"
         ]
       },
@@ -71,26 +70,25 @@
     "A": {
       "linear": {
         "home_win": [
-          "diff_rapm_total",
           "elo_logit",
-          "diff_rapm_vs_usual",
+          "diff_rapm_total",
           "diff_rapm_defence",
-          "diff_rookies",
+          "diff_rapm_vs_usual",
           "open_logit",
           "open_line",
           "open_total"
         ],
         "margin": [
-          "diff_rapm_total",
           "elo_logit",
-          "diff_rapm_vs_usual",
+          "diff_rapm_total",
           "diff_rapm_defence",
-          "diff_rookies",
+          "diff_rapm_vs_usual",
           "open_logit",
           "open_line",
           "open_total"
         ],
         "total": [
+          "rapm_points",
           "origin_period",
           "open_logit",
           "open_line",
@@ -161,77 +159,15 @@
           "deterministic": true,
           "seed": 0,
           "verbosity": -1,
-          "max_depth": 3,
-          "num_leaves": 9,
-          "min_child_samples": 47,
-          "learning_rate": 0.091151469380858,
-          "lambda_l2": 0.7887505051271487,
-          "feature_fraction": 0.7175174221983454,
-          "bagging_fraction": 0.6715192527496661
-        },
-        "lgb_rounds": 23
-      },
-      "margin": {
-        "linear": 31.622776601683793,
-        "lgb": {
-          "objective": "regression",
-          "metric": "l1",
-          "bagging_freq": 1,
-          "num_threads": 1,
-          "deterministic": true,
-          "seed": 0,
-          "verbosity": -1,
           "max_depth": 2,
-          "num_leaves": 8,
-          "min_child_samples": 25,
-          "learning_rate": 0.07308513392424493,
-          "lambda_l2": 0.08368841077702263,
-          "feature_fraction": 0.9259895110705838,
-          "bagging_fraction": 0.6750043245834304
-        },
-        "lgb_rounds": 20
-      },
-      "total": {
-        "linear": 31.622776601683793,
-        "lgb": {
-          "objective": "regression",
-          "metric": "l1",
-          "bagging_freq": 1,
-          "num_threads": 1,
-          "deterministic": true,
-          "seed": 0,
-          "verbosity": -1,
-          "max_depth": 3,
           "num_leaves": 10,
-          "min_child_samples": 26,
-          "learning_rate": 0.0817875360670659,
-          "lambda_l2": 0.004120523914186181,
-          "feature_fraction": 0.4572633641141794,
-          "bagging_fraction": 0.5496452050885844
+          "min_child_samples": 56,
+          "learning_rate": 0.05733459328288889,
+          "lambda_l2": 0.005922941913591995,
+          "feature_fraction": 0.5591762219232652,
+          "bagging_fraction": 0.7222220362657862
         },
-        "lgb_rounds": 5
-      }
-    },
-    "A": {
-      "home_win": {
-        "linear": 0.03162277660168379,
-        "lgb": {
-          "objective": "binary",
-          "metric": "binary_logloss",
-          "bagging_freq": 1,
-          "num_threads": 1,
-          "deterministic": true,
-          "seed": 0,
-          "verbosity": -1,
-          "max_depth": 2,
-          "num_leaves": 11,
-          "min_child_samples": 61,
-          "learning_rate": 0.07978529051275736,
-          "lambda_l2": 0.011359307510360458,
-          "feature_fraction": 0.6404037422117795,
-          "bagging_fraction": 0.8178587953319184
-        },
-        "lgb_rounds": 27
+        "lgb_rounds": 35
       },
       "margin": {
         "linear": 100.0,
@@ -245,16 +181,16 @@
           "verbosity": -1,
           "max_depth": 3,
           "num_leaves": 5,
-          "min_child_samples": 26,
-          "learning_rate": 0.07757098703615734,
-          "lambda_l2": 0.13400835172041445,
-          "feature_fraction": 0.7288767277642276,
-          "bagging_fraction": 0.5670413147767016
+          "min_child_samples": 29,
+          "learning_rate": 0.016523392217978498,
+          "lambda_l2": 0.022565340002659137,
+          "feature_fraction": 0.6068477804073988,
+          "bagging_fraction": 0.5885323884779201
         },
-        "lgb_rounds": 20
+        "lgb_rounds": 107
       },
       "total": {
-        "linear": 10.0,
+        "linear": 316.22776601683796,
         "lgb": {
           "objective": "regression",
           "metric": "l1",
@@ -264,14 +200,76 @@
           "seed": 0,
           "verbosity": -1,
           "max_depth": 2,
-          "num_leaves": 12,
-          "min_child_samples": 34,
-          "learning_rate": 0.07910439789570292,
-          "lambda_l2": 0.05960506600476309,
-          "feature_fraction": 0.46191335713740855,
-          "bagging_fraction": 0.5232925715254397
+          "num_leaves": 4,
+          "min_child_samples": 20,
+          "learning_rate": 0.061925587980234585,
+          "lambda_l2": 2.174631739598361,
+          "feature_fraction": 0.9321974395797056,
+          "bagging_fraction": 0.8899394453291654
         },
-        "lgb_rounds": 25
+        "lgb_rounds": 24
+      }
+    },
+    "A": {
+      "home_win": {
+        "linear": 0.03162277660168379,
+        "lgb": {
+          "objective": "binary",
+          "metric": "binary_logloss",
+          "bagging_freq": 1,
+          "num_threads": 1,
+          "deterministic": true,
+          "seed": 0,
+          "verbosity": -1,
+          "max_depth": 3,
+          "num_leaves": 12,
+          "min_child_samples": 60,
+          "learning_rate": 0.06819038648666469,
+          "lambda_l2": 0.006952611061990761,
+          "feature_fraction": 0.49487680172318343,
+          "bagging_fraction": 0.7470310534981603
+        },
+        "lgb_rounds": 35
+      },
+      "margin": {
+        "linear": 100.0,
+        "lgb": {
+          "objective": "regression",
+          "metric": "l1",
+          "bagging_freq": 1,
+          "num_threads": 1,
+          "deterministic": true,
+          "seed": 0,
+          "verbosity": -1,
+          "max_depth": 3,
+          "num_leaves": 12,
+          "min_child_samples": 43,
+          "learning_rate": 0.07860550937376239,
+          "lambda_l2": 0.0015148656895267365,
+          "feature_fraction": 0.8046202738545325,
+          "bagging_fraction": 0.7634176696838019
+        },
+        "lgb_rounds": 24
+      },
+      "total": {
+        "linear": 316.22776601683796,
+        "lgb": {
+          "objective": "regression",
+          "metric": "l1",
+          "bagging_freq": 1,
+          "num_threads": 1,
+          "deterministic": true,
+          "seed": 0,
+          "verbosity": -1,
+          "max_depth": 2,
+          "num_leaves": 5,
+          "min_child_samples": 30,
+          "learning_rate": 0.0511725297119813,
+          "lambda_l2": 0.0021907287652123664,
+          "feature_fraction": 0.8526136308344966,
+          "bagging_fraction": 0.5109467352018858
+        },
+        "lgb_rounds": 35
       }
     }
   }

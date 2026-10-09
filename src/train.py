@@ -50,6 +50,16 @@ N_TRIALS = 60                         # Optuna trials per LightGBM model
 SEED = 0
 MIN_GAIN = {"clf": 0.001, "reg": 0.01}  # forward selection: minimum pooled CV gain (log loss / MAE points)
 
+# Fixed linear feature sets: the features chosen consistently across the 2023-2025 backtest's
+# forward selection. Selecting per season from 1-3 CV seasons overfit, so it is off by default
+# (--select turns it back on). Model A adds the opening odds to each set.
+FEATURE_SELECTION = False
+LINEAR_FEATURES = {
+    "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
+    "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
+    "total": ["rapm_points", "origin_period"],
+}
+
 BASE = FEATURE_GROUPS["elo"] + FEATURE_GROUPS["form"] + FEATURE_GROUPS["context"]
 FEATURE_SETS = {
     "base": BASE,
@@ -61,9 +71,14 @@ FEATURE_SETS = {
 # ---------------------------------------------------------------- data and folds
 
 def load_data():
-    """Usable games: both teams have MIN_HISTORY earlier games, and no draws."""
+    """Usable games from FIRST_SEASON: both teams have MIN_HISTORY earlier games, and no draws.
+
+    Earlier seasons in features.csv (2020 from the six-again restart) still shape the features
+    as history; they only become training rows with --train-from 2020.
+    """
     f = pd.read_csv(PROCESSED / "features.csv")
-    return f[(f["min_hist"] >= MIN_HISTORY) & ~f["is_draw"]].reset_index(drop=True)
+    keep = (f["min_hist"] >= MIN_HISTORY) & ~f["is_draw"] & (f["season"] >= FIRST_SEASON)
+    return f[keep].reset_index(drop=True)
 
 
 def walk_forward(df, test_seasons):
@@ -334,19 +349,24 @@ def bootstrap_diff(y, p_model, p_bench, seed=SEED):
 # ---------------------------------------------------------------- development procedure
 
 def develop(cv_df, cv_seasons):
-    """Forward selection and tuning on walk-forward CV over cv_seasons. Returns cfg, trace, CV table.
+    """Linear feature sets and tuning on walk-forward CV over cv_seasons. Returns cfg, trace, CV table.
 
-    The linear models get two selected feature sets: one chosen on win log loss (used for the
-    win and margin models) and one chosen on total-points MAE (used for the total model).
+    The linear models use LINEAR_FEATURES, or with FEATURE_SELECTION two selected sets: one
+    chosen on win log loss (win and margin models) and one on total-points MAE (total model).
     """
     full, odds = FEATURE_SETS["+player"], FEATURE_GROUPS["odds"]
-    selected, traces = {}, []
-    for target in ("home_win", "total"):
-        print(f"forward selection (linear, {target}), CV {cv_seasons}...")
-        selected[target], trace = forward_select(cv_df, full, target, seasons=cv_seasons)
-        traces.append(trace)
-    trace = pd.concat(traces)
-    linear_b = {"home_win": selected["home_win"], "margin": selected["home_win"], "total": selected["total"]}
+    if FEATURE_SELECTION:
+        selected, traces = {}, []
+        for target in ("home_win", "total"):
+            print(f"forward selection (linear, {target}), CV {cv_seasons}...")
+            selected[target], trace = forward_select(cv_df, full, target, seasons=cv_seasons)
+            traces.append(trace)
+        trace = pd.concat(traces)
+        linear_b = {"home_win": selected["home_win"], "margin": selected["home_win"], "total": selected["total"]}
+    else:
+        linear_b = {t: list(f) for t, f in LINEAR_FEATURES.items()}
+        trace = pd.DataFrame([{"target": t, "step": i + 1, "feature": f}
+                              for t in ("home_win", "total") for i, f in enumerate(linear_b[t])]).set_index("step")
     cfg = {"feature_sets": {"B": {"linear": linear_b, "lightgbm": full},
                             "A": {"linear": {t: f + odds for t, f in linear_b.items()}, "lightgbm": full + odds}},
            "models": {}}
@@ -392,7 +412,13 @@ def run_dev():
     # 2-3. Forward selection for the linear models (LightGBM keeps the full set), then tuning.
     cfg, trace, cv_table = develop(cv_df, CV_SEASONS)
     full = FEATURE_SETS["+player"]
-    report += ["## Forward feature selection (linear models)", "",
+    if not FEATURE_SELECTION:
+        report += ["## Linear model features (fixed)", "",
+                   "Fixed sets from the features chosen consistently in the backtest's forward selection. "
+                   "The win and margin models use the `home_win` set, the total model the `total` set; "
+                   "Model A adds the opening odds. LightGBM uses the full set.", "", md_table(trace), ""]
+    else:
+        report += ["## Forward feature selection (linear models)", "",
                f"Greedy selection from the {len(full)} base + player features on walk-forward CV, adding a "
                f"feature only if it improves the score in every CV season and the pooled score by at least "
                f"{MIN_GAIN['clf']} (log loss, `home_win`) or {MIN_GAIN['reg']} points (MAE, `total`). The win and "
@@ -480,9 +506,11 @@ def run_backtest():
                               for s, sel in selections.items()} for t in ("home_win", "total")}).rename_axis("season")
 
     seasons_txt = f"{BACKTEST_SEASONS[0]}–{BACKTEST_SEASONS[-1]}"
+    method = "forward selection, " if FEATURE_SELECTION else "fixed linear feature sets, "
     report = [f"# Backtest {seasons_txt}", "",
-              "For each season, the whole development procedure (forward selection, tuning of the linear "
-              "models and LightGBM, Platt calibration) is rerun on earlier seasons only, then the season is "
+              f"Training seasons start in {FIRST_SEASON}. For each season, the whole development procedure "
+              f"({method}tuning of the linear models and LightGBM, Platt calibration) is rerun on earlier "
+              "seasons only, then the season is "
               "predicted. Win-probability metrics are log loss (lower is better); the market benchmark is the "
               "Odds Portal average price, since closing odds are missing for most of 2024 and all of 2025.", "",
               "Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–2024 CV, so the "
@@ -493,9 +521,10 @@ def run_backtest():
     for season, table in per_season.items():
         report += [f"## {season} ({int(table['games'].iloc[0])} games)", "", md_table(table), ""]
     report += [f"## Real closing odds, where reliable ({ok.sum()} games, mostly 2023)", "", md_table(closing), "",
-               md_table(closing_boot), "",
-               "## Feature selection stability, `home_win` (1 = selected for that season)", "", md_table(stability), "",
-               md_table(order), ""]
+               md_table(closing_boot), ""]
+    if FEATURE_SELECTION:
+        report += ["## Feature selection stability, `home_win` (1 = selected for that season)", "",
+                   md_table(stability), "", md_table(order), ""]
 
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / "backtest.md").write_text("\n".join(report), encoding="utf-8")
@@ -549,7 +578,12 @@ if __name__ == "__main__":
     parser.add_argument("--force", action="store_true", help="allow --final to run again")
     parser.add_argument("--backtest", action="store_true",
                         help=f"rerun development for each of {BACKTEST_SEASONS} and predict it")
+    parser.add_argument("--select", action="store_true",
+                        help="forward feature selection for the linear models instead of LINEAR_FEATURES")
+    parser.add_argument("--train-from", type=int, default=FIRST_SEASON,
+                        help=f"first season of training rows (default {FIRST_SEASON})")
     args = parser.parse_args()
+    FEATURE_SELECTION, FIRST_SEASON = args.select, args.train_from
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
     if args.final:
