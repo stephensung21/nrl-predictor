@@ -281,7 +281,7 @@ For example, the margin implied by the head-to-head price against the opening li
 - **Closing line value as the main measure,** plus a **paper-trading season**: log predictions and prices every week from now on. That's the only fully clean test of real betting value.
 - **Betfair Exchange prices** usually have lower margins than bookmakers, and timestamped history helps item 6.
 
-### 34. Third review: wrong scores in the scraped data ⬜ (bug)
+### 34. Third review: wrong scores in the scraped data ✅ (fixed)
 
 Six games have missing or incorrect scores in the nrl.com data; the odds sheet has the correct results:
 
@@ -298,7 +298,12 @@ Six games have missing or incorrect scores in the nrl.com data; the odds sheet h
 - RAPM learns from them as if they were level, and the team form and points stats are wrong for them. The two other games slightly distort the margin and total targets.
 - Elo is unaffected (it uses the odds sheet's results). The effect is probably small (6 of about 1,400 games), but it's a correctness bug.
 
-**Fix:** when building features, check scores against the odds sheet, correct mismatches (including points in the team stats) and log every correction; then rebuild and rerun the backtest. This is the kind of check item 25 (data checks) is for.
+**Fixed** (`repair_scraped_games` in `features.py`, run on every load and printing each correction):
+- The 6 scores are corrected from the odds sheet, in the match and in the team stats' points; 3 fake draws become usable training games (real draws in 2021–2025: 3, not 6).
+- Games with no team stats recorded keep them missing instead of zero, and the form averages skip them.
+- 5 games with no player minutes recorded (the 4 above plus 2021 R18 Warriors v Panthers) get typical minutes for each named role (starters 70, interchange 32), so their players count in RAPM and the game history.
+
+Effect on the backtest: the linear models barely changed (no-odds linear 0.6279 → 0.6275; with-odds linear unchanged at 0.6243). LightGBM moved by up to ±0.006 in opposite directions for the two variants (with-odds 0.6340 → 0.6397, no-odds 0.6405 → 0.6375), and the main ensembles with it (with-odds 0.6251 → 0.6280, no-odds 0.6302 → 0.6281). That's LightGBM's tuning landing on different settings after a tiny data change, not the fix itself, and it's why LightGBM's stability is now the next priority (item 4).
 
 ### 35. Third review: the with-odds model's opening-odds source changes ⬜
 

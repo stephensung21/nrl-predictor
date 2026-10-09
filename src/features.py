@@ -25,6 +25,7 @@ FORM_STATS = [
     "post_contact_metres", "line_breaks", "tackle_breaks", "errors", "penalties_conceded",
     "missed_tackles",
 ]
+POINTS = ["points_for", "points_against"]
 FORM_ALPHA = 2 / (6 + 1)  # EWMA span of 6 games
 SEASON_SHRINK = 1 / 3     # pull form one-third back to last season's league average
 
@@ -92,8 +93,11 @@ def team_long(matches, team_stats):
     long = team_stats.merge(
         matches[["match_id", "start_time_utc", "venue_city"]], on="match_id", how="left")
     long = long.sort_values(["start_time_utc", "match_id", "is_home"], ascending=[True, True, False])
-    # Stats the site leaves out when they are zero.
+    # Stats the site leaves out when they are zero; a game with no stats recorded at all stays missing.
+    other = [c for c in FORM_STATS if c not in POINTS]
+    no_stats = long[other].isna().all(axis=1)
     long[FORM_STATS] = long[FORM_STATS].fillna(0)
+    long.loc[no_stats, other] = np.nan
 
     gap = long.groupby("team")["start_time_utc"].diff().dt.total_seconds() / 86400
     long["rest_days"] = gap.clip(upper=14).fillna(14)
@@ -109,7 +113,8 @@ def add_team_form(long):
     """Exponentially weighted pre-match averages of FORM_STATS for each team.
 
     At each new season the averages are pulled partway back to the previous season's league
-    average (known by then). `n_hist` counts the team's earlier games in the scraped data.
+    average (known by then). Missing stats (games with none recorded) leave the average unchanged.
+    `n_hist` counts the team's earlier games in the scraped data.
     """
     values = long[FORM_STATS].to_numpy(dtype=float)
     season_means = long.groupby("season")[FORM_STATS].mean()
@@ -126,7 +131,12 @@ def add_team_form(long):
             if state is not None:
                 out[i] = state
             n_hist[i] = n
-            state = values[i] if state is None else FORM_ALPHA * values[i] + (1 - FORM_ALPHA) * state
+            v = values[i]
+            if state is None:
+                state = v.copy()
+            else:
+                updated = FORM_ALPHA * v + (1 - FORM_ALPHA) * state
+                state = np.where(np.isnan(v), state, np.where(np.isnan(state), v, updated))
             n += 1
 
     form = pd.DataFrame(out, columns=[f"form_{c}" for c in FORM_STATS], index=long.index)
@@ -472,6 +482,47 @@ def build_features(matches, team_stats, players, odds, origin, elo_params):
     return m[keep + [f for f in feats if f not in keep]].sort_values("start_time_utc").reset_index(drop=True)
 
 
+def repair_scraped_games(matches, team_stats, players, odds):
+    """Fix games where nrl.com's data is incomplete, using the odds sheet's results.
+
+    - Scores that disagree with the odds sheet (a few games are recorded as 0-0, or with a wrong
+      score) are replaced, in the match and in the team stats' points.
+    - Games with no player minutes recorded get the typical minutes for each named role (starter or
+      interchange), so the players still count in the ratings. Their missing team stats stay
+      missing (see team_long).
+    Every correction is printed.
+    """
+    matches = matches.astype({"home_score": float, "away_score": float})
+    team_stats = team_stats.astype({"points_for": float, "points_against": float})
+    players = players.astype({"minutesPlayed": float})
+
+    joined = join_odds_to_matches(matches, odds).merge(
+        odds[["odds_id", "home_score", "away_score"]], on="odds_id", how="left", suffixes=("", "_odds"))
+    wrong = joined[joined["home_score_odds"].notna()
+                   & ((joined["home_score"] != joined["home_score_odds"])
+                      | (joined["away_score"] != joined["away_score_odds"]))]
+    for r in wrong.itertuples():
+        print(f"  score corrected: {r.season} R{r.round} {r.home_team} v {r.away_team} "
+              f"{r.home_score:.0f}-{r.away_score:.0f} -> {r.home_score_odds:.0f}-{r.away_score_odds:.0f}")
+        matches.loc[matches["match_id"] == r.match_id, ["home_score", "away_score"]] = [r.home_score_odds, r.away_score_odds]
+        for team, pf, pa in ((r.home_team, r.home_score_odds, r.away_score_odds),
+                             (r.away_team, r.away_score_odds, r.home_score_odds)):
+            row = (team_stats["match_id"] == r.match_id) & (team_stats["team"] == team)
+            team_stats.loc[row, POINTS] = [pf, pa]
+
+    no_minutes = players.groupby("match_id")["minutesPlayed"].transform("sum") == 0
+    if no_minutes.any():
+        named = ~players["position"].isin(NOT_NAMED)
+        interchange = players["position"] == "Interchange"
+        recorded = players[~no_minutes & named]
+        typical = recorded.groupby(recorded["position"] == "Interchange")["minutesPlayed"].mean()
+        fill = no_minutes & named
+        players.loc[fill, "minutesPlayed"] = np.where(interchange[fill], typical[True], typical[False])
+        print(f"  typical minutes filled in for {players.loc[no_minutes, 'match_id'].nunique()} games with none recorded "
+              f"(starters {typical[False]:.0f}, interchange {typical[True]:.0f})")
+    return matches, team_stats, players
+
+
 def load_inputs():
     matches = pd.read_csv(PROCESSED / "matches.csv")
     matches = matches[pd.to_datetime(matches["start_time_utc"], utc=True) >= SIX_AGAIN_START]
@@ -480,7 +531,9 @@ def load_inputs():
     players = pd.read_csv(PROCESSED / "player_match_stats.csv")
     players = players[players["match_id"].isin(matches["match_id"])]
     origin = pd.read_csv(PROCESSED / "origin_players.csv")
-    return matches, team_stats, players, load_odds(), origin
+    odds = load_odds()
+    matches, team_stats, players = repair_scraped_games(matches, team_stats, players, odds)
+    return matches, team_stats, players, odds, origin
 
 
 if __name__ == "__main__":
