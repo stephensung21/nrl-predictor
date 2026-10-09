@@ -193,6 +193,8 @@ Weekly checks on calibration drift, accuracy against the market and closing line
 
 Python, pandas, scikit-learn, LightGBM, SHAP, Optuna (for tuning) and a Streamlit dashboard. Optionally MLflow to track experiments.
 
+The weekly automation and the public website (predictions, model vs odds, Elo, tipping comp, news feed) are planned in [PLAN_WEB.md](PLAN_WEB.md). The website replaces the Streamlit dashboard for public use.
+
 ```
 nrl-predictor/
   data/raw, data/processed
