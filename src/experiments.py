@@ -1493,7 +1493,7 @@ def pre_kickoff_experiments():
     named_final = pd.read_csv(PROCESSED / "player_match_stats.csv")
     named_final = named_final[~named_final["position"].isin(["Replacement", "Reserve"])]
     final_sets = named_final.groupby(["match_id", "team"])["player_id"].agg(set)
-    pre_named = lists[~lists["position"].isin(["Replacement", "Reserve"])]
+    pre_named = lists[~lists["position"].isin(["Replacement", "Reserve"]) & (lists["jersey_number"] <= 17)]
     pre_sets = pre_named.groupby(["match_id", "team"])["player_id"].agg(set)
     both = pre_sets.index.intersection(final_sets.index)
     season_of = lists.groupby("match_id")["season"].first()

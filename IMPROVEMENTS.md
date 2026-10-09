@@ -201,6 +201,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Recalibrating the final win probability on earlier backtest seasons | −0.001 (slope only), redundant after the BlueBet fix (item 23) |
 | Weekly refitting of the model weights and/or the calibration | +0.002 to +0.009 (worse), clearly worse late in the season (item 24) |
 | No odds in the models; the market as a separate expert in a learned blend (Footy Tipper) | +0.008 vs the with-odds ensemble (clearly worse) (item 39) |
+| Shin margin removal (benchmark and input) | ±0.001, no difference (items 26, 42) |
 
 ---
 
@@ -529,9 +530,33 @@ How well the general rules recognise the reference list: S1 counts 58% of their 
 
 **Verdict:** not adopted. Keep the odds as inputs to the with-odds models and the fixed 50/50 ensemble.
 
-### 40. Team lists as they stood before betting ⬜
+### 40. Team lists as they stood before betting ✅ (the edge mostly survives)
 
-Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use the final named 17, which can include late changes the opening price never saw, so the 2026 head-to-head betting edge (which comes from team news) is an upper bound. Historical Tuesday lists can't be recovered after the fact (nrl.com overwrites them), so: start saving each round's Tuesday list and Tuesday-evening prices now, build `predict.py` around them (item 24), and re-evaluate the betting edge on those snapshots from 2027 (with paper trading, item 33).
+Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use the final named 17, which can include late changes the opening price never saw, so the betting edge (which comes from team news) could have been overstated.
+
+**Recovering the lists.** nrl.com now only shows final teams, but the Internet Archive kept snapshots of many match pages during game week. `python src/teamlists.py` takes, for each game, the earliest snapshot after the Tuesday announcement and at least 24 hours before kickoff that shows both teams' lists, and saves them to `data/processed/pre_kickoff_teamlists.csv` (snapshots cached in `data/raw/teamlists/`).
+- **Coverage:** 2023 45 games, 2024 119, 2025 185, 2026 64 (the archive often saved pages only after kickoff). The median list is from about 70–86 hours before kickoff, i.e. Tuesday evening.
+- **How different they are:** about half the teams change at least one player between Tuesday and the final 17, on average 0.65–0.8 players per team.
+- **Since 2026** the Tuesday squad lists a six-man interchange (jerseys 14–19), cut to four later; jerseys 1–17 are taken as the named 17.
+
+**Features.** `python src/features.py --pre-kickoff` writes `features_pre_kickoff.csv`, describing each game that has a list by that list (team ratings, rookies, RAPM, star absences). History still comes from the teams that actually played; games without a list, and the default build, are unchanged (checked).
+
+**Test** (`python src/experiments.py --only pre_kickoff`, `reports/experiments_pre_kickoff.md`). The main models, trained exactly as in the backtest and the 2026 final run (on final named 17s), predict each game twice: from its final 17 (the pipeline's own predictions, checked) and from its Tuesday list.
+
+| 2023–25 backtest, 344 games with a list | Win log loss | Head-to-head ROI at opening (2% edge) | Closing price moved towards the bet |
+|---|---|---|---|
+| With-odds ensemble, final named 17 | 0.6258 | +22.0% (190 bets; +6% to +39%) | 78% (40 bets) |
+| **With-odds ensemble, Tuesday list** | **0.6272** | **+18.3% (197 bets; +2% to +35%)** | **74% (42 bets)** |
+| No-odds ensemble, final named 17 | 0.6291 | +11.4% | 77% |
+| No-odds ensemble, Tuesday list | 0.6305 | +11.3% | 74% |
+| Market opening | 0.6375 | – | – |
+| Market average (closing) | 0.6308 | – | – |
+
+- **Using the Tuesday list costs almost nothing:** +0.0014 log loss against the final 17 (interval −0.001 to +0.004). The with-odds model still beats the opening price by 0.010 and the closing average on these games.
+- **About 85% of the betting edge survives:** ROI +22% → +18% for the with-odds model, still clearly positive, and the closing price still moves towards the bets about three times in four. So the edge was not mostly from late changes the opening price couldn't have known.
+- **2026 (64 games with a list):** Tuesday list vs final 17 +0.0006 (no difference). But on this subset the model trails the opening price even with the final 17 (0.644 vs 0.633), and head-to-head bets lost (−13% with final lists, −31% with Tuesday lists, about 33 bets; intervals −60% to +25%). Too few bets to conclude anything; the full 2026 season with final lists made +24%. The subset isn't random (it's the games the archive happened to save).
+- **Caveats:** the models were trained on final 17s; training on Tuesday lists could help a little. The ROI figures are on subsets of games and use the backtest's rules.
+- **Next:** save each round's Tuesday list and Tuesday-evening prices from 2027 (`predict.py`, item 24) and paper trade (item 33) to confirm the edge on fully live information.
 
 ### 41. Disagreement analysis ✅
 
@@ -582,7 +607,7 @@ Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use
 
 The 2026 final test is done, so 2026 is no longer an untouched test season: judge new ideas on the 2023–25 backtest and report 2026 only as extra information. The next honest test is 2027.
 
-1. **`predict.py` with Tuesday team-list snapshots, and pinned requirements** (items 24, 25, 40): without them the model can't be used, and the betting edge can't be tested on information available when betting.
+1. **`predict.py` with Tuesday team-list snapshots, and pinned requirements** (items 24, 25, 40): without them the model can't be used. Item 40 showed the edge mostly survives on Tuesday lists; `teamlists.py` and `features.py --pre-kickoff` already handle them.
 2. **Paper trading** through 2027 (item 33), with bet sizing (item 43).
 3. **Cheap analyses:** disagreement analysis (item 41) and Shin margin removal (items 26, 42).
 4. Bigger projects when there's time: the Bayesian model (31) and nested tuning (21).

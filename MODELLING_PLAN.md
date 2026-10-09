@@ -112,6 +112,8 @@ python src/features.py        # odds join + Elo + features (add --experimental f
 python src/train.py           # cross-validation, tuning, dev 2025 report -> reports/
 python src/train.py --backtest  # 2023-2025 backtest -> reports/backtest.md (main yardstick)
 python src/betting.py         # betting simulation on the backtest predictions -> reports/betting.md
+python src/teamlists.py       # pre-kickoff (Tuesday) team lists from the Internet Archive
+python src/features.py --pre-kickoff  # features from those lists -> features_pre_kickoff.csv
 python src/train.py --final   # ONE-TIME final test on 2026 (writes reports/final.lock; re-running needs --force)
 python -m pytest -m "not slow"  # fast unit tests (seconds)
 python -m pytest              # all tests, including the slow leakage test
