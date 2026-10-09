@@ -31,10 +31,11 @@ PLAYER_RESULT_COLS = ["fantasyPointsTotal", "minutesPlayed", "conversionAttempts
 
 @pytest.fixture(scope="module")
 def full():
-    matches, team_stats, players, odds, origin = load_inputs()
+    matches, team_stats, players, odds, origin, reserve = load_inputs()
     params = load_params(odds)
-    feats = build_features(matches, team_stats, players, odds, origin, elo_params=params).set_index("match_id")
-    return matches, team_stats, players, odds, origin, params, feats
+    feats = build_features(matches, team_stats, players, odds, origin, elo_params=params,
+                           reserve=reserve).set_index("match_id")
+    return matches, team_stats, players, odds, origin, reserve, params, feats
 
 
 def pick_targets(feats):
@@ -50,7 +51,7 @@ def pick_targets(feats):
     return [int(p["match_id"]) for p in picks]
 
 
-def truncate_and_scramble(matches, team_stats, players, odds, origin, match_id, rng):
+def truncate_and_scramble(matches, team_stats, players, odds, origin, reserve, match_id, rng):
     kickoff = pd.to_datetime(matches["start_time_utc"], utc=True)
     t = kickoff[matches["match_id"] == match_id].iloc[0]
     keep_ids = set(matches.loc[kickoff <= t, "match_id"])
@@ -62,6 +63,8 @@ def truncate_and_scramble(matches, team_stats, players, odds, origin, match_id, 
     # Origin squads are named in advance, so games up to the window after kickoff may be used.
     origin_kickoff = pd.to_datetime(origin["start_time_utc"], utc=True)
     og = origin[origin_kickoff <= t + pd.Timedelta(days=ORIGIN_WINDOW_DAYS)]
+    # Reserve grade: only games that started before the target's kickoff.
+    rg = None if reserve is None else reserve[reserve["start_time_utc"] < t]
 
     # Odds sheet: later games keep their fixture but lose their results.
     target_odds_id = join_odds_to_matches(matches[matches["match_id"] == match_id], odds)["odds_id"].iloc[0]
@@ -77,15 +80,15 @@ def truncate_and_scramble(matches, team_stats, players, odds, origin, match_id, 
     is_target = pl["match_id"] == match_id
     pl.loc[is_target, PLAYER_RESULT_COLS] = rng.integers(0, 150, size=(is_target.sum(), len(PLAYER_RESULT_COLS)))
     pl.loc[is_target, "minutesPlayed"] = rng.choice([0, 80], size=is_target.sum())  # half "didn't play"
-    return m, ts, pl, o, og
+    return m, ts, pl, o, og, rg
 
 
 def test_features_ignore_own_result_and_later_games(full):
-    matches, team_stats, players, odds, origin, params, feats = full
+    matches, team_stats, players, odds, origin, reserve, params, feats = full
     rng = np.random.default_rng(0)
     for match_id in pick_targets(feats):
-        inputs = truncate_and_scramble(matches, team_stats, players, odds, origin, match_id, rng)
-        rebuilt = build_features(*inputs, elo_params=params).set_index("match_id")
+        inputs = truncate_and_scramble(matches, team_stats, players, odds, origin, reserve, match_id, rng)
+        rebuilt = build_features(*inputs[:5], elo_params=params, reserve=inputs[5]).set_index("match_id")
         expected = feats.loc[match_id, FEATURES].astype(float)
         got = rebuilt.loc[match_id, FEATURES].astype(float)
         diff = ~np.isclose(expected, got, equal_nan=True)
@@ -94,8 +97,8 @@ def test_features_ignore_own_result_and_later_games(full):
 
 def test_scrambling_changes_targets(full):
     """Guard against a vacuous pass: the scramble must actually reach the target's outcome."""
-    matches, team_stats, players, odds, origin, params, feats = full
+    matches, team_stats, players, odds, origin, reserve, params, feats = full
     match_id = pick_targets(feats)[1]
-    inputs = truncate_and_scramble(matches, team_stats, players, odds, origin, match_id, np.random.default_rng(1))
-    rebuilt = build_features(*inputs, elo_params=params).set_index("match_id")
+    inputs = truncate_and_scramble(matches, team_stats, players, odds, origin, reserve, match_id, np.random.default_rng(1))
+    rebuilt = build_features(*inputs[:5], elo_params=params, reserve=inputs[5]).set_index("match_id")
     assert rebuilt.loc[match_id, "margin"] != feats.loc[match_id, "margin"]

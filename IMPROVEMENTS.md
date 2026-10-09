@@ -162,6 +162,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Huber regression for margin and total | mixed (A −0.03, B +0.03 margin MAE), no gain |
 | Median (quantile) regression for margin and total | no gain; the no-odds model's totals clearly worse (+0.11) |
 | GAM (splines) or Explainable Boosting Machine, alone or in the ensemble | no clear gain; relationships are essentially linear (item 20) |
+| Reserve-grade (NSW Cup / QLD Cup) ratings of newcomers, fantasy or plus-minus | margin −0.01 to −0.04, win ±0.001: too small to adopt (item 28) |
 
 ---
 
@@ -269,9 +270,30 @@ The opening and closing probabilities split the bookmaker's margin proportionall
 
 Like `team_margin`, but fitted to match totals: each team's tendency to produce high or low scores. `team_margin` helped the win model, and the totals model has the weakest features.
 
-### 28. Reserve-grade data for new players ⬜
+### 28. Reserve-grade data for new players ❌
 
-nrl.com also has NSW Cup and QLD Cup stats. Players moving up have a track record there, but RAPM starts them at average. That's the biggest blind spot in the player ratings.
+The idea: RAPM starts every new player at average, but players moving up have a reserve-grade track record.
+
+**Data** (`python src/scrape.py --reserve` → `data/processed/reserve_player_stats.csv`): NSW Cup (competition 113) and QLD's Hostplus Cup (114), 2021–2026 (neither ran in 2020): **1,761 games, 63,266 player rows**. Match pages are on nswrl.com.au and qrl.com.au but use the same JSON and player IDs as nrl.com; **795 of 2,647 reserve-grade players also played NRL**. 2021 NSW Cup has only 71 games (season cut short by COVID lockdowns).
+
+**Two features** (home minus away), both for named players with fewer than 10 NRL games and using only reserve games before the NRL kickoff (the leakage test now also removes later reserve games, and passes):
+- `diff_reserve_newcomers`: reserve-grade fantasy points per 80 minutes relative to the position group, shrunk for few games.
+- `diff_reserve_rapm_newcomers`: a reserve-grade plus-minus, the same method as the NRL RAPM (ridge on capped reserve margins, players weighted by minutes, penalty 300), with a one-year half-life, refitted before each NRL round; interchange newcomers count half. All settings were decided before testing.
+
+**Results** (`python src/experiments.py --only reserve` → `reports/experiments_reserve.md`; full pipeline backtest, main ensembles, change against current):
+
+| Version | Win log loss (with odds / no odds) | Margin MAE (with odds / no odds) |
+|---|---|---|
+| Fantasy rating, LightGBM only | +0.0002 / −0.0002 | **−0.037 / −0.034** (clear, but small) |
+| Fantasy rating, linear and LightGBM | +0.0008 / +0.0007 | −0.019 / −0.021 |
+| Plus-minus, LightGBM only | +0.0002 / +0.0001 | −0.010 / −0.011 |
+| Plus-minus, linear and LightGBM | +0.0003 / −0.0002 | −0.005 / −0.013 |
+
+Totals didn't change. **Not adopted:** the only clear gain (margin −0.03 to −0.04 points) is the same size as the capped-target change, too small to adopt.
+
+**Why it didn't work:** most reserve-grade players have too few games for a strongly regularised plus-minus to separate them (the plus-minus feature's typical size is only ±0.3 points), and neither feature explains margin that RAPM, Elo and the team rating miss (correlation +0.05 for the fantasy version, −0.03 for the plus-minus). Newcomers are also a small part of each line-up, and once they've played a few NRL games RAPM takes over.
+
+**Kept:** the scraper and data (useful later, e.g. for a Tuesday-list model, item 24), both features in `features.csv` (not used by any model; the plus-minus adds about 15 seconds to the feature build), and the experiment. The experiment added a reusable full-pipeline harness (`pipeline_backtest` in `experiments.py`), which reruns the whole backtest with any `train.py` setting changed, in seconds.
 
 ### 29. Roster turnover between seasons ⬜
 

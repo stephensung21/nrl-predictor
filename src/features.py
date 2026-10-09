@@ -47,8 +47,14 @@ PLAYER_TEAM_FEATURES = [
     "spine_vs_usual", "spine_changes", "halfback_changed", "rookies",
     "missing_usual", "missing_usual_rating", "ins_forwards", "ins_backs", "ins_bench",
     "returning", "kicker_changed", "rapm_total", "rapm_vs_usual", "rapm_missing",
-    "origin_backup", "origin_out", "rapm_attack", "rapm_defence",
+    "origin_backup", "origin_out", "rapm_attack", "rapm_defence", "reserve_newcomers", "reserve_rapm_newcomers",
 ]
+
+RESERVE_FILE = PROCESSED / "reserve_player_stats.csv"
+RESERVE_NEWCOMER_GAMES = 10   # "newcomer": fewer NRL games than this before the match
+RESERVE_MIN_MINUTES = 20      # reserve-grade games with less time on the field are too noisy to rate
+RESERVE_RAPM_HALF_LIFE_DAYS = 365  # reserve plus-minus: newcomers' history spans longer than a regular's
+RESERVE_INTERCHANGE_WEIGHT = 0.5   # an interchange newcomer counts half (they play about half the minutes)
 
 SHORT_TURNAROUND_DAYS = 6   # under 6 days since the last game (e.g. Sunday -> Friday)
 BYE_GAP_DAYS = 11           # 11+ days since the last game in the same season: coming off a bye
@@ -388,7 +394,85 @@ def team_ratings(odds, half_life=None, hfa_penalty=None, strength_penalty=None):
     return pd.DataFrame({"odds_id": g["odds_id"], "team_margin": pred, "team_hfa": hfa_dev})
 
 
-def player_team_features(matches, players, origin):
+def reserve_ratings(reserve):
+    """Each player's reserve-grade (NSW Cup / QLD Cup) state after every game they played: EWMA of
+    fantasy points per 80 minutes, and reserve-grade position-group averages (as player_history)."""
+    r = reserve[reserve["minutesPlayed"] >= RESERVE_MIN_MINUTES].copy()
+    r["pos_group"] = r["position"].map(POS_GROUP).fillna("bench")
+    r["fantasy"] = r["fantasyPointsTotal"] / r["minutesPlayed"] * 80
+    return player_history(r)
+
+
+def reserve_newcomers(named, reserve):
+    """Sum of the reserve-grade rating (relative to the position group's reserve-grade average, shrunk
+    for few games) of named players with fewer than RESERVE_NEWCOMER_GAMES NRL games. Only reserve
+    games before the NRL kickoff are used. RAPM knows little about these players; reserve grade can."""
+    out = pd.Series(0.0, index=pd.MultiIndex.from_frame(named[["match_id", "team"]].drop_duplicates()))
+    if reserve is None or reserve.empty:
+        return out
+    history, group_avgs = reserve_ratings(reserve)
+    newcomers = named[named["n_prior"] < RESERVE_NEWCOMER_GAMES]
+    rated = rate_players(newcomers[["player_id", "pos_group", "start_time_utc"]], history, group_avgs)
+    total = rated["rating_vs_group"].groupby([newcomers["match_id"], newcomers["team"]]).sum()
+    return total.reindex(out.index).fillna(0.0)
+
+
+def reserve_rapm_newcomers(matches, named, reserve):
+    """Reserve-grade plus-minus (NSW Cup / QLD Cup) of NRL newcomers.
+
+    The same method as the NRL RAPM margin model: a ridge regression of each reserve game's capped
+    margin on the players on the field (weighted by minutes / 80) and a home-advantage column, older
+    games down-weighted (RESERVE_RAPM_HALF_LIFE_DAYS), refitted before each NRL round on reserve games
+    that started earlier. Each refit only includes players with a reserve game by then. Returns, per NRL
+    team and match, the sum of the ratings of named players with fewer than RESERVE_NEWCOMER_GAMES NRL
+    games (interchange players weighted by RESERVE_INTERCHANGE_WEIGHT).
+    """
+    keys = named[["match_id", "team"]].drop_duplicates()
+    out = pd.Series(0.0, index=pd.MultiIndex.from_frame(keys))
+    if reserve is None or reserve.empty:
+        return out
+    r = reserve[reserve["minutesPlayed"] > 0].sort_values(["start_time_utc", "match_id", "player_id"])
+    game_ids = pd.unique(r["match_id"])
+    row = pd.Series(np.arange(len(game_ids)), index=game_ids)
+    home_rows = r[r["is_home"].astype(bool)].drop_duplicates("match_id").set_index("match_id")
+    games = home_rows.loc[game_ids, ["start_time_utc", "team_score", "opponent_score"]]
+    kickoff = games["start_time_utc"].to_numpy()
+    y = (games["team_score"] - games["opponent_score"]).clip(-MARGIN_CAP, MARGIN_CAP).to_numpy(dtype=float)
+    pids = pd.Index(pd.unique(r["player_id"]))
+    n_games, n = len(game_ids), len(pids)
+    rr, cc = row.loc[r["match_id"]].to_numpy(), pids.get_indexer(r["player_id"])
+    sign = np.where(r["is_home"].astype(bool), 1.0, -1.0)
+    share = (r["minutesPlayed"].clip(upper=80) / 80).to_numpy()
+    X = sparse.csr_matrix((np.r_[sign * share, np.ones(n_games)],
+                           (np.r_[rr, np.arange(n_games)], np.r_[cc, np.full(n_games, n)])), shape=(n_games, n + 1))
+    first_game = pd.Series(rr).groupby(cc).min().reindex(range(n)).to_numpy()  # each player's first reserve game
+    ok = ~np.isnan(y)
+
+    newcomers = named[named["n_prior"] < RESERVE_NEWCOMER_GAMES]
+    weight = np.where(newcomers["position"] == "Interchange", RESERVE_INTERCHANGE_WEIGHT, 1.0)
+    by_match = {k: list(zip(g["player_id"], weight[g.index])) for k, g in
+                newcomers.reset_index(drop=True).groupby(["match_id", "team"])}
+
+    ratings, block = {}, None
+    for g in matches.sort_values("start_time_utc").itertuples():
+        if (g.season, g.round) != block:  # new NRL round: refit on reserve games that started earlier
+            block = (g.season, g.round)
+            train = ok & (kickoff < g.start_time_utc)
+            ratings = {}
+            if train.sum() >= 50:
+                active = np.flatnonzero(first_game < np.flatnonzero(train).max() + 1)
+                cols = np.r_[active, n]
+                age = (g.start_time_utc - games["start_time_utc"][train]).dt.days.to_numpy()
+                b = weighted_ridge(X[train][:, cols], y[train], 0.5 ** (age / RESERVE_RAPM_HALF_LIFE_DAYS),
+                                   np.full(len(cols), RAPM_ALPHA))
+                ratings = dict(zip(pids[active], b[:-1]))
+        for team in (g.home_team, g.away_team):
+            players_ = by_match.get((g.match_id, team), [])
+            out[(g.match_id, team)] = sum(w * ratings.get(pid, 0.0) for pid, w in players_)
+    return out
+
+
+def player_team_features(matches, players, origin, reserve=None):
     """Rate every named player before each match, then aggregate the named 17 to team level."""
     p = players.merge(matches[["match_id", "start_time_utc"]], on="match_id", how="left")
     p["pos_group"] = p["position"].map(POS_GROUP).fillna("bench")
@@ -409,6 +493,8 @@ def player_team_features(matches, players, origin):
     team["halfback_id"] = named[named["position"] == "Halfback"].groupby(["match_id", "team"])["player_id"].first()
     team = team.join(lineup_changes(named, history, group_avgs, origin_squads(origin)))
     team = team.join(rapm_features(matches, p))
+    team["reserve_newcomers"] = reserve_newcomers(named, reserve)
+    team["reserve_rapm_newcomers"] = reserve_rapm_newcomers(matches, named, reserve)
     team = team.reset_index().merge(matches[["match_id", "start_time_utc"]], on="match_id")
     team = team.sort_values(["start_time_utc", "match_id"]).reset_index(drop=True)
 
@@ -425,7 +511,7 @@ def player_team_features(matches, players, origin):
     return team[["match_id", "team"] + PLAYER_TEAM_FEATURES]
 
 
-def build_features(matches, team_stats, players, odds, origin, elo_params):
+def build_features(matches, team_stats, players, odds, origin, elo_params, reserve=None):
     matches = matches.copy()
     matches["start_time_utc"] = pd.to_datetime(matches["start_time_utc"], utc=True)
     team_stats = team_stats.copy()
@@ -441,15 +527,15 @@ def build_features(matches, team_stats, players, odds, origin, elo_params):
 
     long = add_team_form(team_long(m, team_stats))
     side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel"] + [f"form_{s}" for s in FORM_STATS]
-    long = long.merge(player_team_features(m, players, origin), on=["match_id", "team"], how="left")
+    long = long.merge(player_team_features(m, players, origin, reserve), on=["match_id", "team"], how="left")
     side_cols += PLAYER_TEAM_FEATURES
 
     for side, is_home in (("home", True), ("away", False)):
         part = long[long["is_home"] == is_home][["match_id"] + side_cols]
         m = m.merge(part.rename(columns={c: f"{side}_{c}" for c in side_cols}), on="match_id", how="left")
 
-    for c in ["rest_days", "short_turnaround", "after_bye"] + [f"form_{s}" for s in FORM_STATS] + PLAYER_TEAM_FEATURES:
-        m[f"diff_{c}"] = m[f"home_{c}"] - m[f"away_{c}"]
+    diff_cols = ["rest_days", "short_turnaround", "after_bye"] + [f"form_{s}" for s in FORM_STATS] + PLAYER_TEAM_FEATURES
+    m = pd.concat([m, pd.DataFrame({f"diff_{c}": m[f"home_{c}"] - m[f"away_{c}"] for c in diff_cols})], axis=1)
     m["home_travel"] = m["home_travel"].astype(int)
     m["away_travel"] = m["away_travel"].astype(int)
     m["neutral"] = m["neutral"].astype(int)
@@ -533,12 +619,21 @@ def load_inputs():
     origin = pd.read_csv(PROCESSED / "origin_players.csv")
     odds = load_odds()
     matches, team_stats, players = repair_scraped_games(matches, team_stats, players, odds)
-    return matches, team_stats, players, odds, origin
+    return matches, team_stats, players, odds, origin, load_reserve()
+
+
+def load_reserve():
+    """Reserve-grade player stats (scrape.py --reserve), or None if they haven't been scraped."""
+    if not RESERVE_FILE.exists():
+        return None
+    reserve = pd.read_csv(RESERVE_FILE)
+    reserve["start_time_utc"] = pd.to_datetime(reserve["start_time_utc"], utc=True)
+    return reserve
 
 
 if __name__ == "__main__":
-    matches, team_stats, players, odds, origin = load_inputs()
-    feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds))
+    matches, team_stats, players, odds, origin, reserve = load_inputs()
+    feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds), reserve=reserve)
     feats.to_csv(PROCESSED / "features.csv", index=False)
     print(f"wrote features.csv: {feats.shape}")
     usable = feats[(feats["min_hist"] >= MIN_HISTORY) & ~feats["is_draw"]]

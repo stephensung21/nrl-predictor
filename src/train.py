@@ -398,7 +398,7 @@ def lgb_features(compact):
     linear-model feature plus LGB_COMPACT_EXTRA."""
     if not compact:
         return list(FEATURE_SETS["+player"])
-    return sorted({f for fs in LINEAR_FEATURES.values() for f in fs}) + LGB_COMPACT_EXTRA
+    return list(dict.fromkeys(sorted({f for fs in LINEAR_FEATURES.values() for f in fs}) + LGB_COMPACT_EXTRA))
 
 
 def develop(cv_df, cv_seasons):

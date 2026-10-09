@@ -15,6 +15,11 @@ Usage (from the repo root):
 Raw JSON is cached in data/raw/nrl/<year>/, so reruns only fetch what's missing. State of
 Origin games (who played, and when) are fetched the same way into data/raw/origin/<year>/,
 for the Origin-period context features.
+
+Reserve grade (NSW Cup and QLD's Hostplus Cup) is fetched with --reserve into
+data/raw/<competition>/<year>/; its match pages live on nswrl.com.au and qrl.com.au but use the
+same JSON and the same player IDs as nrl.com. It gives players a track record before (and
+between) their NRL games. The competitions didn't run in 2020.
 """
 
 import argparse
@@ -34,6 +39,11 @@ OUT_DIR = ROOT / "data" / "processed"
 
 COMPETITION_ID = 111  # NRL Telstra Premiership
 ORIGIN_COMPETITION_ID = 116  # State of Origin (all three games are listed on one draw page)
+RESERVE_COMPETITIONS = {"nsw_cup": 113, "qld_cup": 114}  # NSW Cup, Hostplus Cup
+RESERVE_YEARS = range(2021, 2027)                        # neither ran in 2020
+RESERVE_STATS = ["minutesPlayed", "fantasyPointsTotal", "points", "tries", "tryAssists", "allRunMetres",
+                 "postContactMetres", "lineBreaks", "tackleBreaks", "offloads", "tacklesMade",
+                 "missedTackles", "errors", "penalties"]
 MAX_ROUNDS = 35       # regular season + finals; empty rounds are skipped
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 DELAY = 0.5           # seconds between requests, to be polite to nrl.com
@@ -55,11 +65,16 @@ def get_q_data(url, element_id):
     return None
 
 
-def fetch_fixtures(year):
+def match_url(path):
+    """Match-centre links are relative for nrl.com, absolute for the state sites."""
+    return path if path.startswith("http") else f"https://www.nrl.com{path}"
+
+
+def fetch_fixtures(year, competition=COMPETITION_ID):
     """Return all completed matches for a season, one dict per match."""
     fixtures = []
     for rnd in range(1, MAX_ROUNDS + 1):
-        url = f"https://www.nrl.com/draw/?competition={COMPETITION_ID}&round={rnd}&season={year}"
+        url = f"https://www.nrl.com/draw/?competition={competition}&round={rnd}&season={year}"
         data = get_q_data(url, "vue-draw")
         time.sleep(DELAY)
         matches = [f for f in (data or {}).get("fixtures", []) if f.get("type") == "Match"]
@@ -70,11 +85,11 @@ def fetch_fixtures(year):
     return fixtures
 
 
-def fetch_season(year):
-    year_dir = RAW_DIR / str(year)
+def fetch_season(year, competition=COMPETITION_ID, raw_dir=RAW_DIR):
+    year_dir = raw_dir / str(year)
     year_dir.mkdir(parents=True, exist_ok=True)
 
-    fixtures = fetch_fixtures(year)
+    fixtures = fetch_fixtures(year, competition)
     (year_dir / "fixtures.json").write_text(json.dumps(fixtures, indent=1), encoding="utf-8")
     print(f"{year}: {len(fixtures)} fixtures")
 
@@ -85,7 +100,7 @@ def fetch_season(year):
         path = year_dir / f"{slug[-2]}_{slug[-1]}.json"
         if path.exists():
             continue
-        data = get_q_data(f"https://www.nrl.com{fx['matchCentreUrl']}", "vue-match-centre")
+        data = get_q_data(match_url(fx["matchCentreUrl"]), "vue-match-centre")
         time.sleep(DELAY)
         if not data or "match" not in data:
             print(f"  no match data: {fx['matchCentreUrl']}")
@@ -138,6 +153,42 @@ def build_origin_table(years):
     df = pd.DataFrame(rows).sort_values(["start_time_utc", "state", "player_id"])
     df.to_csv(OUT_DIR / "origin_players.csv", index=False)
     print(f"wrote origin_players.csv: {len(df)} rows")
+
+
+def build_reserve_table(years=RESERVE_YEARS):
+    """One row per player per reserve-grade game (NSW Cup and QLD Cup): who played, when, for which
+    team, the result, and a focused set of stats."""
+    rows = []
+    for comp in RESERVE_COMPETITIONS:
+        for year in years:
+            for path in sorted((ROOT / "data" / "raw" / comp / str(year)).glob("*_*.json")):
+                if path.name == "fixtures.json":
+                    continue
+                m = json.loads(path.read_text(encoding="utf-8"))
+                home, away = m["homeTeam"], m["awayTeam"]
+                for side, team, opp in (("home", home, away), ("away", away, home)):
+                    names = {p["playerId"]: p for p in team.get("players", [])}
+                    for ps in m.get("stats", {}).get("players", {}).get(f"{side}Team", []):
+                        info = names.get(ps["playerId"], {})
+                        rows.append({
+                            "competition": comp, "match_id": m["matchId"], "season": year,
+                            "round": m.get("roundNumber"), "start_time_utc": m.get("startTime"),
+                            "team": team["nickName"], "opponent": opp["nickName"], "is_home": side == "home",
+                            "team_score": team.get("score"), "opponent_score": opp.get("score"),
+                            "player_id": ps["playerId"],
+                            "player_name": f"{info.get('firstName', '')} {info.get('lastName', '')}".strip(),
+                            "position": info.get("position"),
+                            **{k: ps.get(k) for k in RESERVE_STATS},
+                        })
+    df = pd.DataFrame(rows).sort_values(["start_time_utc", "match_id", "is_home", "player_id"])
+    df.to_csv(OUT_DIR / "reserve_player_stats.csv", index=False)
+    print(f"wrote reserve_player_stats.csv: {len(df)} rows, {df['match_id'].nunique()} games")
+
+
+def fetch_reserve(years=RESERVE_YEARS):
+    for comp, comp_id in RESERVE_COMPETITIONS.items():
+        for year in years:
+            fetch_season(year, comp_id, ROOT / "data" / "raw" / comp)
 
 
 def snake(title):
@@ -232,8 +283,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--years", type=int, nargs="+", default=list(range(2020, 2027)))
     parser.add_argument("--build-only", action="store_true")
+    parser.add_argument("--reserve", action="store_true", help="fetch and build reserve grade (NSW Cup, QLD Cup)")
     args = parser.parse_args()
 
+    if args.reserve:
+        if not args.build_only:
+            fetch_reserve()
+        build_reserve_table()
+        return
     if not args.build_only:
         for year in args.years:
             fetch_season(year)

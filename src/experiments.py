@@ -22,6 +22,8 @@ Usage:
                                                   and stability, and the main ensembles)
     python src/experiments.py --only gam      ->  reports/experiments_gam.md (GAM and Explainable
                                                   Boosting Machine, alone and in the ensemble)
+    python src/experiments.py --only reserve  ->  reports/experiments_reserve.md (reserve-grade
+                                                  newcomer ratings in the full pipeline backtest)
 """
 
 import argparse
@@ -676,6 +678,88 @@ def gam_experiments():
     print("wrote reports/experiments_gam.md")
 
 
+# ---------------------------------------------------------------- 10. full-pipeline variants
+
+def pipeline_backtest(df, **settings):
+    """The full backtest procedure (train.develop, then train.fit_predict, for each season) with some
+    train.py settings temporarily changed. Returns every model's predictions, indexed by match_id."""
+    old = {k: getattr(train, k) for k in settings}
+    for k, v in settings.items():
+        setattr(train, k, v)
+    try:
+        preds = []
+        for season in BACKTEST_SEASONS:
+            cfg, _, _ = train.develop(df[df["season"] < season], list(range(FIRST_SEASON + 1, season)))
+            preds.append(train.fit_predict(df, season - 1, season, cfg)[0])
+        out = pd.concat(preds)
+        out.index = df.loc[out.index, "match_id"].to_numpy()
+        return out
+    finally:
+        for k, v in old.items():
+            setattr(train, k, v)
+
+
+def compare_pipelines(name, test, new, base, models=("linear", "ensemble")):
+    for v in VARIANTS:
+        for m in models:
+            for t in TARGETS:
+                col = f"{v}|{m}|{t}"
+                record(f"{name}: {m}", v, t, test.loc[new.index], new[col], base.loc[new.index, col])
+
+
+# ---------------------------------------------------------------- 11. reserve-grade newcomers
+
+RESERVE_FEATURE = "diff_reserve_newcomers"
+RESERVE_RAPM_FEATURE = "diff_reserve_rapm_newcomers"
+
+
+def reserve_experiments():
+    """Reserve-grade (NSW Cup / QLD Cup) ratings of NRL newcomers, added to LightGBM's compact set only,
+    or to the linear models as well, in the full pipeline backtest."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)  # develop() prints progress
+    try:
+        base = pipeline_backtest(df)
+        with_win = {**LINEAR_FEATURES, "home_win": LINEAR_FEATURES["home_win"] + [RESERVE_FEATURE],
+                    "margin": LINEAR_FEATURES["margin"] + [RESERVE_FEATURE]}
+        # LightGBM's compact set includes every linear feature, so adding the feature to the linear
+        # models adds it to LightGBM too.
+        with_rapm = {**LINEAR_FEATURES, "home_win": LINEAR_FEATURES["home_win"] + [RESERVE_RAPM_FEATURE],
+                     "margin": LINEAR_FEATURES["margin"] + [RESERVE_RAPM_FEATURE]}
+        variants = {
+            "11 reserve newcomers in LightGBM only": pipeline_backtest(
+                df, LGB_COMPACT_EXTRA=LGB_COMPACT_EXTRA + [RESERVE_FEATURE]),
+            "11 reserve newcomers in linear and LightGBM": pipeline_backtest(df, LINEAR_FEATURES=with_win),
+            "11b reserve plus-minus newcomers in LightGBM only": pipeline_backtest(
+                df, LGB_COMPACT_EXTRA=LGB_COMPACT_EXTRA + [RESERVE_RAPM_FEATURE]),
+            "11b reserve plus-minus newcomers in linear and LightGBM": pipeline_backtest(df, LINEAR_FEATURES=with_rapm),
+        }
+    finally:
+        builtins.print = quiet
+    # The harness must reproduce the pipeline's backtest exactly.
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    for name, preds in variants.items():
+        compare_pipelines(name, test, preds, base)
+    res = pd.DataFrame(RESULTS)
+    report = ["# Reserve-grade newcomers (2023–2025 backtest)", "",
+              "`diff_reserve_newcomers` (home minus away): for named players with fewer than 10 NRL games, the "
+              "sum of their reserve-grade (NSW Cup / QLD Cup) rating — fantasy points per 80 minutes relative to "
+              "their position group, shrunk for few games — using reserve games before the NRL kickoff only. "
+              "Added to LightGBM's compact set only, or to the linear win and margin models as well (LightGBM's "
+              "compact set includes every linear feature), and run through the full pipeline backtest. `diff_reserve_rapm_newcomers` (11b) is the same idea using a "
+              "reserve-grade plus-minus rating (ridge on reserve margins, as the NRL RAPM, one-year half-life) "
+              "instead of fantasy points. `diff` is new minus current (negative = better), with a paired "
+              "bootstrap 95% interval.", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_reserve.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_reserve.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -799,6 +883,8 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["robust", "lightgbm", "gam"], help="run just one experiment group")
+    parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve"],
+                        help="run just one experiment group")
     args = parser.parse_args()
-    {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments}.get(args.only, main)()
+    {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
+     "reserve": reserve_experiments}.get(args.only, main)()
