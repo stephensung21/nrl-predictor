@@ -98,6 +98,15 @@ def load_odds(path=ODDS_FILE):
     o["close_total"] = raw["Total Score Close"]
     o["p_avg"] = two_way_prob(raw["Home Odds"], raw["Away Odds"])  # draw outcome removed as well
 
+    # Prices for the betting simulation only (betting.py); never used as features.
+    for when in ("Open", "Close"):
+        w = when.lower()
+        o[f"home_odds_{w}"], o[f"away_odds_{w}"] = raw[f"Home Odds {when}"], raw[f"Away Odds {when}"]
+        o[f"home_line_odds_{w}"] = raw[f"Home Line Odds {when}"]
+        o[f"away_line_odds_{w}"] = raw[f"Away Line Odds {when}"]
+        o[f"over_odds_{w}"] = raw[f"Total Score Over {when}"]
+        o[f"under_odds_{w}"] = raw[f"Total Score Under {when}"]
+
     o["data_issue"] = o["notes"].str.contains("Data supply issue")
     bad_close = (o["notes"].str.contains("Closing figures aren't reliable")
                  | (raw["Home Odds Close"] < 1.01) | (raw["Away Odds Close"] < 1.01))

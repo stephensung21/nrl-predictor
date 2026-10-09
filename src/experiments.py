@@ -14,9 +14,13 @@ The baseline is the setup these experiments were run against (BASELINE_FEATURES,
 blend). The team margin rating and the margin blend were adopted into the pipeline afterwards,
 so LightGBM's predictions in reports/backtest_predictions.csv now come from the newer setup.
 
-Usage: python src/experiments.py   ->  reports/experiments.md
+Usage:
+    python src/experiments.py                 ->  reports/experiments.md
+    python src/experiments.py --only robust   ->  reports/experiments_robust.md (robust margin/total
+                                                  training against the current pipeline)
 """
 
+import argparse
 import warnings
 
 import numpy as np
@@ -24,13 +28,16 @@ import pandas as pd
 from scipy import sparse
 from scipy.optimize import minimize
 from scipy.stats import norm, t as student_t
-from sklearn.linear_model import LogisticRegression
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import HuberRegressor, LogisticRegression, QuantileRegressor, Ridge
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 import train
 from elo import run_elo, tune as tune_elo
 from features import SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
 from ingest import PROCESSED, join_odds_to_matches, load_odds
-from train import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FIRST_SEASON, REPORTS,
+from train import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FIRST_SEASON, LINEAR_FEATURES, REPORTS,
                    TARGETS, linear, linear_predict, md_table, platt)
 
 ODDS = ["open_logit", "open_line", "open_total"]
@@ -342,6 +349,91 @@ def ensembles(test, members):
     return out
 
 
+# ---------------------------------------------------------------- 7. robust margin / total training
+
+MARGIN_TRAIN_CAP = 40  # same cap as the RAPM ratings
+TOTAL_TRAIN_CAP = 25   # points either side of the training seasons' average total
+
+ROBUST_VARIANTS = {
+    # name: (estimator for a penalty value, penalty grid, cap the training target?)
+    "ridge (current)": (lambda a: Ridge(alpha=a), ALPHA_GRID, False),
+    "ridge, capped targets": (lambda a: Ridge(alpha=a), ALPHA_GRID, True),
+    "Huber": (lambda a: HuberRegressor(alpha=a, epsilon=1.35, max_iter=2000), [0.01, 0.1, 1, 10, 100, 1000], False),
+    "median (quantile) regression": (lambda a: QuantileRegressor(quantile=0.5, alpha=a, solver="highs"),
+                                     [0.0, 0.001, 0.01, 0.1, 1.0], False),
+}
+
+
+def run_regression(df, feats, target, make, grid, cap):
+    """Backtest one margin/total model as train.py does (penalty tuned by walk-forward CV MAE on earlier
+    seasons), training on a capped target if `cap`. Returns test predictions and, per season, the
+    out-of-fold residual SD (for the margin blend's sigma)."""
+    def train_target(tr):
+        y = tr[target]
+        if not cap:
+            return y
+        if target == "margin":
+            return y.clip(-MARGIN_TRAIN_CAP, MARGIN_TRAIN_CAP)
+        return y.clip(y.mean() - TOTAL_TRAIN_CAP, y.mean() + TOTAL_TRAIN_CAP)
+
+    def fit(tr, a):
+        model = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(), make(a))
+        return model.fit(tr[feats], train_target(tr))
+
+    def oof(tr, a, cv):
+        out = pd.Series(np.nan, index=tr.index)
+        for s in cv:
+            a_tr, a_te = tr[tr["season"] < s], tr[tr["season"] == s]
+            out[a_te.index] = fit(a_tr, a).predict(a_te[feats])
+        return out
+
+    preds, sigma = [], {}
+    for season in BACKTEST_SEASONS:
+        tr, te = df[df["season"] < season], df[df["season"] == season]
+        cv = list(range(FIRST_SEASON + 1, season))
+        best = min(grid, key=lambda a: np.nanmean(np.abs(tr[target] - oof(tr, a, cv))))
+        preds.append(pd.Series(fit(tr, best).predict(te[feats]), index=te["match_id"].to_numpy()))
+        o = oof(tr, best, cv)
+        sigma[season] = np.std((tr[target] - o).dropna())
+    return pd.concat(preds), sigma
+
+
+def robust_targets():
+    """Margin and total models trained with capped targets, Huber loss or median regression, compared
+    with the current ridge on margin MAE, total MAE and the margin-blended win probability."""
+    warnings.filterwarnings("ignore")
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    for v in ("A", "B"):
+        feats = feats_for(v, LINEAR_FEATURES)
+        logistic = run_linear(lambda s: df, feats)[0]["home_win"]  # before the margin blend
+        out = {}
+        for name, (make, grid, cap) in ROBUST_VARIANTS.items():
+            m, sig_m = run_regression(df, feats["margin"], "margin", make, grid, cap)
+            t, _ = run_regression(df, feats["total"], "total", make, grid, cap)
+            sd = test.loc[m.index, "season"].map(sig_m)
+            out[name] = {"margin": m, "total": t, "home_win": (logistic.loc[m.index] + norm.cdf(m / sd)) / 2}
+        base = out["ridge (current)"]
+        for t in TARGETS:  # the current variant must reproduce the pipeline's backtest
+            assert np.allclose(base[t], bt.loc[base[t].index, f"{v}|linear|{t}"]), (v, t)
+        for name, preds in out.items():
+            if name == "ridge (current)":
+                continue
+            for t in ("margin", "total", "home_win"):
+                record(f"7 {name}", v, t, test.loc[preds[t].index], preds[t], base[t])
+    res = pd.DataFrame(RESULTS)
+    report = ["# Robust margin and total training (2023–2025 backtest)", "",
+              "Margin and total models trained with capped targets (margin ±40, total ±25 around the training "
+              "average), Huber loss, or median (quantile) regression, against the current ridge on raw targets. "
+              "Penalties are tuned per backtest year on earlier seasons by CV MAE. `home_win` is the "
+              "margin-blended win probability, which changes through the margin prediction. `diff` is new minus "
+              "current (negative = better), with a paired bootstrap 95% interval.", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_robust.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_robust.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -464,4 +556,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--only", choices=["robust"], help="run just one experiment group")
+    args = parser.parse_args()
+    robust_targets() if args.only == "robust" else main()

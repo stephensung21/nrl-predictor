@@ -24,6 +24,7 @@ Pooled backtest results for the current setup:
 - **Win probability:** Model A linear is 0.004 behind the market average (95% interval −0.008 to +0.016), down from +0.024 at the start of the backtest work. By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
 - **Margin:** the models beat the opening line on average error, but not on line-cover probability (item 14).
 - **Totals:** Model A linear is level with the closing total and beats the opening total.
+- **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +11–12% ROI, but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
 - **Caveat:** the backtest has now informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 `--final` run is the honest verdict.
 
 2026 stays untouched until `python src/train.py --final`. Settings for that run come from the dev run (`reports/params.json`).
@@ -66,14 +67,38 @@ The scraper now covers 2020–2026. Scraped games are used **from the six-again 
 
 ## 6. When bets would be placed ⬜
 
-Team lists are named on Tuesday, but prices keep moving until kickoff. The models beat the **opening** market, so the realistic edge is betting early, after team lists, before prices adjust. Measuring that needs **mid-week odds**, which the current odds sheet doesn't have.
+The betting simulation (item 7) showed the model's edge against opening prices comes mostly from team news. That raises a timing problem:
+- **Opening prices usually come out before Tuesday's team lists** (often straight after the previous round), so you can't normally bet at the opening price with the lists in hand. The odds sheet doesn't record when its opening price was captured.
+- **Prices move quickly** once the lists are out, especially for big changes.
+- **The model uses the match-day 17,** which is later than Tuesday's list (late withdrawals, positional reshuffles). A Tuesday bet wouldn't have that information.
+- **Much team news is public before Tuesday** (weekend injuries, suspensions), so opening prices may already reflect some of it.
+
+The realistic test needs **Tuesday's team lists** (nrl.com team-list articles; item 24) and **prices captured just after them**: Betfair Exchange historical data (timestamped), a paid historical odds API, or recording prices every Tuesday evening from now on.
 
 Note: the wet-conditions flag assumes predictions just before kickoff. For early-week bets it would need a weather forecast instead.
 
-## 7. Test whether the edge is real 🔶
+## 7. Test whether the edge is real ✅
 
 - ✅ A **paired bootstrap** against the market average, opening odds and Elo is built into the backtest report.
-- ⬜ **Betting simulation:** bet when the model's edge over the price exceeds a threshold, and track profit and ROI. Most worth testing against opening prices, on margin and win probability.
+- ✅ **Betting simulation** (`python src/betting.py` → `reports/betting.md`). Flat 1-unit bets at the **opening** prices whenever probability × odds − 1 exceeds 0%, 2%, 5% or 10%, on the out-of-sample 2023–2025 backtest predictions. Line and total probabilities come from the predicted margin and total, with the error spread from earlier seasons. Closing line value (CLV) = whether the price or line moved towards the bet by kickoff.
+
+Results at a 0% minimum edge (the other thresholds tell the same story):
+
+| Market | Model | Bets | ROI at opening price | 95% interval | Price moved towards bet | ROI at closing price |
+|---|---|---|---|---|---|---|
+| Head-to-head | A | 399 | +11.4% | +2% to +21% | 72% | −6.4% |
+| Head-to-head | B | 469 | +12.1% | +2% to +22% | 70% | −6.2% |
+| Line | A | 412 | +2.1% | −7% to +11% | 70% | −3.2% |
+| Line | B | 482 | +3.8% | −5% to +12% | 64% | +0.2% |
+| Total, with rain flag | A | 446 | +5.0% | −4% to +14% | 35% | +5.6% |
+| Total, no rain flag | A | 407 | +1.2% | −8% to +10% | 31% | +1.8% |
+
+- **The head-to-head edge is team news.** With no line-up features (Elo and the team rating only), ROI at opening prices falls to +3.7% (Model A) and +2.2% (Model B), both within noise, and the share of prices moving towards the bet falls from about 70% to 57–59%. Opening prices usually come before team lists, so this edge probably can't be bet (item 6).
+- **Every market loses or breaks even at closing prices.** Closing prices for head-to-head and line only exist for 2023 and part of 2024.
+- **The totals signal was mostly the rain flag.** Without it (the honest version for early-week bets), totals are about break-even.
+- Optimistic: draws were excluded from the backtest (about −1 to −2% ROI on head-to-head); 2025 contributes heavily (the market was overconfident that year); the backtest informed many decisions.
+
+**No bettable edge has been shown yet.** Next: the Tuesday-list test (items 6 and 24) and paper trading (item 33).
 
 ## 8. Context features ✅
 
@@ -124,6 +149,9 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Team-specific home advantage on top of the team rating | −0.002, within noise |
 | Opponent-adjusted form | no help; the full block made margin worse |
 | Logit-average or stacked ensembles | no better than the plain average |
+| Margin and total models trained on capped targets (margin ±40, total ±25) | margin MAE −0.03, win −0.0005: real but too small to adopt |
+| Huber regression for margin and total | mixed (A −0.03, B +0.03 margin MAE), no gain |
+| Median (quantile) regression for margin and total | no gain; Model B totals clearly worse (+0.11) |
 
 ---
 
@@ -198,13 +226,67 @@ The two near misses (items 13 and 15) tested together: `team_margin` in the line
 - Full backtest: Model A linear 0.631 → **0.624**, Model A ensemble 0.628 → 0.625, Model B linear 0.633 → 0.628.
 - This combination was chosen after seeing the individual results, out of about 50 comparisons, so part of the gain may be chance. Both parts point the same way independently and the idea is principled (margins carry more information than win/loss), which is why it was adopted.
 
+### 23. Second review: findings ⬜
+
+From a second pass over the pipeline (October 2026):
+- **The final model is overconfident.** Calibration slope on the backtest is 0.85 for Model A linear and 0.82 for the ensemble (1.0 would be perfect), against about 1.0 for the market. Each part is calibrated, but blending them and moving to test seasons leaves the result too extreme. Shrinking the final probability towards 50%, with the amount learned from earlier seasons, is a cheap likely gain.
+- **The market underrates home teams slightly:** its calibration intercept is +0.10 in logit terms (about 2–3 percentage points). Model A already learns this through its intercept.
+- **Robust training for margin and total** was tested and not adopted (see "Already tried").
+
+### 24. Pipeline: prediction time and live use ⬜
+
+- **`predict.py` for upcoming games.** The scraper only keeps finished matches and nothing builds features for unplayed fixtures, so the model can't currently be used. It needs to fetch the next round's fixtures and team lists, build features, and output probabilities, fair odds and edges against current prices.
+- **Two prediction snapshots:** a **Tuesday-list model** (built from Tuesday's announced squads) and a **final-17 model** (as now), each evaluated against prices from the same time. Includes scraping historical Tuesday team lists from nrl.com.
+- **Weekly refitting.** Ratings update weekly, but the model weights and calibration are fixed for the whole season. A weekly-refit backtest is cheap to test.
+
+### 25. Pipeline: engineering ⬜
+
+- **Pin dependencies** (`requirements.txt` or a lock file) so results reproduce.
+- **A single entry point and a config file** instead of module constants and a manual run order (scrape → features → train), recording which settings produced each report.
+- **Data checks** beyond the leakage test: unmatched odds joins, scores matching stat totals, duplicate games, and scrapes that silently drop games.
+
+### 26. Better bookmaker-margin removal ⬜
+
+The opening and closing probabilities split the bookmaker's margin proportionally. The **Shin** or **power** methods correct for favourite–longshot bias. This affects Model A's input, every market benchmark and the betting edges.
+
+### 27. Team-level total rating ⬜
+
+Like `team_margin`, but fitted to match totals: each team's tendency to produce high or low scores. `team_margin` helped the win model, and the totals model has the weakest features.
+
+### 28. Reserve-grade data for new players ⬜
+
+nrl.com also has NSW Cup and QLD Cup stats. Players moving up have a track record there, but RAPM starts them at average. That's the biggest blind spot in the player ratings.
+
+### 29. Roster turnover between seasons ⬜
+
+The share of last season's minutes that has left the club. RAPM follows individual players, but Elo and the team rating don't see off-season signings.
+
+### 30. Predicting late changes ⬜
+
+The chance each Tuesday-named player actually plays, from history (reserves, players returning from injury). Needed for the Tuesday-list model (item 24).
+
+### 31. Bayesian hierarchical model ⬜
+
+Team strength changing over time plus player effects with partial pooling, in one model (PyMC or Stan) instead of separate ridge regressions. It gives uncertainty for each prediction and handles new players and small samples in a principled way. The biggest lift on this list.
+
+### 32. Features from opening-market disagreement ⬜
+
+For example, the margin implied by the head-to-head price against the opening line, or the opening total against the model's total. All are known at the open. Also: a small draw probability (6 draws in 2021–2025 were dropped), since a draw loses a head-to-head bet.
+
+### 33. Betting practice ⬜
+
+- **Fractional Kelly staking** instead of flat stakes, with bankroll and drawdown tracking, and accounting for related bets on the same game.
+- **Closing line value as the main measure,** plus a **paper-trading season**: log predictions and prices every week from now on. That's the only fully clean test of real betting value.
+- **Betfair Exchange prices** usually have lower margins than bookmakers, and timestamped history helps item 6.
+
 ---
 
 ## Suggested next steps
 
-1. **Betting simulation on totals against the opening total** (items 7 and 14): the most promising edge so far.
-2. **Mid-week odds** (item 6), to test the realistic betting window for early bets.
-3. **More context features** (item 18) and **position-specific stat ratings** (item 19), each needing a clear backtest gain.
-4. **Nested tuning in the backtest** (item 21), to make the backtest honest again before relying on it further.
+1. **`predict.py` for upcoming games and pinned requirements** (items 24–25): without them the model can't be used.
+2. **Cheap fixes to test with the experiments harness:** shrinking overconfident probabilities (item 23) and Shin margin removal (item 26). Adopt only if the gain is meaningful.
+3. **Tuesday-list snapshot** (items 6, 24, 30): team-list scrape, late-change prediction, and prices from Tuesday evening. The route to a real betting test.
+4. **Paper trading** from now on (item 33).
+5. Bigger projects when there's time: reserve-grade player priors (28), team-level total rating (27), weekly refitting (24) and the Bayesian model (31).
 
 When development is finished, run the one-time **`--final` test on 2026**, with Model A linear as the main model.
