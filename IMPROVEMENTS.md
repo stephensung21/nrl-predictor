@@ -200,6 +200,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Origin-only star absences (S1) | −0.0012 / −0.0007, not clear; S2 adopted instead (item 38) |
 | Recalibrating the final win probability on earlier backtest seasons | −0.001 (slope only), redundant after the BlueBet fix (item 23) |
 | Weekly refitting of the model weights and/or the calibration | +0.002 to +0.009 (worse), clearly worse late in the season (item 24) |
+| No odds in the models; the market as a separate expert in a learned blend (Footy Tipper) | +0.008 vs the with-odds ensemble (clearly worse) (item 39) |
 
 ---
 
@@ -470,15 +471,94 @@ How well the general rules recognise the reference list: S1 counts 58% of their 
 
 **Adopted: S2** (`STAR_ABSENCES` in `config.py`: `diff_s2_stars_out_spine`, `diff_s2_stars_out_other`, in the win and margin models and so LightGBM's compact set). Each counts the team's usual players (named in 3 of the last 5 games) who are missing from the named 17 and were in an Origin 17 in the last 12 months or are in the top 10% of their position group for form, split into spine and other positions. The gain is concentrated where it should be: the 63% of games with a star missing (win −0.0022, clear) with nothing in the others. Full backtest: with-odds ensemble 0.6245 → **0.6230**, no-odds ensemble 0.6279 → 0.6266, margins −0.02. It's a small gain overall (a few points in some games barely moves average log loss), and it was the best of about eight star variants, so part of it may be luck; it was adopted because it addresses a measured blind spot. All the other star features stay computed in `features.csv` but unused.
 
+## Lessons from Levon Rush's Footy Tipper (items 39–44)
+
+[Footy Tipper](https://github.com/levonrush/footy-tipper) is a public NRL tipping model (documentation on GitHub, with a Medium series). Its design and ours are close, and on 2024–2026 so are the results:
+
+| 2024–2026 | Games | Log loss | Brier | Tips correct | Margin MAE |
+|---|---|---|---|---|---|
+| Footy Tipper | 587 | 0.6395 | 0.224 | 63.8% | 14.34 |
+| Ours, with-odds ensemble | 637 | 0.6385 | 0.223 | 64.5% | 14.15 |
+| Ours, no-odds ensemble | 637 | 0.6415 | 0.225 | 63.0% | 14.24 |
+| Market average | 637 | 0.6458 | 0.226 | 62.3% | – |
+
+(Not quite the same games: his 2026 is partial. Level within noise.)
+
+| | Footy Tipper | Ours |
+|---|---|---|
+| Odds | Never model inputs; the market is a separate expert in the blend (and gets zero weight on current data) | With-odds models (opening odds as inputs) and no-odds models (none) |
+| Combining | Learned weights per season, non-negative and summing to 1 | Fixed 50/50 average of linear and LightGBM |
+| Models | Elo-style rating; LightGBM home and away score models; LightGBM winner model | Elo, team rating and RAPM as features; linear and LightGBM for win, margin and total |
+| Margin removal | Shin | Proportional |
+| Team lists | Snapshot from 24 hours before kickoff | Final named 17 |
+| Testing | Hold out each season | Walk-forward per season, an untouched final season, bootstrap intervals |
+| Leakage | Found ladder and crowd leaks by hand | Automated leakage test |
+| Betting | Expected value, Kelly sizing, tipping-comp strategy | Flat stakes, closing line value |
+| Operations | Weekly automated predictions, emails, versioned models | Run by hand; no weekly prediction script yet |
+
+### 39. No odds in the models; the market as a separate expert in a learned blend ❌
+
+`python src/experiments.py --only blend`, `reports/experiments_blend.md`.
+
+**Setup.**
+- **Experts:** the no-odds models (linear win; the linear margin turned into a win probability; LightGBM win; Elo) and, separately, the opening market (log-odds, proportional margin removal; the opening line and total for margin and total). No odds go into any model.
+- **Fitting:** for each backtest season, every expert's walk-forward out-of-sample predictions for 2022 to the season before (each season predicted by models trained on earlier seasons, with that backtest season's settings) are used to fit the blend.
+  - Win: p = sigmoid(a + Σ wᵢ·expertᵢ) with wᵢ ≥ 0, fitted by log loss. This is the same as weights summing to 1 followed by Platt calibration.
+  - Margin and total: intercept plus non-negative weights summing to 1, least squares.
+- **One-weight blend:** also tested the simplest version, the current calibrated no-odds ensemble and the opening market averaged on the log-odds scale, with the weight chosen on earlier backtest seasons (2024–25 only).
+
+**Results (631 games, win log loss; lower is better):**
+
+| | Win log loss | Margin MAE | Total MAE | Head-to-head ROI at opening (2% edge) |
+|---|---|---|---|---|
+| **Current with-odds ensemble** | **0.6220** | **13.49** | 10.78 | **+16.0%** (372 bets) |
+| Current no-odds ensemble | 0.6266 | 13.52 | 10.83 | +12.2% (431 bets) |
+| Blend: no-odds models + market | 0.6300 | 13.53 | **10.76** | +7.9% (396 bets) |
+| Blend: no-odds linear + LightGBM + market | 0.6302 | 13.53 | 10.76 | +7.2% (378 bets) |
+| Blend: no-odds models only | 0.6301 | 13.54 | 10.88 | +12.1% (447 bets) |
+| Market opening | 0.6331 | 13.66 | 10.84 | – |
+| Market average (closing) | 0.6204 | – | – | – |
+
+- **Win probability: clearly worse.** The blend with the market is +0.008 against the current with-odds ensemble (95% interval +0.002 to +0.014). It isn't better than the no-odds ensemble either (+0.0035, not clear).
+- **The one-weight blend is also worse:** 0.6376 against the with-odds ensemble's 0.6319 on 2024–25 (+0.006, interval −0.001 to +0.012; market weight 0.65 for 2024, 0.5 for 2025). Even with the best single weight chosen in hindsight (0.3–0.4), it scores 0.6241 on 2023–25, against 0.6220.
+- **Unlike Footy Tipper, the market gets substantial weight:** 17% (2023), 45% (2024) and 40% (2025) for the win, 9–38% for the margin and 53–63% for the total. On our data the opening market is a strong expert, not a redundant one.
+- **Margin and total:** no clear difference (the blend's totals are 0.015 better than the with-odds ensemble; not clear).
+- **Betting:** the blends with the market make fewer and less profitable head-to-head bets (+7–8% ROI against +16%). Closing line value is the same for every version (about 0.047, with the price moving towards the bet about 70% of the time).
+- **Why the market works better as an input than as an expert:** in the with-odds model, the other features' coefficients are learned *given* the market price, so they learn what the market misses: mainly team news after the opening price (star absences, line-up changes). In a blend, each no-odds expert also re-learns what the market already knows, and the blend can only reweight whole experts. Footy Tipper's concern was double-counting the market when a model that already contains the odds is blended with the market again, but we don't do that: the market enters once.
+- **Learned weights vs the fixed 50/50:** the no-odds-only blend (0.6301) is also worse than the current no-odds ensemble (0.6266). The current ensemble's per-model Platt calibration plus margin blend beats learning five weights from 2–4 seasons of out-of-sample predictions.
+
+**Verdict:** not adopted. Keep the odds as inputs to the with-odds models and the fixed 50/50 ensemble.
+
+### 40. Team lists as they stood before betting ⬜
+
+Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use the final named 17, which can include late changes the opening price never saw, so the 2026 head-to-head betting edge (which comes from team news) is an upper bound. Historical Tuesday lists can't be recovered after the fact (nrl.com overwrites them), so: start saving each round's Tuesday list and Tuesday-evening prices now, build `predict.py` around them (item 24), and re-evaluate the betting edge on those snapshots from 2027 (with paper trading, item 33).
+
+### 41. Disagreement analysis ⬜
+
+List the games where the model differs most from the market (backtest and 2026), check who was right, and which features drove the difference (e.g. star absences, line-up changes, Elo). It's cheap and shows where the edge really comes from, and whether it's concentrated in a few kinds of games worth betting.
+
+### 42. Shin margin removal ⬜
+
+Already item 26. Footy Tipper uses the Shin method; test it for both the with-odds models' input and the market benchmarks.
+
+### 43. Bet sizing ⬜
+
+Add fractional Kelly staking (e.g. a quarter of Kelly, capped) to `betting.py` alongside flat stakes, reporting growth, drawdown and the chance of ruin. Only relevant once the edge is confirmed on pre-betting team lists (item 40).
+
+### 44. Lower priority from Footy Tipper ⬜
+
+- **Separate home-score and away-score models:** mathematically equivalent to our margin and total models; no expected gain.
+- **Simulating possible line-ups** to average over late changes: Footy Tipper's elaborate simulator didn't beat a simple normal approximation of the margin.
+- **Tipping-comp metrics** (chance of beating a field of favourite-tippers): only if the goal becomes a pub tipping comp.
+- **Weekly automation:** scheduled predictions, versioned models and alerts, once `predict.py` exists.
+
 ---
 
 ## Suggested next steps
 
-1. **Fix the wrong scores** (item 34): a correctness bug, so before anything else. Then **check the bookmaker change** (item 35), which affects the main model's 2026 test.
-2. **`predict.py` for upcoming games and pinned requirements** (items 24–25): without them the model can't be used.
-3. **Cheap fixes to test with the experiments harness:** shrinking overconfident probabilities (item 23) and Shin margin removal (item 26). Adopt only if the gain is meaningful.
-4. **Tuesday-list snapshot** (items 6, 24, 30): team-list scrape, late-change prediction, and prices from Tuesday evening. The route to a real betting test.
-5. **Paper trading** from now on (item 33).
-6. Bigger projects when there's time: reserve-grade player priors (28), team-level total rating (27), weekly refitting (24), the Bayesian model (31) and the code clean-up (37).
+The 2026 final test is done, so 2026 is no longer an untouched test season: judge new ideas on the 2023–25 backtest and report 2026 only as extra information. The next honest test is 2027.
 
-When development is finished, make the final run auditable (item 36) and run the one-time **`--final` test on 2026**, with the ensemble (with odds and no odds) as the main models.
+1. **`predict.py` with Tuesday team-list snapshots, and pinned requirements** (items 24, 25, 40): without them the model can't be used, and the betting edge can't be tested on information available when betting.
+2. **Paper trading** through 2027 (item 33), with bet sizing (item 43).
+3. **Cheap analyses:** disagreement analysis (item 41) and Shin margin removal (items 26, 42).
+4. Bigger projects when there's time: the Bayesian model (31) and nested tuning (21).

@@ -30,6 +30,8 @@ Usage:
                                                   before every round instead of once a season)
     python src/experiments.py --only context2 ->  reports/experiments_context2.md (kickoff slot, travel
                                                   distance, Origin representatives, ladder/motivation)
+    python src/experiments.py --only blend    ->  reports/experiments_blend.md (no odds in the models;
+                                                  the market as a separate expert in a learned blend)
 """
 
 import argparse
@@ -1066,6 +1068,210 @@ def weekly2_experiments():
     print("wrote reports/experiments_weekly_calibration.md")
 
 
+# ---------------------------------------------------------------- 39. learned blend, market as a separate expert
+
+BLEND_SETS = {
+    # name: (win experts, margin experts, total experts)
+    "no-odds models only": (["lin_win", "lin_margin", "gbm_win", "elo"], ["lin", "gbm"], ["lin", "gbm"]),
+    "no-odds models + market": (["lin_win", "lin_margin", "gbm_win", "elo", "market"], ["lin", "gbm", "market"],
+                                ["lin", "gbm", "market"]),
+    "no-odds linear + LightGBM + market": (["lin_win", "gbm_win", "market"], ["lin", "gbm", "market"],
+                                           ["lin", "gbm", "market"]),
+}
+
+
+def blend_experts(df, cfg, season):
+    """Walk-forward out-of-sample predictions of every no-odds expert for FIRST_SEASON+1..season, with
+    the season's backtest settings (cfg, developed on earlier seasons only): each season is predicted
+    by models trained on the seasons before it. Win experts are on the log-odds scale."""
+    d = df[df["season"] <= season]
+    seasons = list(range(FIRST_SEASON + 1, season + 1))
+    fs, mc = cfg["feature_sets"]["no_odds"], cfg["models"]["no_odds"]
+    out = pd.DataFrame(index=d.index)
+    for target in TARGETS:
+        m = mc[target]
+        out[f"lin_{target}"] = models.cv_linear(d, fs["linear"][target], target, m["linear"], seasons)[1]
+        out[f"gbm_{target}"] = pd.concat(
+            [cv_lgb(d, fs["lightgbm"], target, {**m["lgb"], "seed": s}, seasons, n_rounds=m["lgb_rounds"])[1]
+             for s in range(m.get("lgb_seeds", 1))], axis=1).mean(axis=1)
+    out = out[out.notna().all(axis=1)]
+    d = d.loc[out.index]
+    win = pd.DataFrame({"lin_win": logit(out["lin_home_win"].to_numpy()), "gbm_win": logit(out["gbm_home_win"].to_numpy()),
+                        "elo": d["elo_logit"].to_numpy(), "market": d["open_logit"].to_numpy()}, index=out.index)
+    # The linear margin model as a win expert: P = Phi(margin / sigma), sigma from earlier seasons' errors.
+    earlier = (d["season"] < season).to_numpy()
+    sigma = np.std((d["margin"] - out["lin_margin"])[earlier])
+    win["lin_margin"] = logit(np.clip(norm.cdf(out["lin_margin"] / sigma), 1e-6, 1 - 1e-6))
+    margin = pd.DataFrame({"lin": out["lin_margin"], "gbm": out["gbm_margin"], "market": -d["open_line"]})
+    total = pd.DataFrame({"lin": out["lin_total"], "gbm": out["gbm_total"], "market": d["open_total"]})
+    return d, win, margin, total
+
+
+def fit_win_blend(X, y):
+    """Logistic blend of log-odds experts with non-negative weights and a free intercept:
+    p = sigmoid(a + sum w_i x_i), w_i >= 0. Equivalent to weights that sum to 1 followed by Platt
+    calibration (slope = sum of w). Returns (a, w)."""
+    X, y = np.asarray(X, float), np.asarray(y, float)
+
+    def loss(theta):
+        z = theta[0] + X @ theta[1:]
+        return np.mean(np.logaddexp(0, z) - y * z)
+
+    k = X.shape[1]
+    res = minimize(loss, np.r_[0.0, np.full(k, 1.0 / k)], method="L-BFGS-B",
+                   bounds=[(None, None)] + [(0, None)] * k)
+    return res.x[0], res.x[1:]
+
+
+def fit_point_blend(X, y):
+    """Margin or total blend: intercept + weights that are non-negative and sum to 1, least squares."""
+    X, y = np.asarray(X, float), np.asarray(y, float)
+    k = X.shape[1]
+
+    def loss(theta):
+        return np.mean((y - theta[0] - X @ theta[1:]) ** 2)
+
+    res = minimize(loss, np.r_[0.0, np.full(k, 1.0 / k)], method="SLSQP",
+                   bounds=[(None, None)] + [(0, 1)] * k,
+                   constraints=[{"type": "eq", "fun": lambda t: t[1:].sum() - 1}])
+    return res.x[0], res.x[1:]
+
+
+def blend_experiments():
+    """Item 39: no odds in the models; the opening market is a separate expert in a learned blend."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        current, details = models.backtest(df)
+    finally:
+        builtins.print = quiet
+    current.index = df.loc[current.index, "match_id"].to_numpy()
+    assert np.allclose(current.to_numpy(), bt.loc[current.index, current.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+
+    blends, weights = {}, []
+    for season in BACKTEST_SEASONS:
+        print(f"  {season}: walk-forward experts on {FIRST_SEASON + 1}-{season}...")
+        d, win, margin, total = blend_experts(df, details[season][0], season)
+        fit, pred = (d["season"] < season).to_numpy(), (d["season"] == season).to_numpy()
+        ids = d.loc[pred, "match_id"].to_numpy()
+        for name, (w_cols, m_cols, t_cols) in BLEND_SETS.items():
+            a, w = fit_win_blend(win.loc[fit, w_cols], d.loc[fit, "home_win"])
+            p = 1 / (1 + np.exp(-(a + win.loc[pred, w_cols].to_numpy() @ w)))
+            weights.append({"blend": name, "target": "home_win", "season": season, "calibration slope": w.sum(),
+                            **{c: wi / w.sum() for c, wi in zip(w_cols, w)}})
+            cols = {"home_win": p}
+            for target, X, ecols in (("margin", margin, m_cols), ("total", total, t_cols)):
+                a, w = fit_point_blend(X.loc[fit, ecols], d.loc[fit, target])
+                cols[target] = a + X.loc[pred, ecols].to_numpy() @ w
+                weights.append({"blend": name, "target": target, "season": season,
+                                **{c: wi for c, wi in zip(ecols, w)}})
+            blends.setdefault(name, []).append(pd.DataFrame(cols, index=ids))
+    blends = {k: pd.concat(v).loc[current.index] for k, v in blends.items()}
+    t = test.loc[current.index]
+
+    # Every blend against both current main models, on the same 631 games.
+    for name, b in blends.items():
+        for v in VARIANTS:
+            for target in TARGETS:
+                record(f"39 blend: {name} vs {VARIANT_LABEL[v].lower()} ensemble", v, target, t, b[target],
+                       current[f"{v}|{config.MAIN_MODEL}|{target}"])
+    # Simplest version: the current (calibrated) no-odds ensemble and the opening market, averaged on the
+    # log-odds scale with one weight chosen on the earlier backtest seasons (so 2024-25 only).
+    z_no, z_mk = logit(current[f"no_odds|{config.MAIN_MODEL}|home_win"].to_numpy()), t["open_logit"].to_numpy()
+    seasons, grid = t["season"].to_numpy(), np.linspace(0, 1, 21)
+    simple, simple_w = pd.Series(np.nan, index=t.index), {}
+    for season in BACKTEST_SEASONS[1:]:
+        fit = seasons < season
+        loss = lambda w: models.score(t["home_win"][fit], 1 / (1 + np.exp(-((1 - w) * z_no + w * z_mk)[fit])), "clf")
+        w = simple_w[season] = min(grid, key=loss)
+        rows_s = seasons == season
+        simple[rows_s] = 1 / (1 + np.exp(-((1 - w) * z_no + w * z_mk)[rows_s]))
+    later = seasons >= BACKTEST_SEASONS[1]
+    for v in VARIANTS:
+        record(f"39 one-weight blend: no-odds ensemble + market vs {VARIANT_LABEL[v].lower()} ensemble, 2024-25",
+               v, "home_win", t[later], simple[later], current.loc[later, f"{v}|{config.MAIN_MODEL}|home_win"],
+               note="market weight " + ", ".join(f"{s}: {w:.2f}" for s, w in simple_w.items()))
+    res = pd.DataFrame(RESULTS)
+
+    # Summary: every model's pooled scores, with the market for reference.
+    rows = {}
+    for v in VARIANTS:
+        rows[f"Current: {VARIANT_LABEL[v].lower()} ensemble"] = [current[f"{v}|{config.MAIN_MODEL}|{x}"] for x in TARGETS]
+    for name, b in blends.items():
+        rows[f"Blend: {name}"] = [b[x] for x in TARGETS]
+    rows["Market opening"] = [t["p_open"], -t["open_line"], t["open_total"]]
+    rows["Market average (closing)"] = [t["p_avg"], None, None]
+    summary = pd.DataFrame({k: {"log_loss": models.score(t["home_win"], p, "clf"),
+                                "accuracy": ((np.asarray(p) > 0.5) == t["home_win"]).mean(),
+                                "margin_mae": np.nan if m is None else np.mean(np.abs(t["margin"] - m)),
+                                "total_mae": np.nan if tt is None else np.mean(np.abs(t["total"] - tt))}
+                            for k, (p, m, tt) in rows.items()}).T.rename_axis("model")
+    w = pd.DataFrame(weights).set_index(["blend", "target", "season"])
+    w.index = [f"{b} | {tg} | {s}" for b, tg, s in w.index]
+    w.index.name = "blend | target | season"
+
+    # Head-to-head betting at opening prices (as betting.py, 2% minimum edge) and closing line value.
+    bet_rows = []
+    odds = load_odds()
+    ids = join_odds_to_matches(t.rename_axis("match_id").reset_index()[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
+    prices = odds.set_index("odds_id")[["home_odds_open", "away_odds_open"]]
+    g = t.join(ids.set_index("match_id")["odds_id"]).join(prices, on="odds_id")
+    probs = {f"Current: {VARIANT_LABEL[v].lower()} ensemble": current[f"{v}|{config.MAIN_MODEL}|home_win"] for v in VARIANTS}
+    probs.update({f"Blend: {k}": b["home_win"] for k, b in blends.items()})
+    ok = g["close_ok"].astype(bool)
+    for name, p in probs.items():
+        p = p.loc[g.index]
+        bets = pd.concat([
+            pd.DataFrame({"edge": p * g["home_odds_open"] - 1, "odds": g["home_odds_open"], "won": g["home_win"],
+                          "clv": (g["p_close"] - g["p_open"]).where(ok)}),
+            pd.DataFrame({"edge": (1 - p) * g["away_odds_open"] - 1, "odds": g["away_odds_open"],
+                          "won": 1 - g["home_win"], "clv": (g["p_open"] - g["p_close"]).where(ok)})])
+        x = bets[bets["edge"] > 0.02]
+        profit = np.where(x["won"] == 1, x["odds"] - 1, -1.0)
+        boot = profit[np.random.default_rng(0).integers(0, len(profit), (N_BOOT, len(profit)))].mean(axis=1)
+        bet_rows.append({"model": name, "bets": len(x), "ROI": profit.mean(), "ROI ci_low": np.percentile(boot, 2.5),
+                         "ROI ci_high": np.percentile(boot, 97.5), "CLV bets": x["clv"].notna().sum(),
+                         "CLV mean": x["clv"].mean(), "CLV positive": (x["clv"].dropna() > 0).mean()})
+    bet_table = pd.DataFrame(bet_rows).set_index("model")
+
+    print(md_table(summary))
+    print(md_table(w.round(3)))
+    print(md_table(bet_table))
+    report = ["# Learned blend with the market as a separate expert (2023–2025 backtest)", "",
+              "Item 39, after Levon Rush's Footy Tipper. **No odds go into any model.** The experts are the no-odds "
+              "models (linear win, linear margin turned into a win probability, LightGBM win, and Elo) and, "
+              "separately, the opening market (log-odds with the margin removed proportionally; the opening line "
+              "and total for margin and total). For each backtest season, every expert's walk-forward "
+              f"out-of-sample predictions for {FIRST_SEASON + 1} to the season before (each season predicted by "
+              "models trained on earlier seasons, with that backtest season's settings) are used to fit the blend, "
+              "which then predicts the season.", "",
+              "- **Win:** p = sigmoid(a + Σ wᵢ·expertᵢ) with wᵢ ≥ 0, fitted by log loss. This is the same as "
+              "weights that sum to 1 followed by Platt calibration; the table shows each expert's share of the "
+              "weight and the calibration slope (the sum).",
+              "- **Margin and total:** intercept + weights that are non-negative and sum to 1, fitted by least "
+              "squares.",
+              "- **One-weight blend:** the current no-odds ensemble's (calibrated) probability and the opening "
+              "market, averaged on the log-odds scale, with the market's weight chosen on the earlier backtest "
+              "seasons (so scored on 2024–25 only).", "",
+              "## Pooled scores (631 games)", "", md_table(summary), "",
+              "## Each blend against the current main models", "",
+              "`diff` is the blend minus the current model (negative = blend better), with a paired bootstrap "
+              "95% interval.", "", md_table(res.set_index("experiment")), "",
+              "## Blend weights by season", "",
+              "Win: each expert's share of the total weight, and the calibration slope. Margin and total: the "
+              "weights themselves (they sum to 1).", "", md_table(w.round(3)), "",
+              "## Head-to-head betting at opening prices (2% minimum edge)", "",
+              "Flat 1-unit bets as in `betting.py`. CLV is the move in the closing price's implied probability in "
+              "the bet's favour, where closing prices are reliable (mostly 2023).", "", md_table(bet_table), ""]
+    (REPORTS / "experiments_blend.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_blend.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -1191,7 +1397,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
-                                           "calibration", "weekly2"],
+                                           "calibration", "weekly2", "blend"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -1204,4 +1410,5 @@ if __name__ == "__main__":
                                                  "Key-position star absences"),
      "origin_stars": lambda: context2_experiments(ORIGIN_STAR_GROUPS, "18", "experiments_origin_stars.md",
                                                   "Origin-based star absences"),
-     "calibration": calibration_experiments, "weekly2": weekly2_experiments}.get(args.only, main)()
+     "calibration": calibration_experiments, "weekly2": weekly2_experiments,
+     "blend": blend_experiments}.get(args.only, main)()
