@@ -9,12 +9,15 @@ function hexDistance(a: string, b: string) {
   return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
 }
 
-/** Bar colours for a game, switching the away team to its other colour when the
- *  two would look alike (Cowboys v Eels are both gold). */
+/** Bar colours for a game. When the two bars would look alike (Cowboys v Eels
+ *  are both gold, Sea Eagles v Broncos both maroon), the away team switches to
+ *  whichever of its colours is furthest from the home bar. */
 export function barColours(home: TeamName, away: TeamName): [string, string] {
   const h = team(home).bar;
   const a = team(away);
-  return [h, hexDistance(h, a.bar) < 90 ? a.primary : a.bar];
+  if (hexDistance(h, a.bar) >= 90) return [h, a.bar];
+  const alt = [a.primary, a.secondary].sort((x, y) => hexDistance(h, y) - hexDistance(h, x))[0];
+  return [h, alt];
 }
 
 /**

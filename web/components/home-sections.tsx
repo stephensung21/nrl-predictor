@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Check, ChevronRight, Clock, RotateCw, X } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock, RotateCw, X } from "lucide-react";
 import { emptyCopy, modelRoundLine, perfectLine, roastLine, vsModelLine } from "@/lib/copy";
 import { ordinal, type Game, type RoundView, type Standing } from "@/lib/round";
 import type { ModelRecord } from "@/lib/types";
@@ -11,9 +11,24 @@ import { ModelBadge, TeamBadge } from "./team-badge";
 
 /* ---------- Round heading ---------- */
 
-export function RoundHeading({ view, title }: { view: RoundView; title?: string }) {
+export type RoundLink = { href: string; round: number };
+
+export function StepLink({ to, dir }: { to?: RoundLink; dir: "prev" | "next" }) {
+  const Icon = dir === "prev" ? ChevronLeft : ChevronRight;
+  const cls = "grid size-10 place-items-center rounded-full ring-1 ring-line ring-inset";
+  if (!to) return <span className={`${cls} text-ink-3/40`} aria-hidden><Icon className="size-5" /></span>;
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-4 pb-3">
+    <Link href={to.href} aria-label={`Round ${to.round}`} className={`${cls} text-ink-2 transition-colors hover:text-ink hover:ring-ink-3`}>
+      <Icon className="size-5" aria-hidden />
+    </Link>
+  );
+}
+
+export function RoundHeading({ view, title, prev, next }: { view: RoundView; title?: string; prev?: RoundLink; next?: RoundLink }) {
+  const stepper = prev !== undefined || next !== undefined;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-4 pb-3">
+      <div className={stepper ? "flex flex-col gap-1" : "contents"}>
       <h1 className="font-display text-[26px] leading-none font-bold tracking-[0.005em] uppercase">
         {title ?? `Round ${view.round}`}
       </h1>
@@ -24,6 +39,13 @@ export function RoundHeading({ view, title }: { view: RoundView; title?: string 
         </span>
         {view.games.length} games
       </p>
+      </div>
+      {stepper && (
+        <nav aria-label="Rounds" className="flex gap-2">
+          <StepLink to={prev} dir="prev" />
+          <StepLink to={next} dir="next" />
+        </nav>
+      )}
     </div>
   );
 }
@@ -267,11 +289,14 @@ export function RecapPanel({
   signedIn,
   tipsBy,
   nextRound,
+  heading = true,
 }: {
   view: RoundView;
   signedIn: boolean;
   tipsBy: (tipperId: string) => (string | undefined)[];
-  nextRound: { round: number; predictionsDue: string };
+  nextRound?: { round: number; predictionsDue: string };
+  /** The round page draws its own heading with round steppers. */
+  heading?: boolean;
 }) {
   const n = view.games.length;
   const modelScore = view.games.filter((g) => g.modelCorrect).length;
@@ -281,15 +306,22 @@ export function RecapPanel({
   const humans = scores.filter((x) => !x.s.tipper.isModel);
   const lowest = humans.at(-1)!;
   const perfect = humans.filter((x) => x.score === n).map((x) => x.s.tipper.name);
+  // What tipping every home team would have scored, so the roast never lies.
+  const homeTeamScore = view.games.filter((g) => g.winners?.includes(g.match.home)).length;
+  /** This round's placing among the tippers (the Model isn't ranked); "=" marks a tie. */
+  const placing = (score: number) => {
+    const tied = humans.filter((x) => x.score === score).length > 1;
+    return `${tied ? "=" : ""}${ordinal(1 + humans.filter((x) => x.score > score).length)}`;
+  };
 
   return (
     <section aria-label={`Round ${view.round} recap`}>
-      <div className="pt-7 pb-5">
-        <h1 className="font-display text-[46px] leading-[0.9] font-bold uppercase">Round {view.round} wrap</h1>
-        <p className="mt-2 text-[14px] font-medium text-ink-3">
-          All {n} games graded
-        </p>
-      </div>
+      {heading && (
+        <div className="pt-7 pb-5">
+          <h1 className="font-display text-[46px] leading-[0.9] font-bold uppercase">Round {view.round} wrap</h1>
+          <p className="mt-2 text-[14px] font-medium text-ink-3">All {n} games graded</p>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-line bg-raised">
         <div className="space-y-1.5 px-4 pt-4 pb-4">
@@ -303,7 +335,7 @@ export function RecapPanel({
           <p className="text-[16px] font-semibold text-ink">
             {signedIn ? modelRoundLine(modelScore, n, { name: lowest.s.tipper.name, score: lowest.score }) : `The Model went ${modelScore}/${n}.`}
           </p>
-          {signedIn && <p className="text-[14px] text-ink-2">{roastLine(lowest.s.tipper.name, lowest.score, n, view.round)}</p>}
+          {signedIn && <p className="text-[14px] text-ink-2">{roastLine(lowest.s.tipper.name, lowest.score, homeTeamScore, view.round)}</p>}
         </div>
 
         {signedIn && (
@@ -325,7 +357,9 @@ export function RecapPanel({
                     {s.tipper.isModel ? (
                       <ModelBadge size="sm" />
                     ) : (
-                      <span className="font-score text-[15px] font-semibold text-ink-3">{ordinal(s.position)}</span>
+                      <span className="font-score text-[15px] font-semibold text-ink-3">
+                        {placing(score)}
+                      </span>
                     )}
                   </span>
                   <span className={`min-w-0 flex-1 truncate text-[15px] ${you || s.tipper.isModel ? "font-semibold text-ink" : "text-ink-2"}`}>
@@ -344,6 +378,7 @@ export function RecapPanel({
         )}
       </div>
 
+      {nextRound && (
       <p className="mt-4 flex items-center gap-2 text-[14px] text-ink-2">
         <Clock className="size-4 shrink-0 text-ink-3" aria-hidden />
         <span>
@@ -351,6 +386,7 @@ export function RecapPanel({
           <LocalTime iso={nextRound.predictionsDue} format="time" />.
         </span>
       </p>
+      )}
     </section>
   );
 }

@@ -1,0 +1,49 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@600;700;800&family=Sofia+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ground:oklch(0.165 0.02 162);--raised:oklch(0.205 0.022 162);--line:oklch(0.31 0.022 162);--soft:oklch(0.255 0.02 162);--pitch:oklch(0.235 0.035 152);--ink:oklch(0.965 0.008 110);--ink2:oklch(0.82 0.016 150);--ink3:oklch(0.68 0.018 155);--lime:oklch(0.91 0.2 126)}
+*{box-sizing:border-box;margin:0}
+html,body{width:390px;height:844px;overflow:hidden;background:var(--ground);color:var(--ink);font-family:"Sofia Sans",sans-serif}
+.d{font-family:"Saira Extra Condensed",sans-serif;text-transform:uppercase;font-variant-numeric:tabular-nums}
+header{height:56px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--soft)}
+header b{font-family:"Saira Extra Condensed";font-size:22px}
+.back{font-size:13px;color:var(--ink3);padding:12px 16px 0}
+.teams{display:flex;align-items:center;gap:8px;margin:10px 16px 0;font-size:14px;color:var(--ink2)}
+.badge{width:40px;height:26px;border-radius:4px;display:grid;place-items:center;font-family:"Saira Extra Condensed";font-weight:800;font-size:15px;border-bottom:3px solid}
+h1{margin:14px 16px 0;font-size:40px;line-height:.92;font-weight:800}
+h1 .b{color:var(--ink3)}
+.sub{margin:8px 16px 0;font-size:14px;color:var(--ink2)}
+.voices{margin:16px 16px 0;border-top:1px solid var(--soft)}
+.v{padding:10px 0;border-bottom:1px solid var(--soft)}
+.v .top{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+.v .top span:last-child{font-family:"Saira Extra Condensed";font-size:19px}
+.bar{position:relative;height:7px;margin-top:7px;border-radius:3px;background:var(--pitch);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:#b73c72}
+.bar u{position:absolute;inset:0 0 0 auto;background:#e06a8c;opacity:.42}
+.bar s{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--ink)}
+.v.model .top span:first-child{color:var(--lime)}
+.tabs{display:flex;gap:4px;margin:16px 16px 0;border-bottom:1px solid var(--line)}
+.tabs span{padding:10px 12px;font-size:14px;font-weight:600;color:var(--ink3)}
+.tabs .on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--lime)}
+.row{display:flex;justify-content:space-between;margin:0 16px;padding:8px 0;border-bottom:1px solid var(--soft);font-size:14px}
+.row span:first-child{color:var(--ink3);width:24px;font-family:"Saira Extra Condensed";font-weight:700}
+nav{position:absolute;bottom:0;left:0;right:0;height:62px;border-top:1px solid var(--soft);background:var(--ground);display:flex;justify-content:space-around;align-items:center;font-size:12px;color:var(--ink3)}
+nav .on{color:var(--ink);font-weight:700}
+</style></head><body>
+<header><b>rugbyleague-tipper</b></header>
+<p class="back">‹ Round 10 · Sat 7:35pm · 4 Pines Park</p>
+<div class="teams"><div class="badge" style="background:#8a1f4f;color:#fff;border-color:#fff">MAN</div>Sea Eagles <span style="color:var(--ink3)">v</span> Broncos<div class="badge" style="background:#8f2246;color:#fbbf15;border-color:#fbbf15">BRI</div></div>
+<h1 class="d">The Model backs Manly. <span class="b">The bookies back Brisbane.</span></h1>
+<p class="sub">Model's call: Sea Eagles by 5 (26 – 21). Elo leans Manly too.</p>
+<div class="voices">
+  <div class="v model"><div class="top"><span>The Model</span><span>MAN 63%</span></div><div class="bar"><i style="width:63%"></i><u style="width:37%"></u><s></s></div></div>
+  <div class="v"><div class="top"><span>Model without odds</span><span>MAN 64%</span></div><div class="bar"><i style="width:64%"></i><u style="width:36%"></u><s></s></div></div>
+  <div class="v"><div class="top"><span>Bookies' opening price</span><span>BRI 55%</span></div><div class="bar"><i style="width:45%;opacity:.42"></i><u style="width:55%;opacity:1"></u><s></s></div></div>
+  <div class="v"><div class="top"><span>Elo</span><span>MAN 54%</span></div><div class="bar"><i style="width:54%"></i><u style="width:46%"></u><s></s></div></div>
+</div>
+<div class="tabs"><span class="on">Team lists</span><span>Head to head</span></div>
+<div class="row"><span>1</span>Tolutau Koula<span style="margin-left:auto">Reece Walsh</span></div>
+<div class="row"><span>2</span>Jason Saab<span style="margin-left:auto">Josiah Karapani</span></div>
+<nav><span class="on">Round</span><span>Tips</span><span>Ladder</span><span>Elo</span><span>More</span></nav>
+</body></html>

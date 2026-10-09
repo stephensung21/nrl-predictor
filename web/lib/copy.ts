@@ -34,11 +34,14 @@ export function perfectLine(names: string[], games: number, seed: number): strin
   return `Perfect round: ${names.slice(0, -1).join(", ")} and ${names.at(-1)}.`;
 }
 
-export function roastLine(name: string, score: number, games: number, seed: number): string {
+/** A dig at the round's lowest scorer. The subline already gives their score, so
+ *  this doesn't repeat it, and the auto-tip jab only runs when it's true. */
+export function roastLine(name: string, score: number, homeTeamScore: number, seed: number): string {
+  if (homeTeamScore > score) return `The home-team auto-tip would've beaten ${name}.`;
   return pick([
-    `${name} went ${score} from ${games}. The home-team auto-tip would've done better.`,
-    `${name} went ${score} from ${games}. Character-building stuff.`,
-    `${name} went ${score} from ${games}. Bold choices, all of them wrong.`,
+    `Character-building stuff, ${name}.`,
+    `Bold choices from ${name}. Plenty of them wrong.`,
+    `${name} will be back. Unfortunately.`,
   ], seed);
 }
 

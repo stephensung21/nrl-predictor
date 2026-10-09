@@ -14,3 +14,4 @@ reports/predictions/
 
 # Impeccable review screenshots (regenerated each review)
 .impeccable/review/
+.impeccable/questions/

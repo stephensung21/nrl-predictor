@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-09T22:30:12.563Z",
+  "generatedAt": "2026-10-10T00:00:00.000Z",
   "title": "Design System: rugbyleague-tipper",
   "extensions": {
     "colorMeta": {
@@ -238,7 +238,8 @@
           "oklch(0.7 0.16 60)",
           "oklch(0.82 0.16 60)",
           "oklch(0.95 0.16 60)"
-        ]
+        ],
+        "note": "Live state and team changes only: live dot and label, the Updated note, the team-list In marker."
       }
     },
     "typographyMeta": {
@@ -248,7 +249,11 @@
       },
       "display": {
         "displayName": "Display",
-        "purpose": "Standalone page titles: recap and empty/error (46 to 52px)."
+        "purpose": "Standalone page titles: recap and empty/error (40 to 52px)."
+      },
+      "match-verdict": {
+        "displayName": "Match verdict",
+        "purpose": "Match page headline in the display face at 800: the verdict sentence at 34px before kickoff, the result at 40px at full time. Prose-only role; not a frontmatter token."
       },
       "score-board": {
         "displayName": "Score board",
@@ -288,7 +293,7 @@
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Uppercase status words and tags only (Your tip, LIVE, FT); never above a heading."
+        "purpose": "Uppercase status words and tags only (Your tip, LIVE, FT, the amber In marker); never above a heading."
       }
     },
     "shadows": [
@@ -350,7 +355,7 @@
         "ink": "lettering when secondary is too dark on the fill",
         "bar": "pitch-bar fill, lightened for the dark ground"
       },
-      "clashRule": "Away bar swaps to away primary when its RGB distance to the home bar is under 90 (barColours in web/components/pitch-bar.tsx)."
+      "clashRule": "When the away bar is under 90 RGB distance from the home bar, the away fill switches to whichever of its primary or secondary is furthest from the home bar (barColours in web/components/pitch-bar.tsx); Sea Eagles v Broncos draws the Broncos gold."
     }
   },
   "components": [
@@ -416,6 +421,13 @@
       "description": "Hairline strip, not a card: the Model's season record in three tabular stats.",
       "html": "<section class=\"ds-rec\"><div class=\"ds-rec-h\">The Model&rsquo;s record<span>2026 season</span></div><dl><div><dt>Tips correct</dt><dd class=\"ds-big\">52<span>/80</span></dd><dd>65%</dd></div><div><dt>Bookies&rsquo; favourite</dt><dd class=\"ds-big ds-2\">50<span>/80</span></dd><dd>63%</dd></div><div><dt>Margin miss</dt><dd class=\"ds-big ds-2\">12.4</dd><dd>points a game</dd></div></dl></section>",
       "css": ".ds-rec{width:360px;padding:16px 0;border-top:1px solid var(--color-line-soft);border-bottom:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-rec-h{display:flex;font-size:15px;font-weight:600;color:var(--color-ink)}.ds-rec-h span{margin-left:auto;font-size:12px;font-weight:500;color:var(--color-ink-3)}.ds-rec dl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 0;font-size:12px;color:var(--color-ink-3)}.ds-rec dd{margin:2px 0 0;font-weight:600;color:var(--color-ink-2)}.ds-rec .ds-big{margin-top:4px;font:700 22px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--color-ink)}.ds-rec .ds-2{color:var(--color-ink-2)}.ds-big span{color:var(--color-ink-3)}"
+    },
+    {
+      "name": "Voice List",
+      "kind": "custom",
+      "description": "Match page: one hairline row per voice with the backed side's percentage and a small pitch bar; the Model marked by the MDL badge and an ink label, never lime.",
+      "html": "<ul class=\"ds-voices\"><li><div class=\"ds-vh\"><span class=\"ds-vl\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-ok\"><path d=\"M20 6 9 17l-5-5\"/></svg><span class=\"ds-mdl\">MDL<i></i></span>The Model</span><span class=\"ds-vp\">MAN <b>63%</b></span></div><div class=\"ds-mini\"><i style=\"left:0;width:63%;background:#b73c72\"></i><i style=\"right:0;width:37%;background:#fbbf15;opacity:.42\"></i><em></em></div></li><li><div class=\"ds-vh\"><span class=\"ds-vl\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" class=\"ds-no\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg>Bookies&rsquo; opening price</span><span class=\"ds-vp\">BRI <b>55%</b></span></div><div class=\"ds-mini\"><i style=\"left:0;width:45%;background:#b73c72;opacity:.42\"></i><i style=\"right:0;width:55%;background:#fbbf15\"></i><em></em></div></li></ul>",
+      "css": ".ds-voices{width:360px;margin:0;padding:0;list-style:none;border-top:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-voices li{padding:10px 0;border-bottom:1px solid var(--color-line-soft)}.ds-vh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}.ds-vl{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--color-ink)}.ds-ok{color:var(--color-ink-2)}.ds-no{color:var(--color-ink-3)}.ds-mdl{position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:38px;height:24px;border-radius:5px;background:var(--color-ink);color:var(--color-ground);font:800 13px/1 var(--font-display);letter-spacing:.04em}.ds-mdl i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--color-lime)}.ds-vp{font-size:13px;font-weight:600;color:var(--color-ink-3)}.ds-vp b{font:600 19px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink)}.ds-mini{position:relative;height:7px;border-radius:3px;background:var(--color-pitch)}.ds-mini i{position:absolute;top:0;bottom:0}.ds-mini em{position:absolute;top:-3px;bottom:-3px;left:50%;width:2px;transform:translateX(-50%);border-radius:9999px;background:var(--color-ink);box-shadow:0 0 0 1.5px var(--color-ground)}"
     }
   ],
   "narrative": {
@@ -432,12 +444,12 @@
     "rules": [
       {
         "name": "The One Lamp Rule",
-        "body": "Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration (\"Margin game\" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime.",
+        "body": "Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration (\"Margin game\" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime. Wherever the Model is a row among others (the recap table, the match page's voice list), it is marked with the sm MDL badge and an `ink` label, never lime text.",
         "section": "colors"
       },
       {
         "name": "The Clash Rule",
-        "body": "A game's two bar colours must sit at least 90 RGB distance apart. When the away team's `bar` is closer than that to the home team's, the away fill swaps to its `primary` (`barColours` in `pitch-bar.tsx`). New team colours must be checked against likely opponents.",
+        "body": "A game's two bar colours must sit at least 90 RGB distance apart. When the away team's `bar` is closer than that to the home team's, the away fill switches to whichever of its `primary` or `secondary` sits furthest from the home bar (`barColours` in `pitch-bar.tsx`), so Sea Eagles v Broncos draws the Broncos in gold. New team colours must be checked against likely opponents.",
         "section": "colors"
       },
       {
@@ -448,6 +460,16 @@
       {
         "name": "The Marked Prediction Rule",
         "body": "A predicted score never passes for a result. Predicted scores are set one step dimmer and lighter (`ink-2` at most, weight 500 to 600), carry a \"Model's score\" caption on the board and a screen-reader \"predicted\", and bars are labelled \"Model XXX nn%\". While a game is live or awaiting its result, the score slot shows \"–\" in `ink-3`, never a number.",
+        "section": "typography"
+      },
+      {
+        "name": "The Points Mean Margins Rule",
+        "body": "\"Points\" is reserved for score margins (\"Roosters by 14\"). A win chance is a percentage for the side it backs (\"MAN 63%\"), and the bookies' figure is stated the same way (\"The bookies give the Sea Eagles 45%\"), never as \"N points apart\".",
+        "section": "typography"
+      },
+      {
+        "name": "The Whole Name Rule",
+        "body": "A team name never breaks across lines inside a display sentence or verdict (\"Sea Eagles\", \"Wests Tigers\" stay together, `whitespace-nowrap` on each name); the sentence wraps around it.",
         "section": "typography"
       },
       {
@@ -462,7 +484,7 @@
       },
       {
         "name": "The One Board Rule",
-        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap). Never build a grid or stack of cards.",
+        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. Never build a grid or stack of cards.",
         "section": "elevation"
       }
     ],
@@ -473,12 +495,16 @@
       "Do keep \"N of M tipped\" (56px) the largest type on home and the board score (48px) next.",
       "Do draw win probability with the pitch bar, called team at full strength, halfway line ringed in `ground`.",
       "Do run new team colours through the 90-distance clash check against likely opponents.",
+      "Do state every win chance as a percentage for the side it backs (\"MAN 63%\", \"The bookies give the Sea Eagles 45%\").",
+      "Do keep team names whole inside display sentences and verdicts.",
+      "Do mark the Model as a row with the sm MDL badge and an `ink` label.",
       "Do separate lists with `line-soft` hairlines and give each page at most one raised board.",
       "Do put context on a sentence-case `ink-3` meta line beside or below a heading.",
       "Do turn off every animation and transition under reduced motion, with the resting state already final."
     ],
     "donts": [
       "Don't use lime for labels, categories, headings or decoration; it is only for you, actions and right calls.",
+      "Don't phrase the gap between two win chances as \"N points apart\"; points are score margins.",
       "Don't put an eyebrow or kicker label above a heading.",
       "Don't build card grids or stacks of bordered tiles; games are rows.",
       "Don't show a number in the score slot of a live or awaiting game, or let a predicted score look like a result.",

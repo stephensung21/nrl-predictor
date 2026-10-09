@@ -211,7 +211,7 @@ A cool green-black ground lit by near-white ink, with a single acid-lime lamp an
 
 ### Secondary
 - **Miss Coral** (`miss`): wrong tips only. Strikes through your wrong pick and colours its cross. Its 12% wash (`miss-wash`) tints the wrong team line.
-- **Siren Amber** (`live`): live state only. The pulsing live dot and "LIVE" label, and the "Updated: Hughes out" prediction-change note.
+- **Siren Amber** (`live`): live state and team changes only. The pulsing live dot and "LIVE" label, the "Updated: Hughes out" prediction-change note, and the "In" marker on a player who came into a team list.
 
 ### Neutral
 - **Pitch Night** (`ground`): page background, the html colour, and the ring around the halfway line.
@@ -222,15 +222,15 @@ A cool green-black ground lit by near-white ink, with a single acid-lime lamp an
 - **Turf** (`pitch`) and **Line Paint** (`pitch-line`): the empty pitch-bar field and its markings.
 - **Floodlight** (`ink`): primary text, the winning or called team, final scores, current tab.
 - **Grandstand** (`ink-2`): secondary text, team names under badges, predicted scores, supporting copy.
-- **Back Row** (`ink-3`): meta lines, captions, losing scores, the "–" placeholder, inactive tabs.
+- **Back Row** (`ink-3`): meta lines, captions, losing scores, the "–" placeholder, inactive tabs, the dissent half of a verdict, recap placings, and struck-through "Out:" players.
 
 ### Team colours
 Team colours live in `web/lib/teams.ts`, not in the token set: `primary` (badge fill), `secondary` (code lettering and badge stripe), optional `ink` (lettering when secondary is too dark on the fill), and `bar` (pitch-bar fill, lightened so navy, maroon and black teams read on the ground). They appear only inside badges and pitch bars, never as text, borders or backgrounds of UI chrome.
 
 ### Named Rules
-**The One Lamp Rule.** Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration ("Margin game" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime.
+**The One Lamp Rule.** Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration ("Margin game" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime. Wherever the Model is a row among others (the recap table, the match page's voice list), it is marked with the sm MDL badge and an `ink` label, never lime text.
 
-**The Clash Rule.** A game's two bar colours must sit at least 90 RGB distance apart. When the away team's `bar` is closer than that to the home team's, the away fill swaps to its `primary` (`barColours` in `pitch-bar.tsx`). New team colours must be checked against likely opponents.
+**The Clash Rule.** A game's two bar colours must sit at least 90 RGB distance apart. When the away team's `bar` is closer than that to the home team's, the away fill switches to whichever of its `primary` or `secondary` sits furthest from the home bar (`barColours` in `pitch-bar.tsx`), so Sea Eagles v Broncos draws the Broncos in gold. New team colours must be checked against likely opponents.
 
 ## Typography
 
@@ -241,7 +241,8 @@ Team colours live in `web/lib/teams.ts`, not in the token set: `primary` (badge 
 
 ### Hierarchy
 - **Display hero** (800, 56px, 0.86): the "N of M tipped" line. The largest type on the home page.
-- **Display** (700, 46 to 52px, 0.9): page titles that stand alone: the recap ("Round 10 wrap") and empty/error titles.
+- **Display** (700, 40 to 52px, 0.9): page titles that stand alone: the recap ("Round 10 wrap") and empty/error titles (40px for the round page's missing-round state).
+- **Match verdict** (800, 34px before kickoff / 40px at full time, 0.92 to 0.94): the match page's headline. Before kickoff it is the verdict sentence itself ("The Model and Elo back the Sea Eagles."), with any dissent dimmed to `ink-3` in the same line; at full time it is the result ("Sea Eagles won 32–4") and the verdict drops to 16px semibold body below it.
 - **Score board** (600 predicted / 700 final, 48px, 1): the featured board's score. Second only to the tipping strip.
 - **Headline** (700, 30px, 1): the board's call ("Roosters by 14"), the live strip ("This round: 4/6 correct so far"); recap line at 28px.
 - **Title** (700, 26px, 1): page heading such as "Round 10".
@@ -250,12 +251,16 @@ Team colours live in `web/lib/teams.ts`, not in the token set: `primary` (badge 
 - **Body** (400 to 600, 15px): team names in rows, menu items, the Model's record heading; 16px with relaxed leading for empty-state and recap prose, capped at 34ch.
 - **Meta** (500, 13px): date ranges, board meta line, kickoff times, standing line.
 - **Caption** (500, 12px): "Model's score", "win chance", record labels, row footnotes.
-- **Label** (700, 11px, 0.06em, uppercase): status words and tags only: "Your tip", "LIVE", "FT", "Full time", "Postponed", the tab-bar labels (600, no uppercase), the "personal project" wordmark tag (10px).
+- **Label** (700, 11px, 0.06em, uppercase): status words and tags only: "Your tip", "LIVE", "FT", "Full time", "Postponed", the amber "In" team-list marker, the tab-bar labels (600, no uppercase), the "personal project" wordmark tag (10px).
 
 ### Named Rules
 **The Scoreboard Figures Rule.** Every number is tabular. Scores, percentages, positions and counts use the score face (`font-score`: display family with `tnum` and `lnum`); body text inherits `tabular-nums` from the page.
 
 **The Marked Prediction Rule.** A predicted score never passes for a result. Predicted scores are set one step dimmer and lighter (`ink-2` at most, weight 500 to 600), carry a "Model's score" caption on the board and a screen-reader "predicted", and bars are labelled "Model XXX nn%". While a game is live or awaiting its result, the score slot shows "–" in `ink-3`, never a number.
+
+**The Points Mean Margins Rule.** "Points" is reserved for score margins ("Roosters by 14"). A win chance is a percentage for the side it backs ("MAN 63%"), and the bookies' figure is stated the same way ("The bookies give the Sea Eagles 45%"), never as "N points apart".
+
+**The Whole Name Rule.** A team name never breaks across lines inside a display sentence or verdict ("Sea Eagles", "Wests Tigers" stay together, `whitespace-nowrap` on each name); the sentence wraps around it.
 
 **The Loudest Line Rule.** On home, "N of M tipped" (56px) is the biggest thing on the page and the board score (48px) is next. Nothing else on a page outranks what you owe.
 
@@ -271,6 +276,8 @@ Vertical rhythm on the 4px scale: page heading 16px top / 12px bottom; 12px betw
 
 Game rows are a two-column grid: content left (two team lines, then the pitch bar with its label), a fixed 64px status column right, top-aligned.
 
+Paired columns (team lists, head to head) put home on the left and away on the right, mirrored: away names right-aligned with jersey numbers on the outer edge.
+
 ## Elevation & Depth
 
 Flat and tonal. Depth comes from stepping the ground: `ground` to `raised` to `raised-2`, with hairline borders. The sticky header and tab bar are translucent (`ground` at 92%, `raised` at 95%) with a medium backdrop blur so rows slide under them.
@@ -280,7 +287,7 @@ Flat and tonal. Depth comes from stepping the ground: `ground` to `raised` to `r
 - **Lamp glow** (`box-shadow: 0 0 10px 1px` lime at 55%, transient): the perfect-round lamp chase; never at rest.
 
 ### Named Rules
-**The One Board Rule.** Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap). Never build a grid or stack of cards.
+**The One Board Rule.** Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. Never build a grid or stack of cards.
 
 ## Shapes
 
@@ -294,20 +301,25 @@ Pill-shaped, bold, short labels with an arrow or icon.
 - **Primary:** `lime` with `lime-ink` text, 15px bold, 12px by 20px, optional 16px icon at stroke 2.5. Hover to `lime-hover`.
 - **On lime:** inside a lime surface the action inverts to `lime-ink` with `lime` text ("Tip 4 →"); the arrow nudges 2px right on hover.
 - **Quiet link:** sentence-case `ink-2` or `ink` text, semibold, underlined in `line`, trailing chevron; hover to `ink`.
+- **Round stepper:** a 40px circle with an inset `line` ring and a 20px chevron in `ink-2` (hover `ink` text, `ink-3` ring), prev and next side by side at the right of the round heading; at either end the missing step stays in place at `ink-3` 40% and is not a link.
 - **Focus:** 2px `lime` outline at 2px offset, 4px radius, on every focusable element.
 
 ### Chips
-- **Style:** pill, 13px semibold, 6px by 12px; unselected is `ink-2` text with an inset `line` ring (hover `ink` text, `ink-3` ring); selected is solid `ink` with `ground` text. Used for filters and state switches (the sample-data bar).
+- **Style:** pill, 13px semibold, 6px by 12px; unselected is `ink-2` text with an inset `line` ring (hover `ink` text, `ink-3` ring); selected is solid `ink` with `ground` text. Used for filters and state switches (the sample-data note).
+
+### Sample-data note
+A dashed `line` border, 12px radius, 16px padding, 40px above it; 13px `ink-3` copy led by a semibold `ink-2` "Sample data." Optional state chips sit below it. It closes every page that runs on sample data and is never a board.
 
 ### Cards / Containers
 - **The board:** `raised` fill, 1px `line` border, 12px radius, 16px padding; whole board is a link with hover to `raised-2` at 50%.
 - **Tipping strip:** in the build, a bordered `raised` container with two bands: the loud top band (lime fill while tips are missing, plain once all are in with a lime check) and a `line-soft`-divided standing line.
 - **Record strip:** no fill; `line-soft` hairlines top and bottom, 16px vertical padding, three-up stat grid.
-- **Recap table rows:** `line-soft` dividers; your row `lime-wash`, the Model's row `raised-2`.
+- **Recap table rows:** `line-soft` dividers; your row `lime-wash`, the Model's row `raised-2`. The first column is this round's placing among the human tippers in the score face (`ink-3`, "=" prefix for a tie, e.g. "=2nd"); the Model is not ranked and shows the sm MDL badge instead. On the round page the panel drops its own heading (the round heading with steppers sits above it); the next-round line under it is optional.
 
 ### Navigation
 - **Phone:** fixed bottom tab bar (Round, Tips, Ladder, Elo, More), `raised` at 95% with blur and a `line` top border. 22px Lucide icons over 11px semibold labels; inactive `ink-3`, active `ink` with a lime icon and a 3px by 32px lime mark at the top edge.
 - **Desktop (768px+):** the same items in the sticky top bar, 14px semibold, active marked by a 2px lime underline on the header's bottom edge.
+- **In-page tabs:** link tabs (they work without JavaScript) on a `line` bottom rule, 14px semibold; active `ink` with a 2px lime underline, inactive `ink-3` (hover `ink-2`). Used on the match page for "Team lists" and "Head to head".
 - **More:** opens a `raised-2` menu with the menu drop shadow; closes on outside click, Escape or navigation.
 - **Wordmark:** "rugbyleague-tipper" in the display face at 23px with the hyphen in lime, plus a bordered 10px "personal project" tag.
 
@@ -319,6 +331,15 @@ Win probability as a rugby league field. A `pitch` track (7px sm, 14px lg; 3px r
 
 ### Game Row
 The default for every game outside the board. Two team lines (sm badge, 15px name, optional lime "Your tip" label, 21px score), then a small pitch bar with "Model XXX nn%", then an optional 12px footnote line (Model's call after kickoff, "Margin game", the amber "Updated" note, "No odds yet"). Right column shows kickoff (weekday over time), pulsing amber LIVE, "Full time / result soon", or "FT" with a quiet Model tick or cross. The called or winning team is `ink` semibold, the other `ink-2`. Your right tip gets a `lime-wash` line and a popping tick; your wrong tip a `miss-wash` line, coral strike-through and cross.
+
+### Voice List
+The match page's answer to "who backs whom": one hairline row per voice (the Model, Model without odds, Bookies' opening price, Elo), each a 14px semibold `ink` label on the left and the backed side on the right as an `ink-3` code plus a 19px score-face percentage in `ink` ("MAN 63%"), with a small pitch bar below. The Model's row leads with the sm MDL badge. Once graded, a quiet tick (`ink-2`) or cross (`ink-3`) precedes the label. Above it, a one-sentence verdict names the Model first and dims whoever disagrees.
+
+### Team Lists
+Home and away side by side, row by row by jersey number (15px score-face numbers in `ink-3`, names 14px `ink-2`), `line-soft` dividers with a stronger `line` rule after the 13th row to set off the bench. A player who came in is `ink` semibold with the amber "In" label set inline with the name, so it stays attached when a long name wraps. Players who dropped out are listed below as "Out:" (semibold) followed by their names struck through, all in `ink-3`.
+
+### Head to Head
+A summary line ("Last 6: Sea Eagles 4, Broncos 2") then hairline rows: an `ink-3` 12px season, round and venue column, the two sm badges either side of a centred 21px score, the winning figure `ink` bold and the other `ink-3`.
 
 ### Result marks
 Quiet on prediction surfaces (a small `ink-2` or `ink-3` tick or cross beside "Model"); loud on tipping surfaces and the recap (lime and coral, washes, strike-through, the tick pop, lamp rows with a one-time chase on a perfect round).
@@ -332,12 +353,16 @@ Quiet on prediction surfaces (a small `ink-2` or `ink-3` tick or cross beside "M
 - **Do** keep "N of M tipped" (56px) the largest type on home and the board score (48px) next.
 - **Do** draw win probability with the pitch bar, called team at full strength, halfway line ringed in `ground`.
 - **Do** run new team colours through the 90-distance clash check against likely opponents.
+- **Do** state every win chance as a percentage for the side it backs ("MAN 63%", "The bookies give the Sea Eagles 45%").
+- **Do** keep team names whole inside display sentences and verdicts.
+- **Do** mark the Model as a row with the sm MDL badge and an `ink` label.
 - **Do** separate lists with `line-soft` hairlines and give each page at most one raised board.
 - **Do** put context on a sentence-case `ink-3` meta line beside or below a heading.
 - **Do** turn off every animation and transition under reduced motion, with the resting state already final.
 
 ### Don't:
 - **Don't** use lime for labels, categories, headings or decoration; it is only for you, actions and right calls.
+- **Don't** phrase the gap between two win chances as "N points apart"; points are score margins.
 - **Don't** put an eyebrow or kicker label above a heading.
 - **Don't** build card grids or stacks of bordered tiles; games are rows.
 - **Don't** show a number in the score slot of a live or awaiting game, or let a predicted score look like a result.
