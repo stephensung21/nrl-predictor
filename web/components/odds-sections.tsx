@@ -199,7 +199,7 @@ export function OddsGameRow({ g, graded }: { g: OddsGame; graded: boolean }) {
           {gap != null ? (
             <p className="mt-0.5 whitespace-nowrap">
               <span className={`font-score ${gap >= BIG_GAP ? "text-[22px] font-bold text-ink" : "text-[19px] font-semibold text-ink-2"}`}>{gap}</span>
-              <span className="text-[12px] text-ink-3"> pts{split ? ", split" : ""}</span>
+              <span className="text-[12px] text-ink-3">%{split ? ", split" : ""}</span>
             </p>
           ) : (
             <p className="mt-1 text-[12px] text-ink-3">–</p>

@@ -110,7 +110,7 @@ export function LineChart({
             role="img"
             aria-label={label}
             tabIndex={0}
-            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-ink-3 focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
+            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
             onPointerMove={(e) => setHover(nearest(e.clientX, e.currentTarget.getBoundingClientRect()))}
             onPointerLeave={() => setHover(null)}
             onFocus={() => setHover(last)}
@@ -259,7 +259,7 @@ export function CalibrationChart({ bins, series, label }: { bins: Record<string,
                         onPointerLeave={() => setHover(null)}
                         onFocus={() => setHover({ key: s.key, i })}
                         onBlur={() => setHover(null)}
-                        className="cursor-default outline-none"
+                        className="cursor-default outline-none focus-visible:[stroke-width:2] focus-visible:[stroke:var(--color-lime)]"
                       />
                     </g>
                   ) : null,

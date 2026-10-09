@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-10T12:00:00.000Z",
+  "generatedAt": "2026-10-10T18:00:00.000Z",
   "title": "Design System: rugbyleague-tipper",
   "extensions": {
     "colorMeta": {
@@ -241,6 +241,54 @@
           "oklch(0.95 0.16 60)"
         ],
         "note": "Live state and team changes only: live dot and label, the Updated note, the team-list In marker."
+      },
+      "series-model": {
+        "role": "tertiary",
+        "displayName": "Model Blue",
+        "canonical": "#3987e5",
+        "tonalRamp": [
+          "oklch(0.15 0.15 255)",
+          "oklch(0.26 0.15 255)",
+          "oklch(0.37 0.15 255)",
+          "oklch(0.48 0.15 255)",
+          "oklch(0.59 0.15 255)",
+          "oklch(0.7 0.15 255)",
+          "oklch(0.82 0.15 255)",
+          "oklch(0.95 0.15 255)"
+        ],
+        "note": "Chart series, chart pages only: the Model on every chart and the market track's diamond. Never text."
+      },
+      "series-market": {
+        "role": "tertiary",
+        "displayName": "Bookies Aqua",
+        "canonical": "#199e70",
+        "tonalRamp": [
+          "oklch(0.15 0.12 162)",
+          "oklch(0.26 0.12 162)",
+          "oklch(0.37 0.12 162)",
+          "oklch(0.48 0.12 162)",
+          "oklch(0.59 0.12 162)",
+          "oklch(0.7 0.12 162)",
+          "oklch(0.82 0.12 162)",
+          "oklch(0.95 0.12 162)"
+        ],
+        "note": "Chart series, chart pages only: the bookies' opening and closing price and the bookies' favourite. Never text."
+      },
+      "series-elo": {
+        "role": "tertiary",
+        "displayName": "Elo Orange",
+        "canonical": "#d95926",
+        "tonalRamp": [
+          "oklch(0.15 0.17 42)",
+          "oklch(0.26 0.17 42)",
+          "oklch(0.37 0.17 42)",
+          "oklch(0.48 0.17 42)",
+          "oklch(0.59 0.17 42)",
+          "oklch(0.7 0.17 42)",
+          "oklch(0.82 0.17 42)",
+          "oklch(0.95 0.17 42)"
+        ],
+        "note": "Chart series, chart pages only: Elo. Never text."
       }
     },
     "typographyMeta": {
@@ -295,6 +343,14 @@
       "label": {
         "displayName": "Label",
         "purpose": "Uppercase status words and tags only (Your tip, LIVE, FT, the amber In marker); never above a heading."
+      },
+      "data-figures": {
+        "displayName": "Data page figures",
+        "purpose": "Stat row figures 30px bold display; hero money figure 40px bold display; figures row 22px bold ink (Opening) and 19px semibold ink-2. Prose-only role; not a frontmatter token."
+      },
+      "chart-text": {
+        "displayName": "Chart text",
+        "purpose": "Chart titles 16px semibold ink sentence case; y ticks 12px score face ink-3; x labels 11px ink-3; end values 13px semibold score face ink-2; legends 12px ink-2; tooltip values 15px semibold score face ink. Prose-only role."
       }
     },
     "shadows": [
@@ -307,6 +363,11 @@
         "name": "lamp-glow",
         "value": "0 0 10px 1px oklch(0.91 0.2 126 / 0.55)",
         "purpose": "Transient peak of the perfect-round lamp chase; never at rest."
+      },
+      {
+        "name": "tooltip-lift",
+        "value": "0 6px 20px rgb(0 0 0 / 0.45)",
+        "purpose": "Chart tooltips only."
       }
     ],
     "motion": [
@@ -350,7 +411,7 @@
       {
         "name": "md",
         "value": "768px",
-        "purpose": "Bottom tab bar gives way to the top bar; bottom padding 112px to 48px."
+        "purpose": "Bottom tab bar gives way to the top bar; bottom padding 112px to 48px; data pages break out to the wide container."
       }
     ],
     "teamColours": {
@@ -373,7 +434,39 @@
         "ladder"
       ],
       "note": "Copy that states a rule ('Leave it and 12 applies.') reads DEFAULT_MARGIN; never hard-code the number."
-    }
+    },
+    "chartSeries": {
+      "source": "web/lib/odds.ts (SERIES)",
+      "validation": "All-pairs on ground #06110c with the dataviz validator: worst CVD deltaE 9.4, normal-vision deltaE 20.9, every colour at least 3:1 against the ground.",
+      "maxSeriesPerChart": 3,
+      "reserved": [
+        "lime",
+        "live",
+        "miss"
+      ]
+    },
+    "containers": [
+      {
+        "name": "column",
+        "value": "34rem",
+        "purpose": "Every page's single centred column."
+      },
+      {
+        "name": "wide",
+        "value": "min(60rem, 100vw - 4rem)",
+        "purpose": "Data pages from 768px, centred on the column."
+      },
+      {
+        "name": "chart",
+        "value": "40rem",
+        "purpose": "Cap for stat rows and single full-width charts on wide pages."
+      },
+      {
+        "name": "prose",
+        "value": "60ch",
+        "purpose": "Prose measure on wide pages."
+      }
+    ]
   },
   "components": [
     {
@@ -477,6 +570,30 @@
       "description": "Tabular ladder: the Model unranked, tinted raised-2 and ruled with line, sorted among the tippers by points; your row lime-wash; one ink-3 tag per tipper.",
       "html": "<table class=\"ds-lad\"><thead><tr><th></th><th>Tipper</th><th class=\"ds-r\">Pts</th><th class=\"ds-r\">Margin</th></tr></thead><tbody><tr class=\"ds-lad-model\"><td class=\"ds-pos ds-pos-m\">&ndash;</td><td><span class=\"ds-nc\"><span class=\"ds-mdl\">MDL<i></i></span><span><b>The Model</b></span></span></td><td class=\"ds-pts\">44</td><td class=\"ds-mgn\">189</td></tr><tr><td class=\"ds-pos\">1st</td><td><span class=\"ds-nc\"><span class=\"ds-b\" style=\"background:#7a1e45;color:#fff\">MAN</span><span>Mick<small>Top dog</small></span><span class=\"ds-mv\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m5 12 7-7 7 7M12 19V5\"/></svg>2</span></span></td><td class=\"ds-pts\">42</td><td class=\"ds-mgn\">194</td></tr><tr class=\"ds-lad-you\"><td class=\"ds-pos\">=2nd</td><td><span class=\"ds-nc\"><span class=\"ds-b\" style=\"background:#0f7a3c;color:#fff\">SOU</span><span><b>Sully</b><em>You</em><small>Behind a spreadsheet</small></span><span class=\"ds-mv\">&ndash;</span></span></td><td class=\"ds-pts\">37</td><td class=\"ds-mgn\">211</td></tr></tbody></table>",
       "css": ".ds-lad{width:360px;border-collapse:collapse;text-align:left;font-family:var(--font-sans);color:var(--color-ink)}.ds-lad th{padding:8px 0;border-bottom:1px solid var(--color-line);font-size:12px;font-weight:600;color:var(--color-ink-3)}.ds-lad th:first-child{width:48px}.ds-lad .ds-r{text-align:right;padding-right:8px}.ds-lad td{padding:12px 0;border-bottom:1px solid var(--color-line-soft);vertical-align:middle}.ds-lad td:first-child{padding-left:8px}.ds-lad td:last-child{padding-right:8px}.ds-pos{font:600 17px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink-2)}.ds-pos-m{font-weight:400;color:var(--color-ink-3)}.ds-nc{display:flex;align-items:center;gap:10px;font-size:15px}.ds-nc b{font-weight:600}.ds-nc em{margin-left:6px;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-lime)}.ds-nc small{display:block;font-size:12px;line-height:1.25;color:var(--color-ink-3)}.ds-mv{display:flex;align-items:center;margin-left:auto;width:24px;font-size:12px;font-weight:600;color:var(--color-ink-3)}.ds-pts{text-align:right;font:700 21px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums}.ds-mgn{text-align:right;font:600 17px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink-3)}.ds-lad-you td{background:var(--color-lime-wash)}.ds-lad-model td{background:var(--color-raised-2);border-top:1px solid var(--color-line);border-bottom:1px solid var(--color-line)}.ds-b,.ds-mdl{position:relative;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;width:38px;height:24px;border-radius:5px;font:700 13px/1 var(--font-display);letter-spacing:.04em}.ds-mdl{background:var(--color-ink);color:var(--color-ground);font-weight:800}.ds-mdl i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--color-lime)}"
+    },
+    {
+      "name": "Market Track",
+      "kind": "custom",
+      "refersTo": "market-track",
+      "description": "Signature for Model vs market: a pitch with tenths and a halfway line; each estimate sits toward the team it backs. Model diamond in its own lane with a stem; opening price a filled aqua dot, closing a hollow ring, the move an arrow.",
+      "html": "<div class=\"ds-mt\" role=\"img\" aria-label=\"Model CBY 58%, opening price CBY 60%, closing CBY 53%\"><span class=\"ds-mt-code\">CBY</span><div class=\"ds-mt-f\"><span class=\"ds-mt-dia\" style=\"left:42%\"></span><span class=\"ds-mt-stem\" style=\"left:42%\"></span><div class=\"ds-mt-bar\"></div><div class=\"ds-mt-half\"></div><div class=\"ds-mt-move\" style=\"left:40%;width:7%\"></div><span class=\"ds-mt-head\" style=\"left:calc(47% - 9px)\"></span><span class=\"ds-mt-close\" style=\"left:47%\"></span><span class=\"ds-mt-open\" style=\"left:40%\"></span></div><span class=\"ds-mt-code ds-r\">NQL</span></div>",
+      "css": ".ds-mt{display:flex;align-items:center;gap:8px;width:360px;font-family:var(--font-sans)}.ds-mt-code{width:28px;flex-shrink:0;font-size:11px;font-weight:600;color:var(--color-ink-3)}.ds-r{text-align:right}.ds-mt-f{position:relative;flex:1;height:32px}.ds-mt-dia{position:absolute;top:2px;width:12px;height:12px;transform:translateX(-50%) rotate(45deg);border-radius:2px;background:#3987e5;box-shadow:0 0 0 2px var(--color-ground)}.ds-mt-stem{position:absolute;top:12px;width:1px;height:8px;transform:translateX(-50%);background:#3987e5}.ds-mt-bar{position:absolute;left:0;right:0;bottom:8px;height:8px;border-radius:3px;background-color:var(--color-pitch);background-image:repeating-linear-gradient(to right,transparent 0,transparent calc(10% - 1px),rgb(10 20 16/.6) calc(10% - 1px),rgb(10 20 16/.6) 10%)}.ds-mt-half{position:absolute;left:50%;bottom:4px;width:2px;height:16px;transform:translateX(-50%);border-radius:9999px;background:var(--color-ink-3)}.ds-mt-move{position:absolute;bottom:11px;height:2px;background:#199e70}.ds-mt-head{position:absolute;bottom:7px;width:0;height:0;transform:translateX(-50%);border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid #199e70}.ds-mt-close{position:absolute;bottom:6px;width:12px;height:12px;transform:translateX(-50%);border-radius:9999px;background:var(--color-ground);box-shadow:inset 0 0 0 2px #199e70}.ds-mt-open{position:absolute;bottom:5px;width:14px;height:14px;transform:translateX(-50%);border-radius:9999px;background:#199e70;box-shadow:0 0 0 2px var(--color-ground)}"
+    },
+    {
+      "name": "Figures Row",
+      "kind": "custom",
+      "refersTo": "figure-tile-opening",
+      "description": "Model / Opening / Closing / Gap under each market track; Opening highlighted on a raised tile at 22px bold; a gap of 10+ takes an ink-3 ring; quiet ticks and crosses for who backed the winner.",
+      "html": "<div class=\"ds-fr\"><div class=\"ds-ft\"><p class=\"ds-fl\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" class=\"ds-x\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg>Model</p><p><span class=\"ds-fc\">CBY </span><span class=\"ds-fv\">48%</span></p></div><div class=\"ds-ft ds-ft-on\"><p class=\"ds-fl\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-ok\"><path d=\"M20 6 9 17l-5-5\"/></svg>Opening</p><p><span class=\"ds-fc\">NQL </span><span class=\"ds-fv\">60%</span></p></div><div class=\"ds-ft\"><p class=\"ds-fl\">Closing</p><p class=\"ds-fp\">At kickoff</p></div><div class=\"ds-ft ds-ft-gap\"><p class=\"ds-fl\">Gap</p><p><span class=\"ds-fv ds-fv-big\">12</span><span class=\"ds-fc\">, split</span></p></div></div>",
+      "css": ".ds-fr{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:360px;font-family:var(--font-sans)}.ds-ft{min-width:0;padding:6px 8px;border-radius:6px}.ds-ft p{margin:2px 0 0;white-space:nowrap}.ds-fl{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--color-ink-3)}.ds-ok{color:var(--color-ink-2)}.ds-x{color:var(--color-ink-3)}.ds-fc{font-size:12px;font-weight:600;color:var(--color-ink-3)}.ds-fv{font:600 19px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink-2)}.ds-ft-on{background:var(--color-raised)}.ds-ft-on .ds-fl{font-weight:600;color:var(--color-ink-2)}.ds-ft-on .ds-fv,.ds-fv-big{font-size:22px;font-weight:700;color:var(--color-ink)}.ds-ft-gap{box-shadow:inset 0 0 0 1px var(--color-ink-3)}.ds-fp{font-size:12px;line-height:1.25;color:var(--color-ink-3)}"
+    },
+    {
+      "name": "Line Chart",
+      "kind": "custom",
+      "refersTo": "chart-tooltip",
+      "description": "Data-page chart: legend of line keys, line-soft grid with an ink-3 zero line, 2px series lines, r=5 end dots in a 2px ground ring, ink-2 end values, crosshair tooltip on raised-2, and a Show as table view.",
+      "html": "<figure class=\"ds-ch\"><ul class=\"ds-lg\"><li><i style=\"background:#3987e5\"></i>The Model</li><li><i style=\"background:#d95926\"></i>Elo</li></ul><div class=\"ds-pl\"><svg width=\"360\" height=\"160\" role=\"img\" aria-label=\"Correct tips compared with the bookies' favourite\"><g class=\"ds-ax\"><line x1=\"40\" x2=\"296\" y1=\"12\" y2=\"12\"/><line x1=\"40\" x2=\"296\" y1=\"55\" y2=\"55\"/><line x1=\"40\" x2=\"296\" y1=\"98\" y2=\"98\" class=\"ds-zero\"/><line x1=\"40\" x2=\"296\" y1=\"141\" y2=\"141\"/><text x=\"32\" y=\"12\" dy=\"0.32em\">+4</text><text x=\"32\" y=\"55\" dy=\"0.32em\">+2</text><text x=\"32\" y=\"98\" dy=\"0.32em\">0</text><text x=\"32\" y=\"141\" dy=\"0.32em\">&#8722;2</text></g><path d=\"M40,98L90,55L140,76L190,98L240,120L296,120\" stroke=\"#3987e5\"/><path d=\"M40,98L90,120L140,55L190,55L240,98L296,141\" stroke=\"#d95926\"/><line x1=\"190\" x2=\"190\" y1=\"12\" y2=\"141\" class=\"ds-xh\"/><circle cx=\"296\" cy=\"120\" r=\"5\" fill=\"#3987e5\"/><circle cx=\"296\" cy=\"141\" r=\"5\" fill=\"#d95926\"/><text x=\"306\" y=\"120\" dy=\"0.32em\" class=\"ds-end\">&#8722;1</text><text x=\"306\" y=\"141\" dy=\"0.32em\" class=\"ds-end\">&#8722;2</text></svg><div class=\"ds-tt\" role=\"status\"><p class=\"ds-tt-h\">Game 96 &middot; Round 13</p><p><i style=\"background:#3987e5\"></i><b>0</b><span>The Model</span></p><p><i style=\"background:#d95926\"></i><b>+1</b><span>Elo</span></p></div></div><details class=\"ds-tv\"><summary>Show as table</summary></details></figure>",
+      "css": ".ds-ch{width:360px;margin:0;font-family:var(--font-sans)}.ds-lg{display:flex;gap:16px;margin:0 0 8px;padding:0;list-style:none;font-size:12px;color:var(--color-ink-2)}.ds-lg li{display:flex;align-items:center;gap:6px}.ds-lg i,.ds-tt i{display:inline-block;width:14px;height:2px;border-radius:9999px}.ds-pl{position:relative}.ds-pl svg{display:block}.ds-ax line{stroke:var(--color-line-soft);stroke-width:1}.ds-ax line.ds-zero{stroke:var(--color-ink-3)}.ds-ax text{fill:var(--color-ink-3);font:12px var(--font-display);font-variant-numeric:tabular-nums lining-nums;text-anchor:end}.ds-pl path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.ds-pl circle{stroke:var(--color-ground);stroke-width:4;paint-order:stroke}.ds-xh{stroke:var(--color-ink-3);stroke-width:1}.ds-end{fill:var(--color-ink-2);font:600 13px var(--font-display);font-variant-numeric:tabular-nums}.ds-tt{position:absolute;top:0;left:120px;min-width:144px;padding:8px 12px;border-radius:6px;background:var(--color-raised-2);box-shadow:0 6px 20px rgb(0 0 0/.45),0 0 0 1px var(--color-line);font-size:12px}.ds-tt p{display:flex;align-items:center;gap:8px;margin:4px 0 0}.ds-tt i{width:12px}.ds-tt .ds-tt-h{margin:0;color:var(--color-ink-3)}.ds-tt b{font:600 15px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--color-ink)}.ds-tt span{color:var(--color-ink-3)}.ds-tv{margin-top:8px;font-size:13px}.ds-tv summary{cursor:pointer;font-weight:600;color:var(--color-ink-3)}.ds-tv summary:hover{color:var(--color-ink-2)}"
     }
   ],
   "narrative": {
@@ -488,9 +605,15 @@
       "Saira Extra Condensed uppercase for calls, headings and every score; Sofia Sans for everything you read as sentences.",
       "Tabular, lining figures everywhere.",
       "Hairline rows and strips; one raised board per page.",
-      "The pitch bar is the signature: win probability as a field with a halfway line and ten-metre lines."
+      "The pitch bar is the signature: win probability as a field with a halfway line and ten-metre lines.",
+      "Data pages (Model vs market, Elo) widen on desktop and draw their charts in a fixed three-colour series palette; ink still carries every word."
     ],
     "rules": [
+      {
+        "name": "The Fixed Series Rule",
+        "body": "An entity keeps its series colour on every chart and every page: the Model is always blue, the bookies always aqua, Elo always orange. Lime, amber and coral keep their jobs and are never series colours. Text is never set in a series colour; labels, values and tooltips use the ink steps. At most three series share an all-pairs chart, because the validation covers exactly these three.",
+        "section": "colors"
+      },
       {
         "name": "The One Lamp Rule",
         "body": "Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration (\"Margin game\" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime. Wherever the Model is a row among others (the recap table, the ladder and its round-by-round grid, the match page's voice list, the tips page's \"Show the Model's pick\" switch), it is marked with the sm MDL badge and an `ink` label, never lime text.",
@@ -503,7 +626,12 @@
       },
       {
         "name": "The Scoreboard Figures Rule",
-        "body": "Every number is tabular. Scores, percentages, positions and counts use the score face (`font-score`: display family with `tnum` and `lnum`); body text inherits `tabular-nums` from the page.",
+        "body": "Every number is tabular. Scores, percentages, positions and counts use the score face (`font-score`: display family with `tnum` and `lnum`); body text inherits `tabular-nums` from the page. A data page's hero figure (\"+$240.50\") is in the display face too, not a sans hero.",
+        "section": "typography"
+      },
+      {
+        "name": "The Honest Minus Rule",
+        "body": "Negative figures use the true minus (U+2212, \"−4\", \"CBY −2.5\"), never a hyphen; positive changes carry \"+\". Money shows cents only when there are cents (\"+$40\", \"+$240.50\").",
         "section": "typography"
       },
       {
@@ -533,7 +661,7 @@
       },
       {
         "name": "The One Board Rule",
-        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. Never build a grid or stack of cards.",
+        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. Never build a grid or stack of cards.",
         "section": "elevation"
       },
       {
@@ -563,7 +691,11 @@
       "Do make each tip a half-width button at least 56px tall, the away side mirrored, and confirm every save in the row's meta line.",
       "Do show the Model as an unranked, `raised-2` row sorted among the tippers by points, and measure \"off the lead\" against the leading tipper.",
       "Do keep the comp's tips hidden until a game locks, then show the tally (\"5 of 6 on SYD\").",
-      "Do drive every sample page from the same sample week so home, tips and ladder agree."
+      "Do drive every sample page from the same sample week so home, tips and ladder agree.",
+      "Do draw every chart at its measured width with 2px lines, one y-axis, a legend for two or more series and a \"Show as table\" view.",
+      "Do keep each entity's series colour on every chart (Model blue, bookies aqua, Elo orange), at most three series per all-pairs chart.",
+      "Do write minus as U+2212 and show cents only when there are cents.",
+      "Do widen data pages on desktop to the wide container, keeping prose at 60ch and single charts and stat rows at 40rem."
     ],
     "donts": [
       "Don't use lime for labels, categories, headings or decoration; it is only for you, actions and right calls.",
@@ -573,7 +705,9 @@
       "Don't show a number in the score slot of a live or awaiting game, or let a predicted score look like a result.",
       "Don't use club logos, photography or bookmaker colours; teams are two colours and a code.",
       "Don't use team colours outside badges and pitch bars.",
-      "Don't add a light theme or a second accent.",
+      "Don't add a light theme or a second accent; the chart series colours are data marks on chart pages, not accents.",
+      "Don't set text in a series colour, or use lime, amber or coral as a series colour.",
+      "Don't add a disclaimer, gambling message or bookmaker branding to odds pages; name the bookmaker in plain text and credit the source.",
       "Don't give the Model a ladder position, a round's bold, or a trash-talk tag.",
       "Don't give a tipper more than one tag, repeat a tag on one ladder, or put banter anywhere but the ladder."
     ]

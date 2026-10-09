@@ -90,7 +90,9 @@ function RoundTab({ q }: { q: Record<string, string | undefined> }) {
           ? "The Model and the opening price back the same team in every game."
           : `The Model and the opening price back different teams in ${splits} of ${priced.length} games.`}{" "}
         <span className="font-normal text-ink-2">
-          {big === 0 ? `No gap of ${BIG_GAP} points or more.` : `${big} gap${big === 1 ? "" : "s"} of ${BIG_GAP} points or more.`}
+          {big === 0
+            ? `None are ${BIG_GAP}% or more apart.`
+            : `${big} ${big === 1 ? "is" : "are"} ${BIG_GAP}% or more apart.`}
         </span>
       </p>
       <div className="mt-3">
@@ -198,7 +200,7 @@ function SeasonTab() {
           $10 on the Model&rsquo;s team whenever it rated them at least 2% better value than the opening price.
         </p>
         <p className="mt-3 font-display text-[40px] leading-none font-bold text-ink">
-          {profit.profit >= 0 ? "+" : "−"}${Math.abs(profit.profit).toFixed(2)}
+          {profit.profit >= 0 ? "+" : "−"}${Number.isInteger(profit.profit) ? Math.abs(profit.profit) : Math.abs(profit.profit).toFixed(2)}
         </p>
         <p className="mt-1 text-[13px] text-ink-2">
           from {profit.bets} bets (${profit.staked} staked), {profit.won} won.
