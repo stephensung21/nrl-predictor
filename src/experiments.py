@@ -26,6 +26,10 @@ Usage:
                                                   newcomer ratings in the full pipeline backtest)
     python src/experiments.py --only team_total -> reports/experiments_team_total.md (team total
                                                   rating for the totals models)
+    python src/experiments.py --only weekly   ->  reports/experiments_weekly.md (refitting the models
+                                                  before every round instead of once a season)
+    python src/experiments.py --only context2 ->  reports/experiments_context2.md (kickoff slot, travel
+                                                  distance, Origin representatives, ladder/motivation)
 """
 
 import argparse
@@ -803,6 +807,113 @@ def team_total_experiments():
     print("wrote reports/experiments_team_total.md")
 
 
+# ---------------------------------------------------------------- 13. weekly refitting
+
+def weekly_backtest(df):
+    """Backtest with the models refitted before every round: settings (feature sets, penalties, trees)
+    are developed once per season on earlier seasons, as now, but the model weights are refitted each
+    round on every game before it, including the season's earlier rounds. Calibration still uses
+    complete earlier seasons."""
+    preds = []
+    for season in BACKTEST_SEASONS:
+        cfg, _, _ = train.develop(df[df["season"] < season], list(range(FIRST_SEASON + 1, season)))
+        calib = list(range(FIRST_SEASON + 1, season))
+        this = df[df["season"] == season]
+        for rnd in sorted(this["round"].unique()):
+            tr = df[(df["season"] < season) | ((df["season"] == season) & (df["round"] < rnd))]
+            te = this[this["round"] == rnd]
+            preds.append(train.fit_predict_frames(tr, te, cfg, calib)[0])
+    out = pd.concat(preds)
+    out.index = df.loc[out.index, "match_id"].to_numpy()
+    return out
+
+
+def weekly_experiments():
+    """Weekly refitting against the current once-a-season fit, overall and by part of the season."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        weekly = weekly_backtest(df)
+    finally:
+        builtins.print = quiet
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    compare_pipelines("13 weekly refitting", test, weekly, base)
+    # By part of the season: weekly refitting should matter most late in the season.
+    rnd = test.loc[base.index, "round"]
+    for part, mask in (("rounds 1-9", rnd <= 9), ("rounds 10-18", rnd.between(10, 18)), ("round 19+", rnd >= 19)):
+        ids = base.index[mask.to_numpy()]
+        for v in VARIANTS:
+            col = f"{v}|ensemble|home_win"
+            record(f"13 weekly refitting, {part}: ensemble", v, "home_win", test.loc[ids], weekly.loc[ids, col],
+                   base.loc[ids, col])
+    res = pd.DataFrame(RESULTS)
+    report = ["# Weekly refitting (2023–2025 backtest)", "",
+              "The current backtest fits each season's models once, before the season. Weekly refitting keeps "
+              "each season's settings (developed on earlier seasons) but refits the model weights before every "
+              "round on every game before it, including that season's earlier rounds; calibration still uses "
+              "complete earlier seasons. `diff` is weekly minus current (negative = better), with a paired "
+              "bootstrap 95% interval; the last rows split the win model by part of the season.", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_weekly.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_weekly.md")
+
+
+# ---------------------------------------------------------------- 14. more context features
+
+CONTEXT2_GROUPS = {
+    # name: (features, targets whose linear models get them)
+    "kickoff slot": (["night_game", "kickoff_thursday", "kickoff_friday", "kickoff_sunday"], ("home_win", "margin", "total")),
+    "travel distance and time zones": (["diff_travel_km", "diff_tz_change"], ("home_win", "margin", "total")),
+    "Origin representatives": (["diff_origin_reps"], ("home_win", "margin")),
+}
+
+
+def context2_experiments(groups=CONTEXT2_GROUPS, label="14", out="experiments_context2.md", title="More context features"):
+    """Each feature group added to the linear models (and so LightGBM's compact set), or to LightGBM
+    only, in the full pipeline backtest."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        variants = {}
+        for name, (feats, targets) in groups.items():
+            sets = {t: LINEAR_FEATURES[t] + (feats if t in targets else []) for t in LINEAR_FEATURES}
+            variants[f"{label} {name} in linear (and LightGBM)"] = pipeline_backtest(df, LINEAR_FEATURES=sets)
+            variants[f"{label} {name} in LightGBM only"] = pipeline_backtest(df, LGB_COMPACT_EXTRA=LGB_COMPACT_EXTRA + feats)
+    finally:
+        builtins.print = quiet
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    for name, preds in variants.items():
+        compare_pipelines(name, test, preds, base, models=("ensemble",))
+    res = pd.DataFrame(RESULTS)
+    lines = [f"- **{n}:** " + ", ".join(f"`{f}`" for f in fs) + f" (linear: {', '.join(ts)})"
+             for n, (fs, ts) in groups.items()]
+    report = [f"# {title} (2023–2025 backtest)", "",
+              "Each group is added to the linear models for the listed targets (which also puts it in "
+              "LightGBM's compact set), or to LightGBM only, and run through the full pipeline backtest. "
+              "Results are for the main ensembles. `diff` is new minus current (negative = better), with a "
+              "paired bootstrap 95% interval.", "", *lines, "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / out).write_text("\n".join(report), encoding="utf-8")
+    print(f"wrote reports/{out}")
+
+
+LADDER_GROUPS = {
+    "ladder position and contention": (["diff_ladder_pos", "diff_out_of_contention"], ("home_win", "margin", "total")),
+}
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -926,8 +1037,12 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total"],
+    parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
+                                           "context2", "ladder"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
-     "reserve": reserve_experiments, "team_total": team_total_experiments}.get(args.only, main)()
+     "reserve": reserve_experiments, "team_total": team_total_experiments,
+     "weekly": weekly_experiments, "context2": context2_experiments,
+     "ladder": lambda: context2_experiments(LADDER_GROUPS, "15", "experiments_ladder.md",
+                                            "Ladder position and motivation")}.get(args.only, main)()

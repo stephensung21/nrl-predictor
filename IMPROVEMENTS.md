@@ -164,6 +164,11 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | GAM (splines) or Explainable Boosting Machine, alone or in the ensemble | no clear gain; relationships are essentially linear (item 20) |
 | Reserve-grade (NSW Cup / QLD Cup) ratings of newcomers, fantasy or plus-minus | margin −0.01 to −0.04, win ±0.001: too small to adopt (item 28) |
 | Team total rating for the totals model | total MAE −0.02 to +0.04, not clear (item 27) |
+| Weekly refitting of the models | win +0.001 to +0.002; worse from round 19 (item 24) |
+| Kickoff slot (night game, day of week) | linear models clearly worse on win (+0.004) (item 18) |
+| Travel distance and time-zone change | no clear effect (item 18) |
+| Origin representatives in the named 17 | no clear effect; overlaps team strength (item 18) |
+| Ladder position and out-of-contention flag | no clear effect; overlaps team strength (item 18) |
 
 ---
 
@@ -212,12 +217,22 @@ Each team's own home advantage as a separate feature added nothing beyond the te
 
 Each team's recent stats relative to what its opponents usually allow (and concede). A single adjusted net-points feature made no difference; the full adjusted block made margin clearly **worse** (+0.16 and +0.25 MAE). Form stats, adjusted or not, don't add to RAPM and Elo.
 
-### 18. More context features ⬜
+### 18. More context features 🔶 (four groups tested, none adopted)
 
-- **Ladder and motivation:** finals place already decided or out of reach, late-season dead rubbers. Known before kickoff, and possibly underweighted by the market.
+Tested in the full pipeline backtest (`python src/experiments.py --only context2` and `--only ladder`; `reports/experiments_context2.md`, `reports/experiments_ladder.md`), each group added to the linear models (and so LightGBM's compact set) or to LightGBM only. Results for the main ensembles, change against current:
+
+| Group | Features | Result |
+|---|---|---|
+| ❌ Kickoff slot | `night_game`, `kickoff_thursday`, `kickoff_friday`, `kickoff_sunday` (Sydney time) | in the linear models, **clearly worse** on win (+0.004); in LightGBM, no effect |
+| ❌ Travel | `diff_travel_km` (great-circle km from each team's base; Warriors' COVID bases handled), `diff_tz_change` | no clear effect; margin slightly worse in the linear models |
+| ❌ Origin representatives | `diff_origin_reps`: named players who played Origin in the last 12 months | no clear effect (margin −0.01 to −0.05) |
+| ❌ Ladder and motivation | `diff_ladder_pos` (before the round; 2 points a win or bye), `diff_out_of_contention` (can't reach 8th even winning out) | no clear effect (win ±0.0003, margin −0.01 to −0.03) |
+
+Origin representatives and ladder position are strongly related to margin on their own (correlations 0.29 and −0.31), but both just measure team strength, which Elo, RAPM and the team rating already capture. Kickoff slot and travel have little effect on NRL results. All these features stay computed in `features.csv` but aren't used by any model.
+
+Not yet tested:
 - **Combination continuity:** games the halves pairing and the spine have played together, not just how many changes there were.
 - **Workload and fatigue:** key players' minutes over the last 2–3 weeks, including Origin minutes.
-- **Kickoff slot and distance:** day or night, Thursday short weeks, and travel distance or time zone instead of an interstate flag.
 
 ### 19. Position-specific player ratings from stats ⬜
 
@@ -255,7 +270,7 @@ From a second pass over the pipeline (October 2026):
 
 - **`predict.py` for upcoming games.** The scraper only keeps finished matches and nothing builds features for unplayed fixtures, so the model can't currently be used. It needs to fetch the next round's fixtures and team lists, build features, and output probabilities, fair odds and edges against current prices.
 - **Two prediction snapshots:** a **Tuesday-list model** (built from Tuesday's announced squads) and a **final-17 model** (as now), each evaluated against prices from the same time. Includes scraping historical Tuesday team lists from nrl.com.
-- **Weekly refitting.** Ratings update weekly, but the model weights and calibration are fixed for the whole season. A weekly-refit backtest is cheap to test.
+- ❌ **Weekly refitting** (`python src/experiments.py --only weekly`, `reports/experiments_weekly.md`): each season's settings kept, but the models refitted before every round with that season's games so far. Main ensembles: win +0.001 to +0.002, margin about 0, total −0.02 to −0.03, none clear; **from round 19 it's worse** (with-odds win +0.006, clear). The calibration comes from complete earlier seasons, so in-season refits drift away from it. Not adopted. (`train.fit_predict_frames` now fits and predicts on any rows; results unchanged.)
 
 ### 25. Pipeline: engineering ⬜
 

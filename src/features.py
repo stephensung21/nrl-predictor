@@ -48,6 +48,7 @@ PLAYER_TEAM_FEATURES = [
     "missing_usual", "missing_usual_rating", "ins_forwards", "ins_backs", "ins_bench",
     "returning", "kicker_changed", "rapm_total", "rapm_vs_usual", "rapm_missing",
     "origin_backup", "origin_out", "rapm_attack", "rapm_defence", "reserve_newcomers", "reserve_rapm_newcomers",
+    "origin_reps",
 ]
 
 RESERVE_FILE = PROCESSED / "reserve_player_stats.csv"
@@ -55,6 +56,37 @@ RESERVE_NEWCOMER_GAMES = 10   # "newcomer": fewer NRL games than this before the
 RESERVE_MIN_MINUTES = 20      # reserve-grade games with less time on the field are too noisy to rate
 RESERVE_RAPM_HALF_LIFE_DAYS = 365  # reserve plus-minus: newcomers' history spans longer than a regular's
 RESERVE_INTERCHANGE_WEIGHT = 0.5   # an interchange newcomer counts half (they play about half the minutes)
+
+# Travel: city coordinates (lat, lon) for every venue city and team base, and time-zone offsets from
+# Sydney (standard time). Teams are based in their home city; the Warriors were based in Australia
+# during COVID (Central Coast 2020-21, Redcliffe until mid-2022).
+CITY_COORDS = {
+    "Sydney": (-33.87, 151.21), "Brisbane": (-27.47, 153.03), "Gold Coast": (-28.00, 153.43),
+    "Townsville": (-19.26, 146.82), "Newcastle": (-32.93, 151.78), "Canberra": (-35.28, 149.13),
+    "Melbourne": (-37.81, 144.96), "Penrith": (-33.75, 150.69), "Auckland": (-36.85, 174.76),
+    "Wollongong": (-34.42, 150.89), "Gosford": (-33.43, 151.34), "Redcliffe": (-27.23, 153.10),
+    "Sunshine Coast": (-26.65, 153.07), "Perth": (-31.95, 115.86), "Darwin": (-12.46, 130.84),
+    "Bathurst": (-33.42, 149.58), "Mackay": (-21.14, 149.19), "Las Vegas": (36.17, -115.14),
+    "Mudgee": (-32.59, 149.59), "Kogarah": (-33.96, 151.13), "Tamworth": (-31.09, 150.93),
+    "Coffs Harbour": (-30.30, 153.11), "Wagga Wagga": (-35.12, 147.37), "Rockhampton": (-23.38, 150.51),
+    "Bundaberg": (-24.87, 152.35), "Christchurch": (-43.53, 172.64), "Dubbo": (-32.25, 148.60),
+    "Wellington": (-41.29, 174.78), "Toowoomba": (-27.56, 151.95), "Napier": (-39.49, 176.91),
+    "Cairns": (-16.92, 145.77), "Hamilton": (-37.79, 175.28),
+}
+CITY_TZ = {"Perth": -2.0, "Darwin": -0.5, "Auckland": 2.0, "Christchurch": 2.0, "Wellington": 2.0,
+           "Napier": 2.0, "Hamilton": 2.0, "Las Vegas": -18.0}  # hours from Sydney; others 0
+TEAM_BASE = {
+    "Broncos": "Brisbane", "Raiders": "Canberra", "Bulldogs": "Sydney", "Sharks": "Sydney",
+    "Dolphins": "Redcliffe", "Titans": "Gold Coast", "Sea Eagles": "Sydney", "Storm": "Melbourne",
+    "Knights": "Newcastle", "Cowboys": "Townsville", "Eels": "Sydney", "Panthers": "Penrith",
+    "Rabbitohs": "Sydney", "Dragons": "Sydney", "Roosters": "Sydney", "Warriors": "Auckland",
+    "Wests Tigers": "Sydney",
+}
+WARRIORS_BASES = [(pd.Timestamp("2022-01-01", tz="UTC"), "Gosford"), (pd.Timestamp("2022-07-01", tz="UTC"), "Redcliffe")]
+ORIGIN_REP_DAYS = 365         # an "Origin representative" played Origin within this many days
+# Ladder: regular-season rounds per season (from the published draw) and the clubs in each season.
+REGULAR_ROUNDS = {2020: 20, 2021: 25, 2022: 25, 2023: 27, 2024: 27, 2025: 27, 2026: 27}
+FINALS_PLACES = 8
 
 SHORT_TURNAROUND_DAYS = 6   # under 6 days since the last game (e.g. Sunday -> Friday)
 BYE_GAP_DAYS = 11           # 11+ days since the last game in the same season: coming off a bye
@@ -75,7 +107,9 @@ FEATURE_GROUPS = {
     "elo": ["elo_logit", "team_margin", "team_total"],
     "form": [f"diff_form_{s}" for s in FORM_STATS],
     "context": ["diff_rest_days", "home_travel", "away_travel", "neutral", "away_at_ground", "is_final",
-                "diff_short_turnaround", "diff_after_bye", "origin_period", "wet_conditions"],
+                "diff_short_turnaround", "diff_after_bye", "origin_period", "wet_conditions",
+                "night_game", "kickoff_thursday", "kickoff_friday", "kickoff_sunday",
+                "diff_travel_km", "diff_tz_change", "diff_ladder_pos", "diff_out_of_contention"],
     "player": [f"diff_{f}" for f in PLAYER_TEAM_FEATURES] + ["rapm_points"],
     "odds": ["open_logit", "open_line", "open_total"],
 }
@@ -110,9 +144,37 @@ def team_long(matches, team_stats):
     long["short_turnaround"] = (gap < SHORT_TURNAROUND_DAYS).astype(int)
     same_season = long.groupby("team")["season"].shift(1) == long["season"]
     long["after_bye"] = (same_season & (gap >= BYE_GAP_DAYS)).astype(int)
-    venue_state = long["venue_city"].str.split(",").str[0].str.strip().map(CITY_STATE)
+    venue_city = long["venue_city"].str.split(",").str[0].str.strip()
+    venue_state = venue_city.map(CITY_STATE)
     long["travel"] = (venue_state != long["team"].map(TEAM_STATE)).astype(int)
+    base = [team_base(t, k) for t, k in zip(long["team"], long["start_time_utc"])]
+    long["travel_km"] = [distance_km(b, v) / 100 for b, v in zip(base, venue_city)]  # hundreds of km
+    long["tz_change"] = [tz_change(b, v) for b, v in zip(base, venue_city)]
     return long.reset_index(drop=True)
+
+
+def team_base(team, kickoff):
+    """The city a team is based in at the time (the Warriors were in Australia during COVID)."""
+    if team == "Warriors":
+        for until, city in WARRIORS_BASES:
+            if kickoff < until:
+                return city
+    return TEAM_BASE[team]
+
+
+def distance_km(a, b):
+    """Great-circle distance between two cities; 0 if either is unknown."""
+    if a not in CITY_COORDS or b not in CITY_COORDS:
+        return 0.0
+    (la1, lo1), (la2, lo2) = (np.radians(CITY_COORDS[a]), np.radians(CITY_COORDS[b]))
+    h = np.sin((la2 - la1) / 2) ** 2 + np.cos(la1) * np.cos(la2) * np.sin((lo2 - lo1) / 2) ** 2
+    return float(2 * 6371 * np.arcsin(np.sqrt(h)))
+
+
+def tz_change(a, b):
+    """Hours of time-zone change between two cities (the shorter way around the clock)."""
+    d = abs(CITY_TZ.get(a, 0.0) - CITY_TZ.get(b, 0.0)) % 24
+    return min(d, 24 - d)
 
 
 def add_team_form(long):
@@ -213,6 +275,7 @@ def lineup_changes(named, history, group_avgs, origin_by_player):
                    "kicker_changed": int(usual_kicker is not None and usual_kicker not in ids),
                    "returning": int((~lm["player_id"].isin(prev) & (lm["n_prior"] >= RETURNING_GAMES)).sum())}
             row["origin_backup"] = sum(in_origin(pid, kickoff - window, kickoff) for pid in ids)
+            row["origin_reps"] = sum(in_origin(pid, kickoff - pd.Timedelta(days=ORIGIN_REP_DAYS), kickoff) for pid in ids)
             row["origin_out"] = sum(in_origin(pid, kickoff - window, kickoff + window) for pid in missing)
             for grp in ("forwards", "backs", "bench"):
                 row[f"ins_{grp}"] = len(set(lm.loc[lm["pos_group"] == grp, "player_id"]) - prev)
@@ -544,6 +607,42 @@ def player_team_features(matches, players, origin, reserve=None):
     return team[["match_id", "team"] + PLAYER_TEAM_FEATURES]
 
 
+def ladder_features(m):
+    """Ladder position and finals contention before each regular-season round, from results of earlier
+    rounds only: 2 points a win, 1 a draw, 2 a bye (rounds without a game), ranked by points then points
+    difference. A team is out of contention when, winning every remaining round, it couldn't reach the
+    points of the team currently 8th. Finals games get 0 for both (ladder no longer matters)."""
+    rows = []
+    for season, g in m.sort_values("start_time_utc").groupby("season"):
+        teams = [t for t in TEAM_BASE if not (t == "Dolphins" and season < 2023)]
+        rounds = REGULAR_ROUNDS[season]
+        regular = g[~g["is_final"].astype(bool)]
+        for rnd, games in regular.groupby("round"):
+            start = games["start_time_utc"].min()
+            done = regular[(regular["start_time_utc"] < start) & regular["home_score"].notna()]
+            table = pd.DataFrame(0.0, index=teams, columns=["played", "points", "diff"])
+            for side, opp in (("home", "away"), ("away", "home")):
+                pf, pa = done[f"{side}_score"], done[f"{opp}_score"]
+                pts = np.where(pf > pa, 2, np.where(pf == pa, 1, 0))
+                agg = pd.DataFrame({"team": done[f"{side}_team"], "played": 1, "points": pts, "diff": pf - pa})
+                table = table.add(agg.groupby("team")[["played", "points", "diff"]].sum(), fill_value=0)
+            table = table.loc[teams]
+            byes = (rnd - 1) - table["played"]
+            table["points"] = table["points"] + 2 * byes.clip(lower=0)
+            order = table.sort_values(["points", "diff"], ascending=False, kind="stable")
+            pos = pd.Series(np.arange(1, len(order) + 1), index=order.index)
+            cutoff = order["points"].iloc[FINALS_PLACES - 1]
+            max_points = table["points"] + 2 * (rounds - (rnd - 1))
+            out = (max_points < cutoff).astype(int)
+            for r in games.itertuples():
+                rows.append({"match_id": r.match_id, "home_ladder_pos": pos[r.home_team], "away_ladder_pos": pos[r.away_team],
+                             "home_out_of_contention": out[r.home_team], "away_out_of_contention": out[r.away_team]})
+    lad = pd.DataFrame(rows).set_index("match_id")
+    res = pd.DataFrame({"diff_ladder_pos": lad["home_ladder_pos"] - lad["away_ladder_pos"],
+                        "diff_out_of_contention": lad["home_out_of_contention"] - lad["away_out_of_contention"]})
+    return res.reindex(m["match_id"]).fillna(0).reset_index()
+
+
 def build_features(matches, team_stats, players, odds, origin, elo_params, reserve=None):
     matches = matches.copy()
     matches["start_time_utc"] = pd.to_datetime(matches["start_time_utc"], utc=True)
@@ -560,7 +659,8 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
     m = m.merge(team_total_ratings(odds), on="odds_id", how="left")
 
     long = add_team_form(team_long(m, team_stats))
-    side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel"] + [f"form_{s}" for s in FORM_STATS]
+    side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel", "travel_km", "tz_change"] \
+        + [f"form_{s}" for s in FORM_STATS]
     long = long.merge(player_team_features(m, players, origin, reserve), on=["match_id", "team"], how="left")
     side_cols += PLAYER_TEAM_FEATURES
 
@@ -568,7 +668,8 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
         part = long[long["is_home"] == is_home][["match_id"] + side_cols]
         m = m.merge(part.rename(columns={c: f"{side}_{c}" for c in side_cols}), on="match_id", how="left")
 
-    diff_cols = ["rest_days", "short_turnaround", "after_bye"] + [f"form_{s}" for s in FORM_STATS] + PLAYER_TEAM_FEATURES
+    diff_cols = ["rest_days", "short_turnaround", "after_bye", "travel_km", "tz_change"] \
+        + [f"form_{s}" for s in FORM_STATS] + PLAYER_TEAM_FEATURES
     m = pd.concat([m, pd.DataFrame({f"diff_{c}": m[f"home_{c}"] - m[f"away_{c}"] for c in diff_cols})], axis=1)
     m["home_travel"] = m["home_travel"].astype(int)
     m["away_travel"] = m["away_travel"].astype(int)
@@ -581,6 +682,12 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
     m["origin_period"] = [int(any(abs(t - g) <= window for g in origin_games)) for t in m["start_time_utc"]]
     # Rain or a wet ground, as recorded on the day. Predictions are made just before kickoff, when
     # this is mostly known; rain that only starts during the game is the remaining risk.
+    m = m.merge(ladder_features(m), on="match_id", how="left")
+    # Kickoff slot in Sydney time (Saturday is the baseline; Monday/Tuesday games are rare).
+    local = m["start_time_utc"].dt.tz_convert("Australia/Sydney")
+    m["night_game"] = (local.dt.hour >= 18).astype(int)
+    for day in ("Thursday", "Friday", "Sunday"):
+        m[f"kickoff_{day.lower()}"] = (local.dt.day_name() == day).astype(int)
     m["wet_conditions"] = (m["ground_conditions"].isin(WET_GROUNDS)
                            | m["weather"].fillna("").str.contains("Rain|Showers")).astype(int)
     # Expected points of the match relative to average, from both teams' attack and defence ratings.

@@ -265,7 +265,13 @@ def fit_predict(df, last_train, test_season, cfg):
     """
     train = df[df["season"] <= last_train]
     test = df[df["season"] == test_season]
-    calib_seasons = list(range(FIRST_SEASON + 1, last_train + 1))
+    return fit_predict_frames(train, test, cfg, list(range(FIRST_SEASON + 1, last_train + 1)))
+
+
+def fit_predict_frames(train, test, cfg, calib_seasons):
+    """fit_predict on explicit training and test rows. Calibration uses walk-forward out-of-fold
+    predictions over calib_seasons (complete seasons only), so training rows from the test season's
+    earlier rounds (weekly refitting) are used for fitting but not for calibration."""
     preds, fitted = pd.DataFrame(index=test.index), {}
 
     for variant, fs in cfg["feature_sets"].items():
