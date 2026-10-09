@@ -20,10 +20,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from elo import load_params  # noqa: E402
-from features import FEATURE_GROUPS, FORM_STATS, ORIGIN_WINDOW_DAYS, build_features, load_inputs  # noqa: E402
+from features import FORM_STATS, ORIGIN_WINDOW_DAYS, build_features, feature_columns, load_inputs  # noqa: E402
 from ingest import join_odds_to_matches  # noqa: E402
 
-FEATURES = [f for group in FEATURE_GROUPS.values() for f in group]
+FEATURES = feature_columns()  # the core features (experimental ones too if features.EXPERIMENTAL is set)
 # Player columns only known after the match. The line-up must come from the named 17, so even
 # who got minutes is scrambled.
 PLAYER_RESULT_COLS = ["fantasyPointsTotal", "minutesPlayed", "conversionAttempts"]

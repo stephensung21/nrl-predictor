@@ -108,7 +108,7 @@ Player names are **not** used as features. With about 700 players and about 800 
 ```
 python src/scrape.py          # refresh nrl.com data (cached)
 python src/elo.py             # optional: re-tune Elo settings (features.py does this if none are saved)
-python src/features.py        # odds join + Elo + features
+python src/features.py        # odds join + Elo + features (add --experimental for the tested-but-unused ones)
 python src/train.py           # cross-validation, tuning, dev 2025 report -> reports/
 python src/train.py --backtest  # 2023-2025 backtest -> reports/backtest.md (main yardstick)
 python src/betting.py         # betting simulation on the backtest predictions -> reports/betting.md

@@ -5,8 +5,15 @@ Every feature for a match uses only information from earlier matches, plus thing
 before kickoff (the published draw, the final team list, opening odds). Team features are
 expressed as home minus away differences.
 
-Usage: python src/features.py   ->  data/processed/features.csv
+Usage:
+    python src/features.py                  ->  data/processed/features.csv (the features the models use,
+                                                plus the original base features)
+    python src/features.py --experimental   ->  also the tested-but-unused features, for rerunning
+                                                those experiments (slower: the reserve-grade plus-minus
+                                                alone takes over a minute)
 """
+
+import argparse
 
 from collections import Counter, defaultdict, deque
 from pathlib import Path
@@ -47,11 +54,33 @@ PLAYER_TEAM_FEATURES = [
     "spine_vs_usual", "spine_changes", "halfback_changed", "rookies",
     "missing_usual", "missing_usual_rating", "ins_forwards", "ins_backs", "ins_bench",
     "returning", "kicker_changed", "rapm_total", "rapm_vs_usual", "rapm_missing",
-    "origin_backup", "origin_out", "rapm_attack", "rapm_defence", "reserve_newcomers", "reserve_rapm_newcomers",
-    "origin_reps", "stars_named", "stars_out", "rapm_stars_named", "rapm_stars_out",
-    "missq_fullback", "missq_halfback", "missq_five_eighth", "missq_hooker", "key_absence", "key_star_out",
-    "impact_out", "origin_stars_out_spine", "origin_stars_out_other", "s2_stars_out_spine", "s2_stars_out_other",
+    "origin_backup", "origin_out", "rapm_attack", "rapm_defence", "s2_stars_out_spine", "s2_stars_out_other",
 ]
+
+# Tested but not used by any model (see IMPROVEMENTS.md): only built with --experimental, so the
+# default build (and the leakage test, which rebuilds it) stays fast.
+EXPERIMENTAL = False
+EXPERIMENTAL_TEAM_FEATURES = [
+    "reserve_newcomers", "reserve_rapm_newcomers", "origin_reps", "stars_named", "stars_out",
+    "rapm_stars_named", "rapm_stars_out", "missq_fullback", "missq_halfback", "missq_five_eighth",
+    "missq_hooker", "key_absence", "key_star_out", "impact_out", "origin_stars_out_spine", "origin_stars_out_other",
+]
+EXPERIMENTAL_MATCH_FEATURES = [
+    "team_total", "night_game", "kickoff_thursday", "kickoff_friday", "kickoff_sunday",
+    "diff_travel_km", "diff_tz_change", "diff_ladder_pos", "diff_out_of_contention",
+]
+
+
+def team_features():
+    """Per-team features built this run (home minus away versions become diff_*)."""
+    return PLAYER_TEAM_FEATURES + (EXPERIMENTAL_TEAM_FEATURES if EXPERIMENTAL else [])
+
+
+def feature_columns():
+    """Every feature column in features.csv this run (the core groups, plus the experimental ones
+    with --experimental). Used by the leakage test."""
+    groups = [g for name, g in FEATURE_GROUPS.items() if name != "experimental" or EXPERIMENTAL]
+    return list(dict.fromkeys(f for g in groups for f in g))
 
 # Origin-based stars (general, no names): a player picked in an Origin 17 within the previous
 # ORIGIN_REP_DAYS. S1 counts the team's usual players (named in USUAL_MIN of its last USUAL_WINDOW
@@ -143,17 +172,16 @@ TEAM_HFA_PENALTY = 30.0           # shrinkage of each team's own home advantage 
 TEAM_STRENGTH_PENALTY = 1.0       # light ridge penalty on team strengths
 
 FEATURE_GROUPS = {
-    "elo": ["elo_logit", "team_margin", "team_total"],
+    "elo": ["elo_logit", "team_margin"],
     "form": [f"diff_form_{s}" for s in FORM_STATS],
     "context": ["diff_rest_days", "home_travel", "away_travel", "neutral", "away_at_ground", "is_final",
-                "diff_short_turnaround", "diff_after_bye", "origin_period", "wet_conditions",
-                "night_game", "kickoff_thursday", "kickoff_friday", "kickoff_sunday",
-                "diff_travel_km", "diff_tz_change", "diff_ladder_pos", "diff_out_of_contention"],
+                "diff_short_turnaround", "diff_after_bye", "origin_period", "wet_conditions"],
     "player": [f"diff_{f}" for f in PLAYER_TEAM_FEATURES] + ["rapm_points"],
     # Opening prices come from bet365 until April 2024 and BlueBet after, which open differently
     # (bet365 under-confident, BlueBet over-confident), so the with-odds models also get a BlueBet
     # indicator and the opening log-odds x BlueBet.
     "odds": ["open_logit", "open_line", "open_total", "bluebet", "open_logit_bluebet"],
+    "experimental": [f"diff_{f}" for f in EXPERIMENTAL_TEAM_FEATURES] + EXPERIMENTAL_MATCH_FEATURES,
 }
 
 WET_GROUNDS = {"Slippery", "Wet", "Heavy", "Muddy"}
@@ -189,9 +217,10 @@ def team_long(matches, team_stats):
     venue_city = long["venue_city"].str.split(",").str[0].str.strip()
     venue_state = venue_city.map(CITY_STATE)
     long["travel"] = (venue_state != long["team"].map(TEAM_STATE)).astype(int)
-    base = [team_base(t, k) for t, k in zip(long["team"], long["start_time_utc"])]
-    long["travel_km"] = [distance_km(b, v) / 100 for b, v in zip(base, venue_city)]  # hundreds of km
-    long["tz_change"] = [tz_change(b, v) for b, v in zip(base, venue_city)]
+    if EXPERIMENTAL:
+        base = [team_base(t, k) for t, k in zip(long["team"], long["start_time_utc"])]
+        long["travel_km"] = [distance_km(b, v) / 100 for b, v in zip(base, venue_city)]  # hundreds of km
+        long["tz_change"] = [tz_change(b, v) for b, v in zip(base, venue_city)]
     return long.reset_index(drop=True)
 
 
@@ -806,10 +835,11 @@ def player_team_features(matches, players, origin, reserve=None):
     team["halfback_id"] = named[named["position"] == "Halfback"].groupby(["match_id", "team"])["player_id"].first()
     team = team.join(lineup_changes(named, history, group_avgs, origin_squads(origin)))
     team = team.join(rapm_features(matches, p))
-    team["reserve_newcomers"] = reserve_newcomers(named, reserve)
-    team["reserve_rapm_newcomers"] = reserve_rapm_newcomers(matches, named, reserve)
-    team = team.join(star_features(matches, p, origin_squads(origin))).join(key_position_absences(matches, p))
-    team = team.join(impact_features(matches, p))
+    team = team.join(star_features(matches, p, origin_squads(origin)))  # includes the adopted S2 star absences
+    if EXPERIMENTAL:
+        team["reserve_newcomers"] = reserve_newcomers(named, reserve)
+        team["reserve_rapm_newcomers"] = reserve_rapm_newcomers(matches, named, reserve)
+        team = team.join(key_position_absences(matches, p)).join(impact_features(matches, p))
     team = team.reset_index().merge(matches[["match_id", "start_time_utc"]], on="match_id")
     team = team.sort_values(["start_time_utc", "match_id"]).reset_index(drop=True)
 
@@ -823,7 +853,7 @@ def player_team_features(matches, players, origin, reserve=None):
     ]
     prev_hb = g["halfback_id"].shift(1)
     team["halfback_changed"] = (prev_hb.notna() & (team["halfback_id"] != prev_hb)).astype(int)
-    return team[["match_id", "team"] + PLAYER_TEAM_FEATURES]
+    return team[["match_id", "team"] + team_features()]
 
 
 def ladder_features(m):
@@ -875,20 +905,22 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
                  "p_avg", "data_issue"]
     m = m.merge(odds[odds_cols], on="odds_id", how="left")
     m = m.merge(team_ratings(odds)[["odds_id", "team_margin"]], on="odds_id", how="left")
-    m = m.merge(team_total_ratings(odds), on="odds_id", how="left")
+    if EXPERIMENTAL:
+        m = m.merge(team_total_ratings(odds), on="odds_id", how="left")
 
     long = add_team_form(team_long(m, team_stats))
-    side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel", "travel_km", "tz_change"] \
+    travel_cols = ["travel_km", "tz_change"] if EXPERIMENTAL else []
+    side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel"] + travel_cols \
         + [f"form_{s}" for s in FORM_STATS]
     long = long.merge(player_team_features(m, players, origin, reserve), on=["match_id", "team"], how="left")
-    side_cols += PLAYER_TEAM_FEATURES
+    side_cols += team_features()
 
     for side, is_home in (("home", True), ("away", False)):
         part = long[long["is_home"] == is_home][["match_id"] + side_cols]
         m = m.merge(part.rename(columns={c: f"{side}_{c}" for c in side_cols}), on="match_id", how="left")
 
-    diff_cols = ["rest_days", "short_turnaround", "after_bye", "travel_km", "tz_change"] \
-        + [f"form_{s}" for s in FORM_STATS] + PLAYER_TEAM_FEATURES
+    diff_cols = ["rest_days", "short_turnaround", "after_bye"] + travel_cols \
+        + [f"form_{s}" for s in FORM_STATS] + team_features()
     m = pd.concat([m, pd.DataFrame({f"diff_{c}": m[f"home_{c}"] - m[f"away_{c}"] for c in diff_cols})], axis=1)
     m["home_travel"] = m["home_travel"].astype(int)
     m["away_travel"] = m["away_travel"].astype(int)
@@ -901,12 +933,13 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
     m["origin_period"] = [int(any(abs(t - g) <= window for g in origin_games)) for t in m["start_time_utc"]]
     # Rain or a wet ground, as recorded on the day. Predictions are made just before kickoff, when
     # this is mostly known; rain that only starts during the game is the remaining risk.
-    m = m.merge(ladder_features(m), on="match_id", how="left")
-    # Kickoff slot in Sydney time (Saturday is the baseline; Monday/Tuesday games are rare).
-    local = m["start_time_utc"].dt.tz_convert("Australia/Sydney")
-    m["night_game"] = (local.dt.hour >= 18).astype(int)
-    for day in ("Thursday", "Friday", "Sunday"):
-        m[f"kickoff_{day.lower()}"] = (local.dt.day_name() == day).astype(int)
+    if EXPERIMENTAL:
+        m = m.merge(ladder_features(m), on="match_id", how="left")
+        # Kickoff slot in Sydney time (Saturday is the baseline; Monday/Tuesday games are rare).
+        local = m["start_time_utc"].dt.tz_convert("Australia/Sydney")
+        m["night_game"] = (local.dt.hour >= 18).astype(int)
+        for day in ("Thursday", "Friday", "Sunday"):
+            m[f"kickoff_{day.lower()}"] = (local.dt.day_name() == day).astype(int)
     m["wet_conditions"] = (m["ground_conditions"].isin(WET_GROUNDS)
                            | m["weather"].fillna("").str.contains("Rain|Showers")).astype(int)
     # Expected points of the match relative to average, from both teams' attack and defence ratings.
@@ -926,8 +959,7 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
             "venue", "home_score", "away_score", "margin", "total", "home_win", "is_draw", "min_hist",
             "elo_prob", "bookmaker", "p_open", "p_close", "close_ok", "p_avg", "close_line", "close_total",
             "data_issue"]
-    feats = [f for group in FEATURE_GROUPS.values() for f in group]
-    return m[keep + [f for f in feats if f not in keep]].sort_values("start_time_utc").reset_index(drop=True)
+    return m[keep + [f for f in feature_columns() if f not in keep]].sort_values("start_time_utc").reset_index(drop=True)
 
 
 def repair_scraped_games(matches, team_stats, players, odds):
@@ -994,10 +1026,13 @@ def load_reserve():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--experimental", action="store_true", help="also build the tested-but-unused features")
+    EXPERIMENTAL = parser.parse_args().experimental
     matches, team_stats, players, odds, origin, reserve = load_inputs()
     feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds), reserve=reserve)
     feats.to_csv(PROCESSED / "features.csv", index=False)
     print(f"wrote features.csv: {feats.shape}")
     usable = feats[(feats["min_hist"] >= MIN_HISTORY) & ~feats["is_draw"]]
     print("usable games per season:", usable.groupby("season").size().to_dict())
-    print(usable[[f for g in FEATURE_GROUPS.values() for f in g]].describe().T[["mean", "std", "min", "max"]].round(2))
+    print(usable[feature_columns()].describe().T[["mean", "std", "min", "max"]].round(2))

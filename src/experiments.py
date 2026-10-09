@@ -148,6 +148,13 @@ def record(experiment, variant, target, test, new, base, note=""):
 
 # ---------------------------------------------------------------- data
 
+def require(df, columns):
+    """Experiments on the tested-but-unused features need them built first."""
+    missing = [c for c in columns if c not in df.columns]
+    if missing:
+        raise SystemExit(f"features.csv has no {missing[:3]}...: run `python src/features.py --experimental` first.")
+
+
 def load():
     df = models.load_data()
     return df[df["season"] <= max(BACKTEST_SEASONS)].reset_index(drop=True)
@@ -717,6 +724,7 @@ def reserve_experiments():
     warnings.filterwarnings("ignore")
     import builtins
     df = load()
+    require(df, [RESERVE_FEATURE, RESERVE_RAPM_FEATURE])
     test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
     bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
     quiet, builtins.print = builtins.print, (lambda *a, **k: None)  # develop() prints progress
@@ -766,6 +774,7 @@ def team_total_experiments():
     warnings.filterwarnings("ignore")
     import builtins
     df = load()
+    require(df, ["team_total"])
     test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
     bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
     quiet, builtins.print = builtins.print, (lambda *a, **k: None)
@@ -872,6 +881,7 @@ def context2_experiments(groups=CONTEXT2_GROUPS, label="14", out="experiments_co
     warnings.filterwarnings("ignore")
     import builtins
     df = load()
+    require(df, [f for feats, _ in groups.values() for f in feats])
     test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
     bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
     quiet, builtins.print = builtins.print, (lambda *a, **k: None)
