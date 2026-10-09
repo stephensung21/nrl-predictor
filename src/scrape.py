@@ -12,7 +12,9 @@ Usage (from the repo root):
     python src/scrape.py --years 2025 2026
     python src/scrape.py --build-only          # rebuild CSVs from cached raw JSON
 
-Raw JSON is cached in data/raw/nrl/<year>/, so reruns only fetch what's missing.
+Raw JSON is cached in data/raw/nrl/<year>/, so reruns only fetch what's missing. State of
+Origin games (who played, and when) are fetched the same way into data/raw/origin/<year>/,
+for the Origin-period context features.
 """
 
 import argparse
@@ -27,9 +29,11 @@ from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw" / "nrl"
+ORIGIN_DIR = ROOT / "data" / "raw" / "origin"
 OUT_DIR = ROOT / "data" / "processed"
 
 COMPETITION_ID = 111  # NRL Telstra Premiership
+ORIGIN_COMPETITION_ID = 116  # State of Origin (all three games are listed on one draw page)
 MAX_ROUNDS = 35       # regular season + finals; empty rounds are skipped
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 DELAY = 0.5           # seconds between requests, to be polite to nrl.com
@@ -89,6 +93,51 @@ def fetch_season(year):
         path.write_text(json.dumps(data["match"]), encoding="utf-8")
         if i % 25 == 0:
             print(f"  {year}: {i}/{len(fixtures)}")
+
+
+def fetch_origin(year):
+    """Cache each completed State of Origin game for a season."""
+    year_dir = ORIGIN_DIR / str(year)
+    year_dir.mkdir(parents=True, exist_ok=True)
+    url = f"https://www.nrl.com/draw/?competition={ORIGIN_COMPETITION_ID}&round=1&season={year}"
+    data = get_q_data(url, "vue-draw")
+    time.sleep(DELAY)
+    games = [f for f in (data or {}).get("fixtures", []) if f.get("type") == "Match" and f.get("matchMode") == "Post"]
+    print(f"{year}: {len(games)} Origin games")
+    for fx in games:
+        # The URL says game-1 in most years but round-1 in 2025; cache as game-<n>.json either way.
+        game_no = re.sub(r"\D", "", fx["matchCentreUrl"].strip("/").split("/")[-2])
+        path = year_dir / f"game-{game_no}.json"
+        if path.exists():
+            continue
+        match = get_q_data(f"https://www.nrl.com{fx['matchCentreUrl']}", "vue-match-centre")
+        time.sleep(DELAY)
+        if match and "match" in match:
+            path.write_text(json.dumps(match["match"]), encoding="utf-8")
+        else:
+            print(f"  no match data: {fx['matchCentreUrl']}")
+
+
+def build_origin_table(years):
+    """One row per player per Origin game: who played, for which state, and when."""
+    rows = []
+    for year in years:
+        for path in sorted((ORIGIN_DIR / str(year)).glob("game-*.json")):
+            m = json.loads(path.read_text(encoding="utf-8"))
+            for side in ("home", "away"):
+                team = m[f"{side}Team"]
+                names = {p["playerId"]: p for p in team.get("players", [])}
+                for ps in m.get("stats", {}).get("players", {}).get(f"{side}Team", []):
+                    info = names.get(ps["playerId"], {})
+                    rows.append({
+                        "season": year, "game": path.stem, "start_time_utc": m.get("startTime"),
+                        "state": team["nickName"], "player_id": ps["playerId"],
+                        "player_name": f"{info.get('firstName', '')} {info.get('lastName', '')}".strip(),
+                        "position": info.get("position"), "minutesPlayed": ps.get("minutesPlayed"),
+                    })
+    df = pd.DataFrame(rows).sort_values(["start_time_utc", "state", "player_id"])
+    df.to_csv(OUT_DIR / "origin_players.csv", index=False)
+    print(f"wrote origin_players.csv: {len(df)} rows")
 
 
 def snake(title):
@@ -188,7 +237,9 @@ def main():
     if not args.build_only:
         for year in args.years:
             fetch_season(year)
+            fetch_origin(year)
     build_tables(args.years)
+    build_origin_table(args.years)
 
 
 if __name__ == "__main__":

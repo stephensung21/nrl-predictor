@@ -1,72 +1,118 @@
 {
   "feature_sets": {
-    "B": [
-      "elo_logit",
-      "diff_form_points_for",
-      "diff_form_points_against",
-      "diff_form_completion_rate",
-      "diff_form_possession_pct",
-      "diff_form_all_run_metres",
-      "diff_form_post_contact_metres",
-      "diff_form_line_breaks",
-      "diff_form_tackle_breaks",
-      "diff_form_errors",
-      "diff_form_penalties_conceded",
-      "diff_form_missed_tackles",
-      "diff_rest_days",
-      "home_travel",
-      "away_travel",
-      "neutral",
-      "away_at_ground",
-      "is_final",
-      "diff_rating_total",
-      "diff_rating_spine",
-      "diff_rating_forwards",
-      "diff_rating_backs",
-      "diff_rating_bench",
-      "diff_spine_vs_usual",
-      "diff_spine_changes",
-      "diff_halfback_changed",
-      "diff_rookies"
-    ],
-    "A": [
-      "elo_logit",
-      "diff_form_points_for",
-      "diff_form_points_against",
-      "diff_form_completion_rate",
-      "diff_form_possession_pct",
-      "diff_form_all_run_metres",
-      "diff_form_post_contact_metres",
-      "diff_form_line_breaks",
-      "diff_form_tackle_breaks",
-      "diff_form_errors",
-      "diff_form_penalties_conceded",
-      "diff_form_missed_tackles",
-      "diff_rest_days",
-      "home_travel",
-      "away_travel",
-      "neutral",
-      "away_at_ground",
-      "is_final",
-      "diff_rating_total",
-      "diff_rating_spine",
-      "diff_rating_forwards",
-      "diff_rating_backs",
-      "diff_rating_bench",
-      "diff_spine_vs_usual",
-      "diff_spine_changes",
-      "diff_halfback_changed",
-      "diff_rookies",
-      "open_logit",
-      "open_line",
-      "open_total"
-    ]
+    "B": {
+      "linear": [
+        "diff_rapm_total",
+        "elo_logit",
+        "diff_rookies"
+      ],
+      "lightgbm": [
+        "elo_logit",
+        "diff_form_points_for",
+        "diff_form_points_against",
+        "diff_form_completion_rate",
+        "diff_form_possession_pct",
+        "diff_form_all_run_metres",
+        "diff_form_post_contact_metres",
+        "diff_form_line_breaks",
+        "diff_form_tackle_breaks",
+        "diff_form_errors",
+        "diff_form_penalties_conceded",
+        "diff_form_missed_tackles",
+        "diff_rest_days",
+        "home_travel",
+        "away_travel",
+        "neutral",
+        "away_at_ground",
+        "is_final",
+        "diff_short_turnaround",
+        "diff_after_bye",
+        "origin_period",
+        "diff_rating_total",
+        "diff_rating_spine",
+        "diff_rating_forwards",
+        "diff_rating_backs",
+        "diff_rating_bench",
+        "diff_spine_vs_usual",
+        "diff_spine_changes",
+        "diff_halfback_changed",
+        "diff_rookies",
+        "diff_missing_usual",
+        "diff_missing_usual_rating",
+        "diff_ins_forwards",
+        "diff_ins_backs",
+        "diff_ins_bench",
+        "diff_returning",
+        "diff_kicker_changed",
+        "diff_rapm_total",
+        "diff_rapm_vs_usual",
+        "diff_rapm_missing",
+        "diff_origin_backup",
+        "diff_origin_out"
+      ]
+    },
+    "A": {
+      "linear": [
+        "diff_rapm_total",
+        "elo_logit",
+        "diff_rookies",
+        "open_logit",
+        "open_line",
+        "open_total"
+      ],
+      "lightgbm": [
+        "elo_logit",
+        "diff_form_points_for",
+        "diff_form_points_against",
+        "diff_form_completion_rate",
+        "diff_form_possession_pct",
+        "diff_form_all_run_metres",
+        "diff_form_post_contact_metres",
+        "diff_form_line_breaks",
+        "diff_form_tackle_breaks",
+        "diff_form_errors",
+        "diff_form_penalties_conceded",
+        "diff_form_missed_tackles",
+        "diff_rest_days",
+        "home_travel",
+        "away_travel",
+        "neutral",
+        "away_at_ground",
+        "is_final",
+        "diff_short_turnaround",
+        "diff_after_bye",
+        "origin_period",
+        "diff_rating_total",
+        "diff_rating_spine",
+        "diff_rating_forwards",
+        "diff_rating_backs",
+        "diff_rating_bench",
+        "diff_spine_vs_usual",
+        "diff_spine_changes",
+        "diff_halfback_changed",
+        "diff_rookies",
+        "diff_missing_usual",
+        "diff_missing_usual_rating",
+        "diff_ins_forwards",
+        "diff_ins_backs",
+        "diff_ins_bench",
+        "diff_returning",
+        "diff_kicker_changed",
+        "diff_rapm_total",
+        "diff_rapm_vs_usual",
+        "diff_rapm_missing",
+        "diff_origin_backup",
+        "diff_origin_out",
+        "open_logit",
+        "open_line",
+        "open_total"
+      ]
+    }
   },
-  "player_features": true,
   "models": {
     "B": {
       "home_win": {
-        "linear": 0.03162277660168379,
+        "linear": 0.1,
         "lgb": {
           "objective": "binary",
           "metric": "binary_logloss",
@@ -76,17 +122,17 @@
           "seed": 0,
           "verbosity": -1,
           "max_depth": 2,
-          "num_leaves": 7,
-          "min_child_samples": 39,
-          "learning_rate": 0.09383057846553626,
-          "lambda_l2": 0.0025872327652343196,
-          "feature_fraction": 0.9753258038628664,
-          "bagging_fraction": 0.5488242711256089
+          "num_leaves": 8,
+          "min_child_samples": 35,
+          "learning_rate": 0.08848110501391847,
+          "lambda_l2": 0.00855316631743377,
+          "feature_fraction": 0.5229842348942733,
+          "bagging_fraction": 0.5734927896263379
         },
-        "lgb_rounds": 23
+        "lgb_rounds": 32
       },
       "margin": {
-        "linear": 100.0,
+        "linear": 31.622776601683793,
         "lgb": {
           "objective": "regression",
           "metric": "l1",
@@ -96,14 +142,14 @@
           "seed": 0,
           "verbosity": -1,
           "max_depth": 2,
-          "num_leaves": 5,
-          "min_child_samples": 37,
-          "learning_rate": 0.04617849455323986,
-          "lambda_l2": 0.23276515790902264,
-          "feature_fraction": 0.6535846186159155,
-          "bagging_fraction": 0.5524539890309779
+          "num_leaves": 10,
+          "min_child_samples": 43,
+          "learning_rate": 0.07604741408093688,
+          "lambda_l2": 0.0013665826659149621,
+          "feature_fraction": 0.651994415127198,
+          "bagging_fraction": 0.7321901183933993
         },
-        "lgb_rounds": 43
+        "lgb_rounds": 32
       },
       "total": {
         "linear": 10000.0,
@@ -115,15 +161,15 @@
           "deterministic": true,
           "seed": 0,
           "verbosity": -1,
-          "max_depth": 4,
-          "num_leaves": 11,
-          "min_child_samples": 10,
-          "learning_rate": 0.08878908783869724,
-          "lambda_l2": 0.6377033805278937,
-          "feature_fraction": 0.5666180050563653,
-          "bagging_fraction": 0.5321198410799325
+          "max_depth": 3,
+          "num_leaves": 13,
+          "min_child_samples": 20,
+          "learning_rate": 0.07727621829471785,
+          "lambda_l2": 0.2189160177891891,
+          "feature_fraction": 0.5544760288700299,
+          "bagging_fraction": 0.5881642161886383
         },
-        "lgb_rounds": 5
+        "lgb_rounds": 8
       }
     },
     "A": {
@@ -145,10 +191,10 @@
           "feature_fraction": 0.5253260536569009,
           "bagging_fraction": 0.5806547589424982
         },
-        "lgb_rounds": 25
+        "lgb_rounds": 27
       },
       "margin": {
-        "linear": 316.22776601683796,
+        "linear": 100.0,
         "lgb": {
           "objective": "regression",
           "metric": "l1",
@@ -158,17 +204,17 @@
           "seed": 0,
           "verbosity": -1,
           "max_depth": 2,
-          "num_leaves": 5,
-          "min_child_samples": 34,
-          "learning_rate": 0.06174872797683136,
-          "lambda_l2": 0.0018662684889491873,
-          "feature_fraction": 0.9976178860431419,
-          "bagging_fraction": 0.542528327142586
+          "num_leaves": 4,
+          "min_child_samples": 24,
+          "learning_rate": 0.08543276693653279,
+          "lambda_l2": 0.0015693536590262638,
+          "feature_fraction": 0.5147566383265683,
+          "bagging_fraction": 0.5472766852588167
         },
-        "lgb_rounds": 31
+        "lgb_rounds": 25
       },
       "total": {
-        "linear": 1000.0,
+        "linear": 31.622776601683793,
         "lgb": {
           "objective": "regression",
           "metric": "l1",
@@ -178,14 +224,14 @@
           "seed": 0,
           "verbosity": -1,
           "max_depth": 3,
-          "num_leaves": 8,
-          "min_child_samples": 14,
-          "learning_rate": 0.07260759401337481,
-          "lambda_l2": 0.5666347973109822,
-          "feature_fraction": 0.8849045446169377,
-          "bagging_fraction": 0.592681626455929
+          "num_leaves": 5,
+          "min_child_samples": 19,
+          "learning_rate": 0.06315405985820992,
+          "lambda_l2": 0.012927285927937683,
+          "feature_fraction": 0.9019508270629016,
+          "bagging_fraction": 0.5355104309667564
         },
-        "lgb_rounds": 6
+        "lgb_rounds": 41
       }
     }
   }

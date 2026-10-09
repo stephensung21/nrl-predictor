@@ -41,6 +41,7 @@ C_GRID = np.logspace(-3, 1, 9)        # logistic regression
 ALPHA_GRID = np.logspace(-1, 4, 11)   # ridge
 N_TRIALS = 60                         # Optuna trials per LightGBM model
 SEED = 0
+MIN_GAIN = 0.001                      # forward selection: minimum pooled CV log-loss gain to add a feature
 
 BASE = FEATURE_GROUPS["elo"] + FEATURE_GROUPS["form"] + FEATURE_GROUPS["context"]
 FEATURE_SETS = {
@@ -94,6 +95,52 @@ def cv_linear(df, feats, target, reg, seasons=CV_SEASONS):
 def tune_linear(df, feats, target):
     grid = C_GRID if TARGETS[target] == "clf" else ALPHA_GRID
     return float(min((cv_linear(df, feats, target, g)[0], g) for g in grid)[1])
+
+
+def season_scores(df, oof, target):
+    """Out-of-fold score in each walk-forward test season."""
+    kind, done = TARGETS[target], oof.notna()
+    return df[done].groupby("season").apply(lambda g: score(g[target], oof[g.index], kind))
+
+
+def base_rate_oof(df, target, seasons=CV_SEASONS):
+    """Out-of-fold predictions of the training mean: the score of a model with no features."""
+    oof = pd.Series(np.nan, index=df.index)
+    for tr, te in walk_forward(df, seasons):
+        oof[te] = df.loc[tr, target].mean()
+    return oof
+
+
+def forward_select(df, pool, target="home_win"):
+    """Greedy forward selection for the linear model on walk-forward CV.
+
+    A feature is only eligible if adding it (with C / alpha re-tuned) improves the score in
+    every CV season, not just the pooled score; of those, the best pooled one is added if it
+    gains at least MIN_GAIN. This guards against features that fit one season's noise.
+    Returns the chosen features and a trace of each step.
+    """
+    oof = base_rate_oof(df, target)
+    done = oof.notna()
+    best, best_seasons = score(df.loc[done, target], oof[done], TARGETS[target]), season_scores(df, oof, target)
+    chosen, trace = [], []
+    while len(chosen) < len(pool):
+        cands = []
+        for f in pool:
+            if f in chosen:
+                continue
+            reg = tune_linear(df, chosen + [f], target)
+            pooled, oof = cv_linear(df, chosen + [f], target, reg)
+            seasons = season_scores(df, oof, target)
+            if (seasons < best_seasons).all():
+                cands.append((pooled, f, seasons))
+        if not cands or min(cands, key=lambda c: c[0])[0] > best - MIN_GAIN:
+            break
+        best, f, best_seasons = min(cands, key=lambda c: c[0])
+        chosen.append(f)
+        trace.append({"step": len(chosen), "feature": f, "cv_log_loss": best,
+                      **{f"cv_{s}": v for s, v in best_seasons.items()}})
+        print(f"  + {f:32s} CV {best:.4f}")
+    return chosen, pd.DataFrame(trace).set_index("step")
 
 
 # ---------------------------------------------------------------- LightGBM
@@ -169,23 +216,24 @@ def fit_predict(df, last_train, test_season, cfg):
     calib_seasons = list(range(FIRST_SEASON + 1, last_train + 1))
     preds, fitted = pd.DataFrame(index=test.index), {}
 
-    for variant, feats in cfg["feature_sets"].items():
+    for variant, fs in cfg["feature_sets"].items():
+        lin_feats, gbm_feats = fs["linear"], fs["lightgbm"]
         for target, kind in TARGETS.items():
             mc = cfg["models"][variant][target]
-            lin = linear(kind, mc["linear"]).fit(train[feats], train[target])
-            gbm = lgb.train(mc["lgb"], lgb.Dataset(train[feats], train[target]), num_boost_round=mc["lgb_rounds"])
-            p_lin = linear_predict(lin, test[feats], kind)
-            p_gbm = gbm.predict(test[feats])
+            lin = linear(kind, mc["linear"]).fit(train[lin_feats], train[target])
+            gbm = lgb.train(mc["lgb"], lgb.Dataset(train[gbm_feats], train[target]), num_boost_round=mc["lgb_rounds"])
+            p_lin = linear_predict(lin, test[lin_feats], kind)
+            p_gbm = gbm.predict(test[gbm_feats])
             if kind == "clf":
-                _, oof_lin = cv_linear(train, feats, target, mc["linear"], calib_seasons)
-                _, oof_gbm, _ = cv_lgb(train, feats, target, mc["lgb"], calib_seasons, n_rounds=mc["lgb_rounds"])
+                _, oof_lin = cv_linear(train, lin_feats, target, mc["linear"], calib_seasons)
+                _, oof_gbm, _ = cv_lgb(train, gbm_feats, target, mc["lgb"], calib_seasons, n_rounds=mc["lgb_rounds"])
                 done = oof_lin.notna()
                 p_lin = platt(oof_lin[done], train.loc[done, target])(p_lin)
                 p_gbm = platt(oof_gbm[done], train.loc[done, target])(p_gbm)
             preds[f"{variant}|linear|{target}"] = p_lin
             preds[f"{variant}|lightgbm|{target}"] = p_gbm
             preds[f"{variant}|ensemble|{target}"] = (p_lin + p_gbm) / 2
-            fitted[(variant, target)] = (lin, gbm, feats)
+            fitted[(variant, target)] = (lin, lin_feats, gbm, gbm_feats)
     return preds, fitted
 
 
@@ -234,14 +282,16 @@ def results_table(train, test, preds, closing):
 def importance(fitted, test):
     """Standardised linear coefficients and mean |SHAP| (LightGBM pred_contrib) on the test season."""
     out = []
-    for (variant, target), (lin, gbm, feats) in fitted.items():
+    for (variant, target), (lin, lin_feats, gbm, gbm_feats) in fitted.items():
         if target == "total":
             continue
-        coef = np.ravel(lin[-1].coef_)
-        shap = np.abs(gbm.predict(test[feats], pred_contrib=True)[:, :-1]).mean(axis=0)
-        out.append(pd.DataFrame({"variant": variant, "target": target, "feature": feats,
-                                 "linear_coef": coef, "lightgbm_mean_abs_shap": shap}))
-    return pd.concat(out, ignore_index=True)
+        coef = pd.Series(np.ravel(lin[-1].coef_), index=lin_feats, name="linear_coef")
+        shap = pd.Series(np.abs(gbm.predict(test[gbm_feats], pred_contrib=True)[:, :-1]).mean(axis=0),
+                         index=gbm_feats, name="lightgbm_mean_abs_shap")
+        both = pd.concat([coef, shap], axis=1).rename_axis("feature").reset_index()
+        out.append(both.assign(variant=variant, target=target))
+    cols = ["variant", "target", "feature", "linear_coef", "lightgbm_mean_abs_shap"]
+    return pd.concat(out, ignore_index=True)[cols]
 
 
 def md_table(df, floatfmt="{:.4f}"):
@@ -279,26 +329,35 @@ def run_dev():
                             "accuracy": accuracy_score(cv_df.loc[done, "home_win"], oof[done] > 0.5),
                             "margin_mae": cv_linear(cv_df, feats, "margin", alpha)[0]}
     comparison = pd.DataFrame(comparison).T.rename_axis("feature set")
-    use_player = comparison.loc["+player", "log_loss"] < comparison.loc["base", "log_loss"]
-    b_feats = FEATURE_SETS["+player" if use_player else "base"]
-    cfg = {"feature_sets": {"B": b_feats, "A": b_feats + FEATURE_GROUPS["odds"]},
-           "player_features": bool(use_player), "models": {}}
     report += ["## Feature sets (walk-forward CV 2022–2024, logistic / ridge)", "",
-               md_table(comparison), "",
-               f"Player features {'**help**' if use_player else '**do not help**'} on CV log loss, "
-               f"so Model B uses `{'base + player' if use_player else 'base'}` and Model A adds opening odds.", ""]
+               md_table(comparison), ""]
 
-    # 2. Tuning per variant and target.
+    # 2. Forward selection for the linear models; LightGBM keeps the full set.
+    print("forward selection (linear, home_win)...")
+    selected, trace = forward_select(cv_df, FEATURE_SETS["+player"])
+    full, odds = FEATURE_SETS["+player"], FEATURE_GROUPS["odds"]
+    cfg = {"feature_sets": {"B": {"linear": selected, "lightgbm": full},
+                            "A": {"linear": selected + odds, "lightgbm": full + odds}},
+           "models": {}}
+    report += ["## Forward feature selection (linear models)", "",
+               f"Greedy selection from the {len(full)} base + player features on walk-forward CV log loss, "
+               f"adding a feature only if it improves log loss in every CV season and the pooled score by at least "
+               f"{MIN_GAIN}. Model B's linear models use these "
+               f"{len(selected)} features and Model A adds the opening odds. LightGBM uses the full set.", "",
+               md_table(trace), ""]
+
+    # 3. Tuning per variant and target.
     cv_rows = {}
-    for variant, feats in cfg["feature_sets"].items():
+    for variant, fs in cfg["feature_sets"].items():
         cfg["models"][variant] = {}
         for target in TARGETS:
             print(f"tuning model {variant} / {target}...")
-            reg = tune_linear(cv_df, feats, target)
-            lgb_params, rounds = tune_lgb(cv_df, feats, target)
+            reg = tune_linear(cv_df, fs["linear"], target)
+            lgb_params, rounds = tune_lgb(cv_df, fs["lightgbm"], target)
             cfg["models"][variant][target] = {"linear": reg, "lgb": lgb_params, "lgb_rounds": rounds}
-            cv_rows[(variant, target, "linear")] = cv_linear(cv_df, feats, target, reg)[0]
-            cv_rows[(variant, target, "lightgbm")] = cv_lgb(cv_df, feats, target, lgb_params, n_rounds=rounds)[0]
+            cv_rows[(variant, target, "linear")] = cv_linear(cv_df, fs["linear"], target, reg)[0]
+            cv_rows[(variant, target, "lightgbm")] = cv_lgb(cv_df, fs["lightgbm"], target, lgb_params,
+                                                            n_rounds=rounds)[0]
     cv_table = pd.Series(cv_rows).unstack([1])
     cv_table.index = pd.Index([f"Model {v}: {m}" for v, m in cv_table.index], name="model")
     report += ["## Tuned models, walk-forward CV 2022–2024", "",
@@ -306,7 +365,7 @@ def run_dev():
                "number of trees here, so these scores are not inflated by early stopping.", "",
                md_table(cv_table), ""]
 
-    # 3. Dev season.
+    # 4. Dev season.
     print(f"fitting on {FIRST_SEASON}-{max(CV_SEASONS)}, evaluating {DEV_SEASON}...")
     preds, fitted = fit_predict(df, max(CV_SEASONS), DEV_SEASON, cfg)
     train, test = df[df["season"] <= max(CV_SEASONS)], df.loc[preds.index]
@@ -318,7 +377,7 @@ def run_dev():
                md_table(results), ""]
 
     imp = importance(fitted, test)
-    report += ["## Feature importance (`home_win`, Model B)", "",
+    report += ["## Feature importance (`home_win`, Model B; linear coefficients for selected features only)", "",
                md_table(imp[(imp["variant"] == "B") & (imp["target"] == "home_win")]
                         .drop(columns=["variant", "target"])
                         .sort_values("lightgbm_mean_abs_shap", ascending=False).set_index("feature")), ""]
@@ -326,6 +385,7 @@ def run_dev():
     REPORTS.mkdir(exist_ok=True)
     PARAMS_OUT.write_text(json.dumps(cfg, indent=2))
     comparison.to_csv(REPORTS / "cv_feature_sets.csv")
+    trace.to_csv(REPORTS / "cv_forward_selection.csv")
     imp.to_csv(REPORTS / f"importance_{DEV_SEASON}.csv", index=False)
     save_predictions(test, preds, REPORTS / f"predictions_{DEV_SEASON}.csv")
     (REPORTS / f"dev_{DEV_SEASON}.md").write_text("\n".join(report), encoding="utf-8")
