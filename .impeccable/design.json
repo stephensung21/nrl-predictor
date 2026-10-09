@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-10T00:00:00.000Z",
+  "generatedAt": "2026-10-10T12:00:00.000Z",
   "title": "Design System: rugbyleague-tipper",
   "extensions": {
     "colorMeta": {
@@ -218,7 +218,8 @@
           "oklch(0.7 0.15 28)",
           "oklch(0.82 0.15 28)",
           "oklch(0.95 0.15 28)"
-        ]
+        ],
+        "note": "Wrong tips and failed saves only: strike-through and cross on a wrong pick, the save note on a failed or locked save."
       },
       "miss-wash": {
         "role": "secondary",
@@ -322,7 +323,7 @@
       {
         "name": "tick-pop",
         "value": "420ms ease-out-expo, scale 0.4 > 1.18 > 1",
-        "purpose": "Your correct tip's tick."
+        "purpose": "Your correct tip's tick, and the check on a tip button the moment you pick it."
       },
       {
         "name": "lamp-chase",
@@ -338,6 +339,11 @@
         "name": "reduced-motion",
         "value": "animation: none; transition: none",
         "purpose": "All motion off under prefers-reduced-motion; resting states are final."
+      },
+      {
+        "name": "switch-knob",
+        "value": "200ms ease-out-expo, translateX 20px",
+        "purpose": "The switch knob sliding on and off."
       }
     ],
     "breakpoints": [
@@ -356,6 +362,17 @@
         "bar": "pitch-bar fill, lightened for the dark ground"
       },
       "clashRule": "When the away bar is under 90 RGB distance from the home bar, the away fill switches to whichever of its primary or secondary is furthest from the home bar (barColours in web/components/pitch-bar.tsx); Sea Eagles v Broncos draws the Broncos gold."
+    },
+    "tippingRules": {
+      "source": "web/lib/rules.ts",
+      "defaultMargin": 12,
+      "bonusMinGames": 8,
+      "autoTip": [
+        "home",
+        "crowd",
+        "ladder"
+      ],
+      "note": "Copy that states a rule ('Leave it and 12 applies.') reads DEFAULT_MARGIN; never hard-code the number."
     }
   },
   "components": [
@@ -428,6 +445,38 @@
       "description": "Match page: one hairline row per voice with the backed side's percentage and a small pitch bar; the Model marked by the MDL badge and an ink label, never lime.",
       "html": "<ul class=\"ds-voices\"><li><div class=\"ds-vh\"><span class=\"ds-vl\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-ok\"><path d=\"M20 6 9 17l-5-5\"/></svg><span class=\"ds-mdl\">MDL<i></i></span>The Model</span><span class=\"ds-vp\">MAN <b>63%</b></span></div><div class=\"ds-mini\"><i style=\"left:0;width:63%;background:#b73c72\"></i><i style=\"right:0;width:37%;background:#fbbf15;opacity:.42\"></i><em></em></div></li><li><div class=\"ds-vh\"><span class=\"ds-vl\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" class=\"ds-no\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg>Bookies&rsquo; opening price</span><span class=\"ds-vp\">BRI <b>55%</b></span></div><div class=\"ds-mini\"><i style=\"left:0;width:45%;background:#b73c72;opacity:.42\"></i><i style=\"right:0;width:55%;background:#fbbf15\"></i><em></em></div></li></ul>",
       "css": ".ds-voices{width:360px;margin:0;padding:0;list-style:none;border-top:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-voices li{padding:10px 0;border-bottom:1px solid var(--color-line-soft)}.ds-vh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}.ds-vl{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--color-ink)}.ds-ok{color:var(--color-ink-2)}.ds-no{color:var(--color-ink-3)}.ds-mdl{position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:38px;height:24px;border-radius:5px;background:var(--color-ink);color:var(--color-ground);font:800 13px/1 var(--font-display);letter-spacing:.04em}.ds-mdl i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--color-lime)}.ds-vp{font-size:13px;font-weight:600;color:var(--color-ink-3)}.ds-vp b{font:600 19px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink)}.ds-mini{position:relative;height:7px;border-radius:3px;background:var(--color-pitch)}.ds-mini i{position:absolute;top:0;bottom:0}.ds-mini em{position:absolute;top:-3px;bottom:-3px;left:50%;width:2px;transform:translateX(-50%);border-radius:9999px;background:var(--color-ink);box-shadow:0 0 0 1.5px var(--color-ground)}"
+    },
+    {
+      "name": "Tip Row",
+      "kind": "custom",
+      "refersTo": "tip-button",
+      "description": "Two half-width team buttons, at least 56px tall, the away side mirrored; selected is lime-wash with a 2px lime ring; locked and wrong is miss-wash with a coral strike-through.",
+      "html": "<div class=\"ds-tip\"><div class=\"ds-tip-meta\"><span><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\"/><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"/></svg>Full time &middot; Queensland Country Bank Stadium</span><span class=\"ds-save\">Saved</span></div><div class=\"ds-tip-btns\"><button class=\"ds-tb ds-tb-wrong\" aria-pressed=\"true\"><span class=\"ds-b\" style=\"background:#1f4a80;color:#ffc425\">NQL</span><span class=\"ds-tn\"><s>Cowboys</s> <i>30</i></span><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" class=\"ds-x\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg></button><button class=\"ds-tb ds-tb-locked ds-away\" aria-pressed=\"false\"><span class=\"ds-b ds-dimb\" style=\"background:#0a6cb0;color:#ffd200\">PAR</span><span class=\"ds-tn\">Eels <i>33</i></span></button></div><div class=\"ds-tip-btns\"><button class=\"ds-tb ds-tb-on\" aria-pressed=\"true\"><span class=\"ds-b\" style=\"background:#22457f;color:#fff\">SYD</span><span class=\"ds-tn\">Roosters</span><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-ok\"><path d=\"M20 6 9 17l-5-5\"/></svg></button><button class=\"ds-tb ds-away\" aria-pressed=\"false\"><span class=\"ds-b\" style=\"background:#0091cc;color:#f8b818\">GLD</span><span class=\"ds-tn\">Titans</span></button></div><div class=\"ds-tip-foot\"><span>Model: <b>Cowboys</b> <em>74%</em></span><span>5 of 6 on NQL &middot; 1 of 6 on PAR</span></div></div>",
+      "css": ".ds-tip{width:360px;padding:14px 0;border-bottom:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-tip-meta{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--color-ink-3)}.ds-tip-meta span{display:flex;align-items:center;gap:4px}.ds-save{font-size:12px;font-weight:600}.ds-tip-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.ds-tb{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:var(--color-ink-2);font:600 15px/1.25 var(--font-sans);text-align:left;box-shadow:inset 0 0 0 1px var(--color-line);cursor:pointer;transition:background-color .15s,box-shadow .15s}.ds-tb:hover{background:var(--color-raised);color:var(--color-ink)}.ds-tb:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}.ds-away{flex-direction:row-reverse;text-align:right}.ds-tn{flex:1;min-width:0}.ds-tn i{font:normal 600 17px/1 var(--font-display);color:var(--color-ink-3)}.ds-tb-on{background:var(--color-lime-wash);color:var(--color-ink);box-shadow:inset 0 0 0 2px var(--color-lime)}.ds-tb-on:hover{background:var(--color-lime-wash)}.ds-ok{flex-shrink:0;color:var(--color-lime)}.ds-tb-wrong,.ds-tb-wrong:hover{background:var(--color-miss-wash);color:var(--color-ink);box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--color-miss) 60%,transparent);cursor:default}.ds-tb-wrong s{text-decoration-color:var(--color-miss);text-decoration-thickness:2px}.ds-x{flex-shrink:0;color:var(--color-miss)}.ds-tb-locked,.ds-tb-locked:hover{background:transparent;color:var(--color-ink-3);box-shadow:inset 0 0 0 1px var(--color-line-soft);cursor:default}.ds-b{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:44px;height:28px;border-radius:5px;font:700 15px/1 var(--font-display);letter-spacing:.04em}.ds-dimb{opacity:.55}.ds-tip-foot{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:12px;color:var(--color-ink-3)}.ds-tip-foot b{font-weight:600;color:var(--color-ink-2)}.ds-tip-foot em{font:normal 400 14px/1 var(--font-display);color:var(--color-ink-2)}"
+    },
+    {
+      "name": "Switch",
+      "kind": "custom",
+      "refersTo": "switch",
+      "description": "48 by 28 role=switch; ink-2 track on, raised-2 with a line ring off, ground knob. Used for 'Show the Model's pick'.",
+      "html": "<div class=\"ds-sw-row\"><span id=\"ds-sw-l\" class=\"ds-sw-label\"><span class=\"ds-mdl\">MDL<i></i></span>Show the Model&rsquo;s pick</span><button class=\"ds-sw\" role=\"switch\" aria-checked=\"true\" aria-labelledby=\"ds-sw-l\" onclick=\"this.setAttribute('aria-checked',this.getAttribute('aria-checked')!=='true')\"><span></span></button></div>",
+      "css": ".ds-sw-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:360px;padding:10px 0;border-top:1px solid var(--color-line-soft);border-bottom:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-sw-label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--color-ink-2)}.ds-mdl{position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:38px;height:24px;border-radius:5px;background:var(--color-ink);color:var(--color-ground);font:800 13px/1 var(--font-display);letter-spacing:.04em}.ds-mdl i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--color-lime)}.ds-sw{position:relative;flex-shrink:0;width:48px;height:28px;border:0;border-radius:9999px;background:var(--color-raised-2);box-shadow:inset 0 0 0 1px var(--color-line);cursor:pointer;transition:background-color .15s}.ds-sw span{position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:9999px;background:var(--color-ground);transition:transform .2s cubic-bezier(0.16,1,0.3,1)}.ds-sw[aria-checked=true]{background:var(--color-ink-2);box-shadow:none}.ds-sw[aria-checked=true] span{transform:translateX(20px)}.ds-sw:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}"
+    },
+    {
+      "name": "Margin Stepper",
+      "kind": "input",
+      "refersTo": "margin-panel",
+      "description": "Inset raised panel inside the featured game's tip row: 44px round steps either side of a 24px bold score-face number field, with a one-line helper.",
+      "html": "<div class=\"ds-mg\"><div class=\"ds-mg-top\"><label for=\"ds-mg-n\">Roosters by</label><div class=\"ds-mg-ctl\"><button class=\"ds-mg-step\" aria-label=\"One point less\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M5 12h14\"/></svg></button><input id=\"ds-mg-n\" type=\"number\" min=\"1\" max=\"99\" value=\"10\"><button class=\"ds-mg-step\" aria-label=\"One point more\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M5 12h14M12 5v14\"/></svg></button></div></div><p class=\"ds-mg-help\">Leave it and 12 applies. Closest margin breaks ladder ties.</p></div>",
+      "css": ".ds-mg{width:336px;padding:12px;border-radius:8px;background:var(--color-raised);font-family:var(--font-sans)}.ds-mg-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.ds-mg label{font-size:14px;font-weight:600;color:var(--color-ink)}.ds-mg-ctl{display:flex;align-items:center;gap:8px}.ds-mg-step{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:9999px;background:transparent;color:var(--color-ink-2);box-shadow:inset 0 0 0 1px var(--color-line);cursor:pointer}.ds-mg-step:hover{color:var(--color-ink)}.ds-mg-step:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}.ds-mg-step:disabled{color:color-mix(in oklch,var(--color-ink-3) 40%,transparent);cursor:default}.ds-mg input{width:56px;height:44px;border:0;border-radius:6px;background:var(--color-ground);color:var(--color-ink);text-align:center;font:700 24px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;box-shadow:inset 0 0 0 1px var(--color-line);-moz-appearance:textfield;appearance:textfield}.ds-mg input::-webkit-inner-spin-button{-webkit-appearance:none}.ds-mg input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--color-lime)}.ds-mg-help{margin:6px 0 0;font-size:12px;color:var(--color-ink-3)}"
+    },
+    {
+      "name": "Ladder Table",
+      "kind": "custom",
+      "refersTo": "ladder-row-model",
+      "description": "Tabular ladder: the Model unranked, tinted raised-2 and ruled with line, sorted among the tippers by points; your row lime-wash; one ink-3 tag per tipper.",
+      "html": "<table class=\"ds-lad\"><thead><tr><th></th><th>Tipper</th><th class=\"ds-r\">Pts</th><th class=\"ds-r\">Margin</th></tr></thead><tbody><tr class=\"ds-lad-model\"><td class=\"ds-pos ds-pos-m\">&ndash;</td><td><span class=\"ds-nc\"><span class=\"ds-mdl\">MDL<i></i></span><span><b>The Model</b></span></span></td><td class=\"ds-pts\">44</td><td class=\"ds-mgn\">189</td></tr><tr><td class=\"ds-pos\">1st</td><td><span class=\"ds-nc\"><span class=\"ds-b\" style=\"background:#7a1e45;color:#fff\">MAN</span><span>Mick<small>Top dog</small></span><span class=\"ds-mv\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m5 12 7-7 7 7M12 19V5\"/></svg>2</span></span></td><td class=\"ds-pts\">42</td><td class=\"ds-mgn\">194</td></tr><tr class=\"ds-lad-you\"><td class=\"ds-pos\">=2nd</td><td><span class=\"ds-nc\"><span class=\"ds-b\" style=\"background:#0f7a3c;color:#fff\">SOU</span><span><b>Sully</b><em>You</em><small>Behind a spreadsheet</small></span><span class=\"ds-mv\">&ndash;</span></span></td><td class=\"ds-pts\">37</td><td class=\"ds-mgn\">211</td></tr></tbody></table>",
+      "css": ".ds-lad{width:360px;border-collapse:collapse;text-align:left;font-family:var(--font-sans);color:var(--color-ink)}.ds-lad th{padding:8px 0;border-bottom:1px solid var(--color-line);font-size:12px;font-weight:600;color:var(--color-ink-3)}.ds-lad th:first-child{width:48px}.ds-lad .ds-r{text-align:right;padding-right:8px}.ds-lad td{padding:12px 0;border-bottom:1px solid var(--color-line-soft);vertical-align:middle}.ds-lad td:first-child{padding-left:8px}.ds-lad td:last-child{padding-right:8px}.ds-pos{font:600 17px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink-2)}.ds-pos-m{font-weight:400;color:var(--color-ink-3)}.ds-nc{display:flex;align-items:center;gap:10px;font-size:15px}.ds-nc b{font-weight:600}.ds-nc em{margin-left:6px;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-lime)}.ds-nc small{display:block;font-size:12px;line-height:1.25;color:var(--color-ink-3)}.ds-mv{display:flex;align-items:center;margin-left:auto;width:24px;font-size:12px;font-weight:600;color:var(--color-ink-3)}.ds-pts{text-align:right;font:700 21px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums}.ds-mgn{text-align:right;font:600 17px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink-3)}.ds-lad-you td{background:var(--color-lime-wash)}.ds-lad-model td{background:var(--color-raised-2);border-top:1px solid var(--color-line);border-bottom:1px solid var(--color-line)}.ds-b,.ds-mdl{position:relative;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;width:38px;height:24px;border-radius:5px;font:700 13px/1 var(--font-display);letter-spacing:.04em}.ds-mdl{background:var(--color-ink);color:var(--color-ground);font-weight:800}.ds-mdl i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--color-lime)}"
     }
   ],
   "narrative": {
@@ -444,7 +493,7 @@
     "rules": [
       {
         "name": "The One Lamp Rule",
-        "body": "Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration (\"Margin game\" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime. Wherever the Model is a row among others (the recap table, the match page's voice list), it is marked with the sm MDL badge and an `ink` label, never lime text.",
+        "body": "Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration (\"Margin game\" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime. Wherever the Model is a row among others (the recap table, the ladder and its round-by-round grid, the match page's voice list, the tips page's \"Show the Model's pick\" switch), it is marked with the sm MDL badge and an `ink` label, never lime text.",
         "section": "colors"
       },
       {
@@ -484,8 +533,18 @@
       },
       {
         "name": "The One Board Rule",
-        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. Never build a grid or stack of cards.",
+        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. Never build a grid or stack of cards.",
         "section": "elevation"
+      },
+      {
+        "name": "The Unranked Model Rule",
+        "body": "The Model is the line everyone measures against, never a competitor. It takes no position (\"–\"), never wins a round's bold, gets no tag, and sits among the tippers sorted by points so you can see who is above and below it. \"Off the lead\" and \"top of the ladder\" are measured against the leading tipper, on the ladder and on the home strip alike.",
+        "section": "components"
+      },
+      {
+        "name": "The One Tag Rule",
+        "body": "At most one trash-talk tag per tipper and no tag twice on the same ladder; the more specific tag wins.",
+        "section": "components"
       }
     ],
     "dos": [
@@ -500,7 +559,11 @@
       "Do mark the Model as a row with the sm MDL badge and an `ink` label.",
       "Do separate lists with `line-soft` hairlines and give each page at most one raised board.",
       "Do put context on a sentence-case `ink-3` meta line beside or below a heading.",
-      "Do turn off every animation and transition under reduced motion, with the resting state already final."
+      "Do turn off every animation and transition under reduced motion, with the resting state already final.",
+      "Do make each tip a half-width button at least 56px tall, the away side mirrored, and confirm every save in the row's meta line.",
+      "Do show the Model as an unranked, `raised-2` row sorted among the tippers by points, and measure \"off the lead\" against the leading tipper.",
+      "Do keep the comp's tips hidden until a game locks, then show the tally (\"5 of 6 on SYD\").",
+      "Do drive every sample page from the same sample week so home, tips and ladder agree."
     ],
     "donts": [
       "Don't use lime for labels, categories, headings or decoration; it is only for you, actions and right calls.",
@@ -510,7 +573,9 @@
       "Don't show a number in the score slot of a live or awaiting game, or let a predicted score look like a result.",
       "Don't use club logos, photography or bookmaker colours; teams are two colours and a code.",
       "Don't use team colours outside badges and pitch bars.",
-      "Don't add a light theme or a second accent."
+      "Don't add a light theme or a second accent.",
+      "Don't give the Model a ladder position, a round's bold, or a trash-talk tag.",
+      "Don't give a tipper more than one tag, repeat a tag on one ladder, or put banter anywhere but the ladder."
     ]
   }
 }
