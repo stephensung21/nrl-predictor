@@ -51,13 +51,13 @@ SEED = 0
 MIN_GAIN = {"clf": 0.001, "reg": 0.01}  # forward selection: minimum pooled CV gain (log loss / MAE points)
 
 # Fixed linear feature sets: the features chosen consistently across the 2023-2025 backtest's
-# forward selection. Selecting per season from 1-3 CV seasons overfit, so it is off by default
+# forward selection, plus the wet-conditions flag for totals. Selecting per season from 1-3 CV seasons overfit, so it is off by default
 # (--select turns it back on). Model A adds the opening odds to each set.
 FEATURE_SELECTION = False
 LINEAR_FEATURES = {
     "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
     "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
-    "total": ["rapm_points", "origin_period"],
+    "total": ["rapm_points", "origin_period", "wet_conditions"],
 }
 
 BASE = FEATURE_GROUPS["elo"] + FEATURE_GROUPS["form"] + FEATURE_GROUPS["context"]

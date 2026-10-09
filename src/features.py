@@ -64,10 +64,12 @@ FEATURE_GROUPS = {
     "elo": ["elo_logit"],
     "form": [f"diff_form_{s}" for s in FORM_STATS],
     "context": ["diff_rest_days", "home_travel", "away_travel", "neutral", "away_at_ground", "is_final",
-                "diff_short_turnaround", "diff_after_bye", "origin_period"],
+                "diff_short_turnaround", "diff_after_bye", "origin_period", "wet_conditions"],
     "player": [f"diff_{f}" for f in PLAYER_TEAM_FEATURES] + ["rapm_points"],
     "odds": ["open_logit", "open_line", "open_total"],
 }
+
+WET_GROUNDS = {"Slippery", "Wet", "Heavy", "Muddy"}
 
 MIN_HISTORY = 5  # both teams need this many earlier games in the scraped data
 
@@ -404,6 +406,10 @@ def build_features(matches, team_stats, players, odds, origin, elo_params):
     origin_games = pd.to_datetime(origin["start_time_utc"], utc=True).drop_duplicates().tolist()
     window = pd.Timedelta(days=ORIGIN_WINDOW_DAYS)
     m["origin_period"] = [int(any(abs(t - g) <= window for g in origin_games)) for t in m["start_time_utc"]]
+    # Rain or a wet ground, as recorded on the day. Predictions are made just before kickoff, when
+    # this is mostly known; rain that only starts during the game is the remaining risk.
+    m["wet_conditions"] = (m["ground_conditions"].isin(WET_GROUNDS)
+                           | m["weather"].fillna("").str.contains("Rain|Showers")).astype(int)
     # Expected points of the match relative to average, from both teams' attack and defence ratings.
     m["rapm_points"] = m[["home_rapm_attack", "away_rapm_attack", "home_rapm_defence", "away_rapm_defence"]].sum(axis=1)
     m["elo_logit"] = logit(m["elo_prob"])

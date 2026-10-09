@@ -5,3 +5,4 @@ step,target,feature
 4,home_win,diff_rapm_vs_usual
 1,total,rapm_points
 2,total,origin_period
+3,total,wet_conditions
