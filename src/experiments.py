@@ -909,6 +909,26 @@ def context2_experiments(groups=CONTEXT2_GROUPS, label="14", out="experiments_co
     print(f"wrote reports/{out}")
 
 
+STAR_GROUPS = {
+    "stats-based stars": (["diff_stars_named", "diff_stars_out"], ("home_win", "margin")),
+    "impact-based (RAPM) stars": (["diff_rapm_stars_named", "diff_rapm_stars_out"], ("home_win", "margin")),
+}
+
+KEY_ABSENCE_GROUPS = {
+    "V1 key absences by position": (["diff_missq_fullback", "diff_missq_halfback", "diff_missq_five_eighth",
+                                     "diff_missq_hooker"], ("home_win", "margin")),
+    "V2 combined star-absence score": (["diff_key_absence"], ("home_win", "margin")),
+    "V3 key stars out (top 20%)": (["diff_key_star_out"], ("home_win", "margin")),
+    "V4 impact-based (with/without) stars out": (["diff_impact_out"], ("home_win", "margin")),
+}
+
+ORIGIN_STAR_GROUPS = {
+    "S1 Origin stars out (spine / other)": (["diff_origin_stars_out_spine", "diff_origin_stars_out_other"],
+                                            ("home_win", "margin")),
+    "S2 Origin or elite-form stars out (spine / other)": (["diff_s2_stars_out_spine", "diff_s2_stars_out_other"],
+                                                          ("home_win", "margin")),
+}
+
 LADDER_GROUPS = {
     "ladder position and contention": (["diff_ladder_pos", "diff_out_of_contention"], ("home_win", "margin", "total")),
 }
@@ -1038,11 +1058,16 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
-                                           "context2", "ladder"],
+                                           "context2", "ladder", "stars", "key_absence", "origin_stars"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
      "reserve": reserve_experiments, "team_total": team_total_experiments,
      "weekly": weekly_experiments, "context2": context2_experiments,
      "ladder": lambda: context2_experiments(LADDER_GROUPS, "15", "experiments_ladder.md",
-                                            "Ladder position and motivation")}.get(args.only, main)()
+                                            "Ladder position and motivation"),
+     "stars": lambda: context2_experiments(STAR_GROUPS, "16", "experiments_stars.md", "Star players"),
+     "key_absence": lambda: context2_experiments(KEY_ABSENCE_GROUPS, "17", "experiments_key_absence.md",
+                                                 "Key-position star absences"),
+     "origin_stars": lambda: context2_experiments(ORIGIN_STAR_GROUPS, "18", "experiments_origin_stars.md",
+                                                  "Origin-based star absences")}.get(args.only, main)()

@@ -8,6 +8,8 @@
           "diff_rapm_defence",
           "diff_rapm_vs_usual",
           "team_margin",
+          "diff_s2_stars_out_spine",
+          "diff_s2_stars_out_other",
           "open_logit",
           "open_line",
           "open_total"
@@ -17,6 +19,8 @@
           "diff_rapm_total",
           "diff_rapm_defence",
           "diff_rapm_vs_usual",
+          "diff_s2_stars_out_spine",
+          "diff_s2_stars_out_other",
           "open_logit",
           "open_line",
           "open_total"
@@ -34,6 +38,8 @@
         "diff_rapm_defence",
         "diff_rapm_total",
         "diff_rapm_vs_usual",
+        "diff_s2_stars_out_other",
+        "diff_s2_stars_out_spine",
         "elo_logit",
         "origin_period",
         "rapm_points",
@@ -59,13 +65,17 @@
           "diff_rapm_total",
           "diff_rapm_defence",
           "diff_rapm_vs_usual",
-          "team_margin"
+          "team_margin",
+          "diff_s2_stars_out_spine",
+          "diff_s2_stars_out_other"
         ],
         "margin": [
           "elo_logit",
           "diff_rapm_total",
           "diff_rapm_defence",
-          "diff_rapm_vs_usual"
+          "diff_rapm_vs_usual",
+          "diff_s2_stars_out_spine",
+          "diff_s2_stars_out_other"
         ],
         "total": [
           "rapm_points",
@@ -77,6 +87,8 @@
         "diff_rapm_defence",
         "diff_rapm_total",
         "diff_rapm_vs_usual",
+        "diff_s2_stars_out_other",
+        "diff_s2_stars_out_spine",
         "elo_logit",
         "origin_period",
         "rapm_points",
@@ -134,7 +146,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 72,
+        "lgb_rounds": 77,
         "lgb_seeds": 5
       },
       "total": {
@@ -155,7 +167,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 77,
+        "lgb_rounds": 92,
         "lgb_seeds": 5
       }
     },
@@ -178,7 +190,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 135,
+        "lgb_rounds": 141,
         "lgb_seeds": 5
       },
       "margin": {
@@ -199,7 +211,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 76,
+        "lgb_rounds": 77,
         "lgb_seeds": 5
       },
       "total": {
@@ -220,7 +232,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 38,
+        "lgb_rounds": 51,
         "lgb_seeds": 5
       }
     }

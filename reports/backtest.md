@@ -10,12 +10,12 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 631 | 0.6243 | 0.2173 | 0.6466 | 13.5866 | 10.7185 | 8.5863 |
-| With odds: lightgbm | 631 | 0.6297 | 0.2195 | 0.6418 | 13.5679 | 10.9094 | 8.6358 |
-| With odds: ensemble | 631 | 0.6245 | 0.2175 | 0.6387 | 13.5148 | 10.7773 | 8.5746 |
-| No odds: linear | 631 | 0.6275 | 0.2187 | 0.6292 | 13.6034 | 10.8072 | 8.6633 |
-| No odds: lightgbm | 631 | 0.6344 | 0.2213 | 0.6513 | 13.5800 | 10.9292 | 8.6960 |
-| No odds: ensemble | 631 | 0.6279 | 0.2188 | 0.6339 | 13.5366 | 10.8319 | 8.6466 |
+| With odds: linear | 631 | 0.6223 | 0.2162 | 0.6482 | 13.5470 | 10.7185 | 8.5620 |
+| With odds: lightgbm | 631 | 0.6290 | 0.2191 | 0.6450 | 13.5615 | 10.8919 | 8.6311 |
+| With odds: ensemble | 631 | 0.6230 | 0.2167 | 0.6418 | 13.4924 | 10.7696 | 8.5610 |
+| No odds: linear | 631 | 0.6261 | 0.2177 | 0.6403 | 13.5628 | 10.8072 | 8.6400 |
+| No odds: lightgbm | 631 | 0.6332 | 0.2208 | 0.6513 | 13.5789 | 10.9343 | 8.6899 |
+| No odds: ensemble | 631 | 0.6266 | 0.2181 | 0.6387 | 13.5158 | 10.8333 | 8.6289 |
 | Benchmark: home team | 631 | 0.6833 | 0.2451 | 0.5705 | 14.7495 | 10.9819 | 9.1942 |
 | Benchmark: Elo only | 631 | 0.6379 | 0.2233 | 0.6292 | - | - | - |
 | Benchmark: market opening | 631 | 0.6331 | 0.2214 | 0.6434 | 13.6616 | 10.8439 | 8.6414 |
@@ -25,29 +25,29 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | comparison | games | mean_diff | ci_low | ci_high | p_model_better |
 |---|---|---|---|---|---|
-| With odds: linear vs market average | 631 | 0.0039 | -0.0078 | 0.0158 | 0.2559 |
-| With odds: linear vs market opening | 631 | -0.0088 | -0.0188 | 0.0015 | 0.9514 |
-| With odds: linear vs Elo | 631 | -0.0136 | -0.0270 | -0.0002 | 0.9773 |
-| With odds: ensemble vs market average | 631 | 0.0041 | -0.0092 | 0.0177 | 0.2672 |
-| With odds: ensemble vs market opening | 631 | -0.0086 | -0.0203 | 0.0033 | 0.9221 |
-| With odds: ensemble vs Elo | 631 | -0.0134 | -0.0266 | -0.0003 | 0.9769 |
-| No odds: linear vs market average | 631 | 0.0072 | -0.0086 | 0.0227 | 0.1809 |
-| No odds: linear vs market opening | 631 | -0.0055 | -0.0203 | 0.0094 | 0.7626 |
-| No odds: linear vs Elo | 631 | -0.0104 | -0.0215 | 0.0013 | 0.9596 |
-| No odds: ensemble vs market average | 631 | 0.0075 | -0.0092 | 0.0244 | 0.1861 |
-| No odds: ensemble vs market opening | 631 | -0.0052 | -0.0208 | 0.0105 | 0.7300 |
-| No odds: ensemble vs Elo | 631 | -0.0100 | -0.0218 | 0.0023 | 0.9472 |
+| With odds: linear vs market average | 631 | 0.0020 | -0.0095 | 0.0135 | 0.3657 |
+| With odds: linear vs market opening | 631 | -0.0107 | -0.0211 | -0.0000 | 0.9750 |
+| With odds: linear vs Elo | 631 | -0.0156 | -0.0291 | -0.0021 | 0.9880 |
+| With odds: ensemble vs market average | 631 | 0.0026 | -0.0103 | 0.0159 | 0.3411 |
+| With odds: ensemble vs market opening | 631 | -0.0101 | -0.0218 | 0.0019 | 0.9507 |
+| With odds: ensemble vs Elo | 631 | -0.0149 | -0.0282 | -0.0017 | 0.9857 |
+| No odds: linear vs market average | 631 | 0.0058 | -0.0097 | 0.0211 | 0.2290 |
+| No odds: linear vs market opening | 631 | -0.0069 | -0.0224 | 0.0086 | 0.8054 |
+| No odds: linear vs Elo | 631 | -0.0118 | -0.0236 | 0.0004 | 0.9705 |
+| No odds: ensemble vs market average | 631 | 0.0062 | -0.0103 | 0.0228 | 0.2263 |
+| No odds: ensemble vs market opening | 631 | -0.0065 | -0.0222 | 0.0096 | 0.7769 |
+| No odds: ensemble vs Elo | 631 | -0.0113 | -0.0234 | 0.0011 | 0.9629 |
 
 ## 2023 (207 games)
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 207 | 0.5944 | 0.2040 | 0.6908 | 13.2912 | 10.4293 | 8.3167 |
-| With odds: lightgbm | 207 | 0.6187 | 0.2138 | 0.6715 | 13.5591 | 10.4772 | 8.3861 |
-| With odds: ensemble | 207 | 0.6028 | 0.2077 | 0.6667 | 13.3625 | 10.4466 | 8.3271 |
-| No odds: linear | 207 | 0.6036 | 0.2081 | 0.6715 | 13.4189 | 10.5214 | 8.4314 |
-| No odds: lightgbm | 207 | 0.6285 | 0.2178 | 0.6473 | 13.6007 | 10.5123 | 8.5050 |
-| No odds: ensemble | 207 | 0.6115 | 0.2114 | 0.6522 | 13.4261 | 10.5115 | 8.4529 |
+| With odds: linear | 207 | 0.5931 | 0.2032 | 0.7053 | 13.2626 | 10.4293 | 8.2987 |
+| With odds: lightgbm | 207 | 0.6186 | 0.2137 | 0.6715 | 13.5608 | 10.4607 | 8.3880 |
+| With odds: ensemble | 207 | 0.6017 | 0.2071 | 0.6667 | 13.3513 | 10.4371 | 8.3168 |
+| No odds: linear | 207 | 0.6030 | 0.2075 | 0.6908 | 13.3778 | 10.5214 | 8.4039 |
+| No odds: lightgbm | 207 | 0.6260 | 0.2169 | 0.6522 | 13.5909 | 10.5153 | 8.4861 |
+| No odds: ensemble | 207 | 0.6103 | 0.2107 | 0.6570 | 13.4015 | 10.5094 | 8.4245 |
 | Benchmark: home team | 207 | 0.6846 | 0.2457 | 0.5652 | 14.9282 | 10.5423 | 9.0777 |
 | Benchmark: Elo only | 207 | 0.6184 | 0.2140 | 0.6667 | - | - | - |
 | Benchmark: market opening | 207 | 0.6016 | 0.2068 | 0.6957 | 13.3357 | 10.5048 | 8.2814 |
@@ -57,12 +57,12 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 212 | 0.6312 | 0.2200 | 0.6368 | 13.6968 | 10.7261 | 8.6949 |
-| With odds: lightgbm | 212 | 0.6238 | 0.2168 | 0.6462 | 13.3955 | 11.0593 | 8.7078 |
-| With odds: ensemble | 212 | 0.6254 | 0.2175 | 0.6368 | 13.4833 | 10.8512 | 8.6587 |
-| No odds: linear | 212 | 0.6360 | 0.2216 | 0.6038 | 13.7272 | 10.9687 | 8.8558 |
-| No odds: lightgbm | 212 | 0.6251 | 0.2170 | 0.6840 | 13.3844 | 11.1593 | 8.7762 |
-| No odds: ensemble | 212 | 0.6277 | 0.2182 | 0.6415 | 13.5123 | 11.0079 | 8.7692 |
+| With odds: linear | 212 | 0.6314 | 0.2196 | 0.6274 | 13.7320 | 10.7261 | 8.6757 |
+| With odds: lightgbm | 212 | 0.6236 | 0.2166 | 0.6509 | 13.3983 | 11.0477 | 8.7064 |
+| With odds: ensemble | 212 | 0.6254 | 0.2173 | 0.6462 | 13.5074 | 10.8468 | 8.6549 |
+| No odds: linear | 212 | 0.6370 | 0.2214 | 0.6085 | 13.7397 | 10.9687 | 8.8458 |
+| No odds: lightgbm | 212 | 0.6250 | 0.2169 | 0.6745 | 13.4044 | 11.1880 | 8.7802 |
+| No odds: ensemble | 212 | 0.6280 | 0.2180 | 0.6415 | 13.5380 | 11.0183 | 8.7721 |
 | Benchmark: home team | 212 | 0.6795 | 0.2432 | 0.5849 | 14.5303 | 11.1772 | 9.3637 |
 | Benchmark: Elo only | 212 | 0.6420 | 0.2249 | 0.6226 | - | - | - |
 | Benchmark: market opening | 212 | 0.6369 | 0.2235 | 0.6274 | 13.6745 | 10.8255 | 8.7524 |
@@ -72,12 +72,12 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 212 | 0.6465 | 0.2277 | 0.6132 | 13.7649 | 10.9934 | 8.7411 |
-| With odds: lightgbm | 212 | 0.6465 | 0.2277 | 0.6085 | 13.7489 | 11.1816 | 8.8077 |
-| With odds: ensemble | 212 | 0.6448 | 0.2269 | 0.6132 | 13.6950 | 11.0264 | 8.7321 |
-| No odds: linear | 212 | 0.6424 | 0.2261 | 0.6132 | 13.6598 | 10.9248 | 8.6972 |
-| No odds: lightgbm | 212 | 0.6495 | 0.2291 | 0.6226 | 13.7553 | 11.1060 | 8.8024 |
-| No odds: ensemble | 212 | 0.6440 | 0.2268 | 0.6085 | 13.6687 | 10.9688 | 8.7131 |
+| With odds: linear | 212 | 0.6419 | 0.2255 | 0.6132 | 13.6397 | 10.9934 | 8.7055 |
+| With odds: lightgbm | 212 | 0.6445 | 0.2267 | 0.6132 | 13.7255 | 11.1571 | 8.7933 |
+| With odds: ensemble | 212 | 0.6414 | 0.2253 | 0.6132 | 13.6153 | 11.0170 | 8.7057 |
+| No odds: linear | 212 | 0.6378 | 0.2240 | 0.6226 | 13.5664 | 10.9248 | 8.6648 |
+| No odds: lightgbm | 212 | 0.6483 | 0.2286 | 0.6274 | 13.7417 | 11.0896 | 8.7986 |
+| No odds: ensemble | 212 | 0.6411 | 0.2254 | 0.6179 | 13.6052 | 10.9645 | 8.6852 |
 | Benchmark: home team | 212 | 0.6858 | 0.2463 | 0.5613 | 14.7944 | 11.2158 | 9.1386 |
 | Benchmark: Elo only | 212 | 0.6528 | 0.2309 | 0.5991 | - | - | - |
 | Benchmark: market opening | 212 | 0.6600 | 0.2335 | 0.6085 | 13.9670 | 11.1934 | 8.8821 |
@@ -87,12 +87,12 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 271 | 0.6034 | 0.2080 | 0.6863 | 13.5200 | 10.3499 | 8.4049 |
-| With odds: lightgbm | 271 | 0.6168 | 0.2130 | 0.6679 | 13.6253 | 10.3219 | 8.3942 |
-| With odds: ensemble | 271 | 0.6069 | 0.2094 | 0.6642 | 13.5202 | 10.3149 | 8.3769 |
-| No odds: linear | 271 | 0.6143 | 0.2130 | 0.6421 | 13.6653 | 10.4091 | 8.5355 |
-| No odds: lightgbm | 271 | 0.6256 | 0.2166 | 0.6642 | 13.7039 | 10.3431 | 8.5253 |
-| No odds: ensemble | 271 | 0.6159 | 0.2133 | 0.6421 | 13.6146 | 10.3605 | 8.5151 |
+| With odds: linear | 271 | 0.6023 | 0.2074 | 0.6900 | 13.5151 | 10.3499 | 8.3974 |
+| With odds: lightgbm | 271 | 0.6173 | 0.2131 | 0.6716 | 13.6330 | 10.3020 | 8.3961 |
+| With odds: ensemble | 271 | 0.6062 | 0.2090 | 0.6642 | 13.5251 | 10.3048 | 8.3718 |
+| No odds: linear | 271 | 0.6132 | 0.2123 | 0.6568 | 13.6353 | 10.4091 | 8.5219 |
+| No odds: lightgbm | 271 | 0.6239 | 0.2160 | 0.6642 | 13.7046 | 10.3444 | 8.5129 |
+| No odds: ensemble | 271 | 0.6147 | 0.2128 | 0.6458 | 13.6050 | 10.3588 | 8.4994 |
 | Benchmark: home team | 271 | 0.6791 | 0.2430 | 0.5867 | 14.8327 | 10.3918 | 9.0503 |
 | Benchmark: Elo only | 271 | 0.6195 | 0.2146 | 0.6642 | - | - | - |
 | Benchmark: market opening | 271 | 0.6065 | 0.2090 | 0.6863 | 13.4852 | 10.3376 | 8.3164 |
@@ -100,5 +100,5 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | comparison | games | mean_diff | ci_low | ci_high | p_model_better |
 |---|---|---|---|---|---|
-| With odds: linear vs market closing | 271 | 0.0153 | -0.0031 | 0.0337 | 0.0533 |
-| No odds: linear vs market closing | 271 | 0.0262 | 0.0039 | 0.0481 | 0.0093 |
+| With odds: linear vs market closing | 271 | 0.0142 | -0.0036 | 0.0315 | 0.0575 |
+| No odds: linear vs market closing | 271 | 0.0251 | 0.0025 | 0.0474 | 0.0133 |

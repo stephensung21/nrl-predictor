@@ -6,25 +6,25 @@ The goal is to beat the bookmakers' closing odds.
 
 The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested the no-odds model beat the market, and the backtest showed that was luck.
 
-**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble ties with with-odds linear (0.6245 vs 0.6243). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
+**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble is within 0.001 of with-odds linear (0.6230 vs 0.6223). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
 
 Pooled backtest results for the current setup:
 
 | | Win log loss | Margin MAE | Total MAE |
 |---|---|---|---|
-| **With-odds ensemble** (main model) | 0.625 | **13.51** | 10.78 |
-| With-odds linear | **0.624** | 13.59 | **10.72** |
-| **No-odds ensemble** (main model) | 0.628 | 13.54 | 10.83 |
-| No-odds linear | 0.628 | 13.60 | 10.81 |
-| With-odds LightGBM | 0.630 | 13.57 | 10.91 |
+| **With-odds ensemble** (main model) | 0.623 | **13.49** | 10.77 |
+| With-odds linear | **0.622** | 13.55 | **10.72** |
+| **No-odds ensemble** (main model) | 0.627 | 13.52 | 10.83 |
+| No-odds linear | 0.626 | 13.56 | 10.81 |
+| With-odds LightGBM | 0.629 | 13.56 | 10.89 |
 | Market closing (Odds Portal average) | 0.620 | – | 10.72 |
 | Market opening | 0.633 | 13.66 | 10.84 |
 | Elo only | 0.638 | – | – |
 
-- **Win probability:** with-odds linear is 0.004 behind the market average (95% interval −0.008 to +0.016), down from +0.024 at the start of the backtest work. By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
+- **Win probability:** the with-odds ensemble is 0.003 behind the market average (95% interval −0.010 to +0.016) and with-odds linear 0.002 behind, down from +0.024 at the start of the backtest work. (The per-season and real-closing-odds figures below are from before the star absences were added.) By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
 - **Margin:** the models beat the opening line on average error, but not on line-cover probability (item 14).
 - **Totals:** with-odds linear is level with the closing total and beats the opening total.
-- **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +11–12% ROI, but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
+- **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +9–12% ROI (with-odds ensemble +11.5%, interval +2.8% to +21%), but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
 - **Caveat:** the backtest has now informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 `--final` run is the honest verdict.
 
 2026 stays untouched until `python src/train.py --final`. Settings for that run come from the dev run (`reports/params.json`).
@@ -169,6 +169,10 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Travel distance and time-zone change | no clear effect (item 18) |
 | Origin representatives in the named 17 | no clear effect; overlaps team strength (item 18) |
 | Ladder position and out-of-contention flag | no clear effect; overlaps team strength (item 18) |
+| Stats-based or RAPM-based star players (named / out) | no clear effect (item 38) |
+| Key-position absences weighted by form (V1–V3) | −0.001 to −0.002, not clear (item 38) |
+| Star impact learned from each player's with/without history (V4) | no effect (item 38) |
+| Origin-only star absences (S1) | −0.0012 / −0.0007, not clear; S2 adopted instead (item 38) |
 
 ---
 
@@ -186,7 +190,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 
 ---
 
-## Further approaches (items 13–37)
+## Further approaches (items 13–38)
 
 ### 13. Rerun the 2025-only rejections on the backtest ✅
 
@@ -234,9 +238,9 @@ Not yet tested:
 - **Combination continuity:** games the halves pairing and the spine have played together, not just how many changes there were.
 - **Workload and fatigue:** key players' minutes over the last 2–3 weeks, including Origin minutes.
 
-### 19. Position-specific player ratings from stats ⬜
+### 19. Position-specific player ratings from stats 🔶
 
-Ratings built from the stats that matter for each position (run metres for forwards, kicking and try involvement for halves), as a steadier signal than RAPM for players with few games. Fantasy points were a poor proxy.
+Ratings built from the stats that matter for each position (run metres for forwards, kicking and try involvement for halves), as a steadier signal than RAPM for players with few games. Fantasy points were a poor proxy. The stats-based star definitions tested in item 38 (fantasy points per 80 minutes within position) didn't identify the stars whose absence matters (e.g. Reece Walsh rated as only an average fullback), so this item is unlikely to help on its own.
 
 ### 20. Other model types (GAM, Explainable Boosting Machine) ❌
 
@@ -385,6 +389,37 @@ The opening prices come from **bet365 until April 2024 and BlueBet after**, and 
 - **One shared linear-backtest function.** `experiments.py` and `betting.py` reimplement the linear backtest; assertions catch drift today, but `train.py` should expose a `linear_backtest()` they all use.
 - **Stop committing regenerable data and reports** (`player_match_stats.csv` is 10 MB; `features.csv` and the prediction CSVs are rewritten every run). Keep the raw odds sheet and code, or use DVC or Git LFS for versioned data.
 - **Fast unit tests** (joins, score checks, the margin blend, `md_table`) to run on every change, keeping the 2–4 minute leakage test as the slow, thorough check.
+
+### 38. Star players ✅ (S2 adopted)
+
+**Question:** do teams play measurably differently with and without their stars, and does the model account for it?
+
+**Analysis** (seasons up to 2025; each player's games at a club with vs without him, team margin relative to an expectation; `reports/experiments_stars.md`, `experiments_key_absence.md`, `experiments_origin_stars.md`):
+
+| Group | Games without | vs line-up-blind team rating | vs opening line | vs current model (2023–25) |
+|---|---|---|---|---|
+| A reference list of 20 stars (Cleary, Tedesco, Hynes, Ponga, Hughes, Haas, Trbojevic, Munster, Edwards, Crichton, Yeo, Grant, Walsh, To'o, Mitchell, Fonua-Blake, Walker, S Johnson, H Young, Luai) | 578 | **+6.9** [+5.4, +8.5] | +5.0 | **+3.8** [+1.8, +5.8] |
+| … spine players | 442 | +6.9 | +5.1 | **+3.9** |
+| All Origin-selected players (in their Origin year) | 1,185 | **+4.2** [+3.0, +5.4] | +3.4 | **+2.9** [+1.4, +4.5] |
+| … Origin spine players | 411 | +5.5 | +4.2 | **+4.3** |
+| … Origin forwards | 526 | +2.8 | +2.3 | +1.8 (not clear) |
+
+Teams score several points more with their stars, and **both the model and the opening market under-react to a star's absence by about 3–4 points**, most for spine players. Individual effects vary widely: Luai +17, Crichton (Panthers) +16, Yeo +15, Walsh +14, Hughes, Cleary and Trbojevic +11; no effect for Haas, Tedesco, Hynes, S Johnson and Ponga. The reference list was chosen with hindsight, which biases its numbers upwards; the Origin rows are an objective check.
+
+**Star formulas tested** (general rules, no names, information before each game only; full pipeline backtest, main ensembles, win log loss with odds / no odds):
+
+| Formula | Star = | Result |
+|---|---|---|
+| Stats-based | top 10% of position for fantasy points per 80 minutes | no effect |
+| Impact (RAPM) | top 10% plus-minus | picks whole rosters of top teams; −0.002 / −0.001, not clear |
+| V1–V3 key positions | missing usual fullback / halfback / five-eighth / hooker, weighted by form percentile | −0.001 to −0.002, not clear |
+| V4 learned impact | each player's own with/without history, shrunk | no effect (too few absences to learn from) |
+| S1 Origin stars | in an Origin 17 in the last 12 months | −0.0012 / −0.0007, not clear |
+| **S2 Origin or elite form** | **S1, or top 10% of position for form** | **−0.0015 (clear) / −0.0013; margin −0.02** |
+
+How well the general rules recognise the reference list: S1 counts 58% of their games (10% of other players' games), S2 67% (18%). Origin selection is by far the best detector; fantasy stats rated Walsh as average. S2 also partly covers players not eligible for Origin (Hughes, S Johnson, Fonua-Blake).
+
+**Adopted: S2** (`STAR_ABSENCES` in `train.py`: `diff_s2_stars_out_spine`, `diff_s2_stars_out_other`, in the win and margin models and so LightGBM's compact set). Each counts the team's usual players (named in 3 of the last 5 games) who are missing from the named 17 and were in an Origin 17 in the last 12 months or are in the top 10% of their position group for form, split into spine and other positions. The gain is concentrated where it should be: the 63% of games with a star missing (win −0.0022, clear) with nothing in the others. Full backtest: with-odds ensemble 0.6245 → **0.6230**, no-odds ensemble 0.6279 → 0.6266, margins −0.02. It's a small gain overall (a few points in some games barely moves average log loss), and it was the best of about eight star variants, so part of it may be luck; it was adopted because it addresses a measured blind spot. All the other star features stay computed in `features.csv` but unused.
 
 ---
 

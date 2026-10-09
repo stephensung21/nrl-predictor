@@ -56,13 +56,17 @@ MIN_GAIN = {"clf": 0.001, "reg": 0.01}
 MARGIN_BLEND = True  # forward selection: minimum pooled CV gain (log loss / MAE points)
 
 # Fixed linear feature sets: the features chosen consistently across the 2023-2025 backtest's
-# forward selection, plus the team margin rating (win) and wet-conditions flag (totals).
+# forward selection, plus the team margin rating (win), star absences (win, margin) and the
+# wet-conditions flag (totals).
 # Selecting per season from 1-3 CV seasons overfit, so it is off by default (--select turns it
 # back on). The with-odds models add the opening odds to each set.
 FEATURE_SELECTION = False
+# Star absences (S2): the team's usual players who are missing and were in an Origin 17 in the last
+# 12 months or are in the top 10% of their position for form, split into spine and other positions.
+STAR_ABSENCES = ["diff_s2_stars_out_spine", "diff_s2_stars_out_other"]
 LINEAR_FEATURES = {
-    "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual", "team_margin"],
-    "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
+    "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual", "team_margin"] + STAR_ABSENCES,
+    "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"] + STAR_ABSENCES,
     "total": ["rapm_points", "origin_period", "wet_conditions"],
 }
 

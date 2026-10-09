@@ -48,8 +48,47 @@ PLAYER_TEAM_FEATURES = [
     "missing_usual", "missing_usual_rating", "ins_forwards", "ins_backs", "ins_bench",
     "returning", "kicker_changed", "rapm_total", "rapm_vs_usual", "rapm_missing",
     "origin_backup", "origin_out", "rapm_attack", "rapm_defence", "reserve_newcomers", "reserve_rapm_newcomers",
-    "origin_reps",
+    "origin_reps", "stars_named", "stars_out", "rapm_stars_named", "rapm_stars_out",
+    "missq_fullback", "missq_halfback", "missq_five_eighth", "missq_hooker", "key_absence", "key_star_out",
+    "impact_out", "origin_stars_out_spine", "origin_stars_out_other", "s2_stars_out_spine", "s2_stars_out_other",
 ]
+
+# Origin-based stars (general, no names): a player picked in an Origin 17 within the previous
+# ORIGIN_REP_DAYS. S1 counts the team's usual players (named in USUAL_MIN of its last USUAL_WINDOW
+# games) who are Origin stars and missing from the named 17, split into spine and other positions
+# (by the player's latest starting position). S2 is the same with a star being an Origin star OR a
+# stats-based star (top STAR_SHARE of his position group for fantasy points per 80 minutes), which also
+# covers players not eligible for Origin.
+
+# Impact-based stars (with/without): a player's impact is the team's average result against its
+# line-up-blind team rating (actual margin minus team_margin) in games he played minus games he missed
+# while at the club (appeared for it within STAR_ACTIVE_DAYS), each shrunk by n / (n + IMPACT_SHRINK);
+# players with fewer than IMPACT_MIN_GAMES games played count 0. impact_out sums the impact of the team's
+# usual players (named in USUAL_MIN of its last USUAL_WINDOW games) missing from the named 17.
+IMPACT_SHRINK = 10
+IMPACT_MIN_GAMES = 10
+
+# Key-position absences (the star-absence score). The team's usual player at each key position is
+# whoever started there most often in its last KEY_WINDOW games (ties: the most recent). His quality is
+# his fantasy points per 80 minutes (EWMA over games with STAR_MIN_MINUTES+), as a percentile among
+# active players (KEY_MIN_GAMES+ games, played in the last year) whose latest key position is the same.
+# If he isn't in the named 17 the team gets his quality at that position; key_absence sums the four,
+# and key_star_out counts missing usual players with quality >= KEY_STAR_PCT. Earlier games only.
+KEY_POSITIONS = {"Fullback": "fullback", "Halfback": "halfback", "Five-Eighth": "five_eighth", "Hooker": "hooker"}
+KEY_WINDOW = 5
+KEY_MIN_GAMES = 5
+KEY_STAR_PCT = 0.8
+
+# Star players (two definitions, fixed before testing). Stats-based: fantasy points per 80 minutes
+# (EWMA over NRL games with 20+ minutes), top STAR_SHARE of the player's position group (spine,
+# forwards, outside backs; from his latest starting position) among players with STAR_MIN_GAMES+ NRL
+# games who played in the last year. Impact-based: top STAR_SHARE of RAPM among players with
+# STAR_MIN_GAMES+ named appearances. Both recalculated before every round from earlier games only.
+STAR_SHARE = 0.10
+STAR_MIN_GAMES = 10
+STAR_ALPHA = 0.2              # EWMA weight on the latest game for the stats-based rating
+STAR_MIN_MINUTES = 20
+STAR_ACTIVE_DAYS = 365
 
 RESERVE_FILE = PROCESSED / "reserve_player_stats.csv"
 RESERVE_NEWCOMER_GAMES = 10   # "newcomer": fewer NRL games than this before the match
@@ -382,9 +421,11 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
     kickoff = games["start_time_utc"]
     fit, block, out = None, None, []
     recent = defaultdict(lambda: deque(maxlen=USUAL_WINDOW))
+    appearances, rapm_stars = Counter(), set()  # named appearances so far; impact-based stars
     for g in games.itertuples():
         if (g.season, g.round) != block:  # new round (or a postponed game): refit on earlier results
             block = (g.season, g.round)
+            rapm_stars = set()
             train = ((kickoff < g.start_time_utc) & ~np.isnan(ym)).to_numpy()
             if train.sum() >= 20:
                 w = 0.5 ** ((g.start_time_utc - kickoff[train]).dt.days.to_numpy() / half_life)
@@ -396,6 +437,12 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
                               if bench_weight else (1.0, 1.0))
                 fit = {"margin": (bm, gm), "attack": ((bt + bm) / 2, (gt + gm) / 2),
                        "defence": ((bt - bm) / 2, (gt - gm) / 2), "share": role_share}
+            if fit is not None:
+                eligible = np.array([j for j, k in appearances.items() if k >= STAR_MIN_GAMES], dtype=int)
+                if len(eligible) >= 20:
+                    coef = fit["margin"][0]
+                    cut = np.quantile(coef[eligible], 1 - STAR_SHARE)
+                    rapm_stars = {int(j) for j in eligible if coef[j] >= cut}
 
         def value(entries, kind):
             if fit is None:
@@ -410,12 +457,17 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
             counts = Counter(e[0] for lineup_prev in prev for e in lineup_prev)
             missing = [latest[j] for j, k in counts.items() if k >= USUAL_MIN and j not in {e[0] for e in lineup}]
             total = value(lineup, "margin")
+            lineup_ids = {e[0] for e in lineup}
+            usual_ids = {j for j, k in counts.items() if k >= USUAL_MIN}
             out.append({"match_id": g.match_id, "team": team, "rapm_total": total,
+                        "rapm_stars_named": len(lineup_ids & rapm_stars),
+                        "rapm_stars_out": len((usual_ids - lineup_ids) & rapm_stars),
                         "rapm_vs_usual": total - (np.mean([value(l, "margin") for l in prev]) if prev else total),
                         "rapm_missing": value(missing, "margin"),
                         "rapm_attack": value(lineup, "attack"), "rapm_defence": value(lineup, "defence")})
         for team in (g.home_team, g.away_team):
             recent[team].append(lineups.get((g.match_id, team), []))
+            appearances.update(e[0] for e in lineups.get((g.match_id, team), []))
     return pd.DataFrame(out).set_index(["match_id", "team"])
 
 
@@ -568,6 +620,168 @@ def team_total_ratings(odds, half_life=None, penalty=None):
     return pd.DataFrame({"odds_id": g["odds_id"], "team_total": pred})
 
 
+def star_features(matches, p, origin_by_player=None, return_sets=False):
+    """Stats-based stars: per NRL team and match, how many stars are named, and how many of the team's
+    usual players (named in USUAL_MIN of its last USUAL_WINDOW games) who are stars are missing.
+    Ratings and thresholds come from games before the round; each round's games are added afterwards.
+    With origin_by_player, also the Origin-based star absences (S1, S2; see above). With return_sets, also
+    returns {round start: (stats-based stars, Origin stars)} for checking who counts as a star."""
+    origin_by_player = origin_by_player or {}
+    origin_window = pd.Timedelta(days=ORIGIN_REP_DAYS)
+    snapshots = {}
+    named = p[~p["position"].isin(NOT_NAMED)]
+    played = p[p["minutesPlayed"] >= STAR_MIN_MINUTES]
+    per80 = (played["fantasyPointsTotal"] / played["minutesPlayed"] * 80).to_numpy()
+    state = {}  # player -> [ewma, games, position group, last game time]
+    recent = defaultdict(lambda: deque(maxlen=USUAL_WINDOW))
+    lineups = named.groupby(["match_id", "team"])["player_id"].agg(set).to_dict()
+    played_by_match = {mid: list(zip(g["player_id"], per80[played.index.get_indexer(g.index)], g["pos_group"]))
+                       for mid, g in played.groupby("match_id")}
+    out = []
+    games = matches.sort_values("start_time_utc")
+    for (_, _), block in games.groupby(["season", "round"], sort=False):
+        start = block["start_time_utc"].min()
+        thresholds, stars = {}, set()
+        for grp in ("spine", "forwards", "backs"):
+            vals = [v[0] for v in state.values() if v[2] == grp and v[1] >= STAR_MIN_GAMES
+                    and (start - v[3]).days <= STAR_ACTIVE_DAYS]
+            thresholds[grp] = np.quantile(vals, 1 - STAR_SHARE) if len(vals) >= 20 else np.inf
+        stars = {pid for pid, v in state.items() if v[2] in thresholds and v[1] >= STAR_MIN_GAMES
+                 and (start - v[3]).days <= STAR_ACTIVE_DAYS and v[0] >= thresholds[v[2]]}
+        origin_stars = {pid for pid, times in origin_by_player.items()
+                        if any(start - origin_window <= t < start for t in times)}
+        if return_sets:
+            snapshots[start] = (stars, origin_stars)
+        for g in block.itertuples():
+            for team in (g.home_team, g.away_team):
+                ids = lineups.get((g.match_id, team), set())
+                counts = Counter(pid for lineup in recent[team] for pid in lineup)
+                usual = {pid for pid, c in counts.items() if c >= USUAL_MIN}
+                missing = usual - ids
+                spine = {pid for pid in missing if state.get(pid, [0, 0, None])[2] == "spine"}
+                row = {"match_id": g.match_id, "team": team, "stars_named": len(ids & stars),
+                       "stars_out": len(missing & stars),
+                       "origin_stars_out_spine": len(spine & origin_stars),
+                       "origin_stars_out_other": len((missing - spine) & origin_stars),
+                       "s2_stars_out_spine": len(spine & (origin_stars | stars)),
+                       "s2_stars_out_other": len((missing - spine) & (origin_stars | stars))}
+                out.append(row)
+        for g in block.itertuples():  # only now does the round join the history
+            for team in (g.home_team, g.away_team):
+                recent[team].append(lineups.get((g.match_id, team), set()))
+            for pid, value, grp in played_by_match.get(g.match_id, []):
+                v = state.get(pid)
+                if v is None:
+                    state[pid] = [value, 1, grp if grp != "bench" else None, g.start_time_utc]
+                else:
+                    v[0] = STAR_ALPHA * value + (1 - STAR_ALPHA) * v[0]
+                    v[1] += 1
+                    v[2] = grp if grp != "bench" else v[2]  # latest starting position group
+                    v[3] = g.start_time_utc
+    result = pd.DataFrame(out).set_index(["match_id", "team"])
+    return (result, snapshots) if return_sets else result
+
+
+def key_position_absences(matches, p):
+    """Per NRL team and match: quality-weighted absence of the usual player at each key position, their
+    sum (key_absence), and the number of missing usual key-position players in the top 20% (key_star_out).
+    Ratings and percentiles come from games before the round; each round joins the history afterwards."""
+    named = p[~p["position"].isin(NOT_NAMED)]
+    lineup_ids = named.groupby(["match_id", "team"])["player_id"].agg(set).to_dict()
+    key_slots = {k: dict(zip(g["position"], g["player_id"])) for k, g in
+                 named[named["position"].isin(KEY_POSITIONS)].groupby(["match_id", "team"])}
+    played = p[p["minutesPlayed"] >= STAR_MIN_MINUTES]
+    per80 = played["fantasyPointsTotal"] / played["minutesPlayed"] * 80
+    played_by_match = {mid: list(zip(g["player_id"], per80[g.index], g["position"]))
+                       for mid, g in played.groupby("match_id")}
+    state = {}  # player -> [ewma per80, games, last time, latest key position]
+    recent = defaultdict(lambda: deque(maxlen=KEY_WINDOW))
+    out = []
+    for (_, _), block in matches.sort_values("start_time_utc").groupby(["season", "round"], sort=False):
+        start = block["start_time_utc"].min()
+        pct = {}
+        for pos in KEY_POSITIONS:
+            vals = pd.Series({pid: v[0] for pid, v in state.items() if v[3] == pos and v[1] >= KEY_MIN_GAMES
+                              and (start - v[2]).days <= STAR_ACTIVE_DAYS})
+            pct[pos] = vals.rank(pct=True).to_dict() if len(vals) else {}
+        for g in block.itertuples():
+            for team in (g.home_team, g.away_team):
+                ids = lineup_ids.get((g.match_id, team), set())
+                history = list(recent[team])
+                row = {"match_id": g.match_id, "team": team, "key_star_out": 0}
+                for pos, col in KEY_POSITIONS.items():
+                    seen = [slots.get(pos) for slots in history if slots.get(pos) is not None]
+                    q = 0.0
+                    if seen:
+                        c = Counter(seen)
+                        top = max(c.values())
+                        usual = next(pid for pid in reversed(seen) if c[pid] == top)  # ties: most recent
+                        if usual not in ids:
+                            q = pct[pos].get(usual, 0.5)
+                            row["key_star_out"] += int(q >= KEY_STAR_PCT)
+                    row[f"missq_{col}"] = q
+                row["key_absence"] = sum(row[f"missq_{c}"] for c in KEY_POSITIONS.values())
+                out.append(row)
+        for g in block.itertuples():  # only now does the round join the history
+            for team in (g.home_team, g.away_team):
+                recent[team].append(key_slots.get((g.match_id, team), {}))
+            for pid, value, position in played_by_match.get(g.match_id, []):
+                v = state.get(pid)
+                key = position if position in KEY_POSITIONS else (v[3] if v else None)
+                if v is None:
+                    state[pid] = [value, 1, g.start_time_utc, key]
+                else:
+                    v[0] = STAR_ALPHA * value + (1 - STAR_ALPHA) * v[0]
+                    v[1] += 1
+                    v[2] = g.start_time_utc
+                    v[3] = key
+    return pd.DataFrame(out).set_index(["match_id", "team"])
+
+
+def impact_features(matches, p):
+    """impact_out per NRL team and match, from earlier rounds only (see IMPACT_SHRINK)."""
+    named = p[~p["position"].isin(NOT_NAMED)]
+    lineups = named.groupby(["match_id", "team"])["player_id"].agg(set).to_dict()
+    stats = defaultdict(lambda: [0.0, 0, 0.0, 0])  # (player, team) -> [sum with, n with, sum without, n without]
+    last_seen = {}                                  # (player, team) -> last appearance
+    recent = defaultdict(lambda: deque(maxlen=USUAL_WINDOW))
+    out = []
+
+    def impact(key):
+        s_on, n_on, s_off, n_off = stats[key]
+        if n_on < IMPACT_MIN_GAMES or n_off == 0:
+            return 0.0
+        diff = s_on / n_on - s_off / n_off
+        return diff * n_on / (n_on + IMPACT_SHRINK) * n_off / (n_off + IMPACT_SHRINK)
+
+    for (_, _), block in matches.sort_values("start_time_utc").groupby(["season", "round"], sort=False):
+        for g in block.itertuples():
+            for team in (g.home_team, g.away_team):
+                ids = lineups.get((g.match_id, team), set())
+                counts = Counter(pid for lineup in recent[team] for pid in lineup)
+                usual = {pid for pid, c in counts.items() if c >= USUAL_MIN}
+                out.append({"match_id": g.match_id, "team": team,
+                            "impact_out": sum(impact((pid, team)) for pid in usual - ids)})
+        for g in block.itertuples():  # only now does the round join the history
+            if pd.isna(g.home_score) or pd.isna(g.team_margin):
+                continue
+            for team, sign in ((g.home_team, 1), (g.away_team, -1)):
+                ids = lineups.get((g.match_id, team), set())
+                result = sign * ((g.home_score - g.away_score) - g.team_margin)
+                for (pid, t), seen in list(last_seen.items()):
+                    if t == team and pid not in ids and (g.start_time_utc - seen).days <= STAR_ACTIVE_DAYS:
+                        st = stats[(pid, team)]
+                        st[2] += result
+                        st[3] += 1
+                for pid in ids:
+                    st = stats[(pid, team)]
+                    st[0] += result
+                    st[1] += 1
+                    last_seen[(pid, team)] = g.start_time_utc
+                recent[team].append(ids)
+    return pd.DataFrame(out).set_index(["match_id", "team"])
+
+
 def player_team_features(matches, players, origin, reserve=None):
     """Rate every named player before each match, then aggregate the named 17 to team level."""
     p = players.merge(matches[["match_id", "start_time_utc"]], on="match_id", how="left")
@@ -591,6 +805,8 @@ def player_team_features(matches, players, origin, reserve=None):
     team = team.join(rapm_features(matches, p))
     team["reserve_newcomers"] = reserve_newcomers(named, reserve)
     team["reserve_rapm_newcomers"] = reserve_rapm_newcomers(matches, named, reserve)
+    team = team.join(star_features(matches, p, origin_squads(origin))).join(key_position_absences(matches, p))
+    team = team.join(impact_features(matches, p))
     team = team.reset_index().merge(matches[["match_id", "start_time_utc"]], on="match_id")
     team = team.sort_values(["start_time_utc", "match_id"]).reset_index(drop=True)
 

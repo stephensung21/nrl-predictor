@@ -4,6 +4,8 @@ step,target,feature
 3,home_win,diff_rapm_defence
 4,home_win,diff_rapm_vs_usual
 5,home_win,team_margin
+6,home_win,diff_s2_stars_out_spine
+7,home_win,diff_s2_stars_out_other
 1,total,rapm_points
 2,total,origin_period
 3,total,wet_conditions
