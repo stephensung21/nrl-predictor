@@ -1,0 +1,490 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-09T22:30:12.563Z",
+  "title": "Design System: rugbyleague-tipper",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Pitch Night",
+        "canonical": "oklch(0.165 0.02 162)",
+        "tonalRamp": [
+          "oklch(0.15 0.02 162)",
+          "oklch(0.26 0.02 162)",
+          "oklch(0.37 0.02 162)",
+          "oklch(0.48 0.02 162)",
+          "oklch(0.59 0.02 162)",
+          "oklch(0.7 0.02 162)",
+          "oklch(0.82 0.02 162)",
+          "oklch(0.95 0.02 162)"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Stand Shadow",
+        "canonical": "oklch(0.205 0.022 162)",
+        "tonalRamp": [
+          "oklch(0.15 0.022 162)",
+          "oklch(0.26 0.022 162)",
+          "oklch(0.37 0.022 162)",
+          "oklch(0.48 0.022 162)",
+          "oklch(0.59 0.022 162)",
+          "oklch(0.7 0.022 162)",
+          "oklch(0.82 0.022 162)",
+          "oklch(0.95 0.022 162)"
+        ]
+      },
+      "raised-2": {
+        "role": "neutral",
+        "displayName": "Box Seat",
+        "canonical": "oklch(0.245 0.024 162)",
+        "tonalRamp": [
+          "oklch(0.15 0.024 162)",
+          "oklch(0.26 0.024 162)",
+          "oklch(0.37 0.024 162)",
+          "oklch(0.48 0.024 162)",
+          "oklch(0.59 0.024 162)",
+          "oklch(0.7 0.024 162)",
+          "oklch(0.82 0.024 162)",
+          "oklch(0.95 0.024 162)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.31 0.022 162)",
+        "tonalRamp": [
+          "oklch(0.15 0.022 162)",
+          "oklch(0.26 0.022 162)",
+          "oklch(0.37 0.022 162)",
+          "oklch(0.48 0.022 162)",
+          "oklch(0.59 0.022 162)",
+          "oklch(0.7 0.022 162)",
+          "oklch(0.82 0.022 162)",
+          "oklch(0.95 0.022 162)"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Soft Hairline",
+        "canonical": "oklch(0.255 0.02 162)",
+        "tonalRamp": [
+          "oklch(0.15 0.02 162)",
+          "oklch(0.26 0.02 162)",
+          "oklch(0.37 0.02 162)",
+          "oklch(0.48 0.02 162)",
+          "oklch(0.59 0.02 162)",
+          "oklch(0.7 0.02 162)",
+          "oklch(0.82 0.02 162)",
+          "oklch(0.95 0.02 162)"
+        ]
+      },
+      "pitch": {
+        "role": "neutral",
+        "displayName": "Turf",
+        "canonical": "oklch(0.235 0.035 152)",
+        "tonalRamp": [
+          "oklch(0.15 0.035 152)",
+          "oklch(0.26 0.035 152)",
+          "oklch(0.37 0.035 152)",
+          "oklch(0.48 0.035 152)",
+          "oklch(0.59 0.035 152)",
+          "oklch(0.7 0.035 152)",
+          "oklch(0.82 0.035 152)",
+          "oklch(0.95 0.035 152)"
+        ]
+      },
+      "pitch-line": {
+        "role": "neutral",
+        "displayName": "Line Paint",
+        "canonical": "oklch(0.42 0.03 150)",
+        "tonalRamp": [
+          "oklch(0.15 0.03 150)",
+          "oklch(0.26 0.03 150)",
+          "oklch(0.37 0.03 150)",
+          "oklch(0.48 0.03 150)",
+          "oklch(0.59 0.03 150)",
+          "oklch(0.7 0.03 150)",
+          "oklch(0.82 0.03 150)",
+          "oklch(0.95 0.03 150)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Floodlight",
+        "canonical": "oklch(0.965 0.008 110)",
+        "tonalRamp": [
+          "oklch(0.15 0.008 110)",
+          "oklch(0.26 0.008 110)",
+          "oklch(0.37 0.008 110)",
+          "oklch(0.48 0.008 110)",
+          "oklch(0.59 0.008 110)",
+          "oklch(0.7 0.008 110)",
+          "oklch(0.82 0.008 110)",
+          "oklch(0.95 0.008 110)"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Grandstand",
+        "canonical": "oklch(0.82 0.016 150)",
+        "tonalRamp": [
+          "oklch(0.15 0.016 150)",
+          "oklch(0.26 0.016 150)",
+          "oklch(0.37 0.016 150)",
+          "oklch(0.48 0.016 150)",
+          "oklch(0.59 0.016 150)",
+          "oklch(0.7 0.016 150)",
+          "oklch(0.82 0.016 150)",
+          "oklch(0.95 0.016 150)"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Back Row",
+        "canonical": "oklch(0.68 0.018 155)",
+        "tonalRamp": [
+          "oklch(0.15 0.018 155)",
+          "oklch(0.26 0.018 155)",
+          "oklch(0.37 0.018 155)",
+          "oklch(0.48 0.018 155)",
+          "oklch(0.59 0.018 155)",
+          "oklch(0.7 0.018 155)",
+          "oklch(0.82 0.018 155)",
+          "oklch(0.95 0.018 155)"
+        ]
+      },
+      "lime": {
+        "role": "primary",
+        "displayName": "Floodlight Lime",
+        "canonical": "oklch(0.91 0.2 126)",
+        "tonalRamp": [
+          "oklch(0.15 0.2 126)",
+          "oklch(0.26 0.2 126)",
+          "oklch(0.37 0.2 126)",
+          "oklch(0.48 0.2 126)",
+          "oklch(0.59 0.2 126)",
+          "oklch(0.7 0.2 126)",
+          "oklch(0.82 0.2 126)",
+          "oklch(0.95 0.2 126)"
+        ]
+      },
+      "lime-hover": {
+        "role": "primary",
+        "displayName": "Lamp Glare",
+        "canonical": "oklch(0.94 0.19 126)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 126)",
+          "oklch(0.26 0.19 126)",
+          "oklch(0.37 0.19 126)",
+          "oklch(0.48 0.19 126)",
+          "oklch(0.59 0.19 126)",
+          "oklch(0.7 0.19 126)",
+          "oklch(0.82 0.19 126)",
+          "oklch(0.95 0.19 126)"
+        ],
+        "note": "Hover state of lime; used as an inline literal in the build, not yet an @theme token."
+      },
+      "lime-ink": {
+        "role": "primary",
+        "displayName": "Lime Ink",
+        "canonical": "oklch(0.22 0.05 135)",
+        "tonalRamp": [
+          "oklch(0.15 0.05 135)",
+          "oklch(0.26 0.05 135)",
+          "oklch(0.37 0.05 135)",
+          "oklch(0.48 0.05 135)",
+          "oklch(0.59 0.05 135)",
+          "oklch(0.7 0.05 135)",
+          "oklch(0.82 0.05 135)",
+          "oklch(0.95 0.05 135)"
+        ]
+      },
+      "lime-wash": {
+        "role": "primary",
+        "displayName": "Lime Wash",
+        "canonical": "oklch(0.91 0.2 126 / 0.12)"
+      },
+      "miss": {
+        "role": "secondary",
+        "displayName": "Miss Coral",
+        "canonical": "oklch(0.74 0.15 28)",
+        "tonalRamp": [
+          "oklch(0.15 0.15 28)",
+          "oklch(0.26 0.15 28)",
+          "oklch(0.37 0.15 28)",
+          "oklch(0.48 0.15 28)",
+          "oklch(0.59 0.15 28)",
+          "oklch(0.7 0.15 28)",
+          "oklch(0.82 0.15 28)",
+          "oklch(0.95 0.15 28)"
+        ]
+      },
+      "miss-wash": {
+        "role": "secondary",
+        "displayName": "Miss Wash",
+        "canonical": "oklch(0.74 0.15 28 / 0.12)"
+      },
+      "live": {
+        "role": "secondary",
+        "displayName": "Siren Amber",
+        "canonical": "oklch(0.78 0.16 60)",
+        "tonalRamp": [
+          "oklch(0.15 0.16 60)",
+          "oklch(0.26 0.16 60)",
+          "oklch(0.37 0.16 60)",
+          "oklch(0.48 0.16 60)",
+          "oklch(0.59 0.16 60)",
+          "oklch(0.7 0.16 60)",
+          "oklch(0.82 0.16 60)",
+          "oklch(0.95 0.16 60)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display-hero": {
+        "displayName": "Display hero",
+        "purpose": "The 'N of M tipped' line; largest type on home."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Standalone page titles: recap and empty/error (46 to 52px)."
+      },
+      "score-board": {
+        "displayName": "Score board",
+        "purpose": "Featured board score; 600 predicted, 700 final."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The board's call and the live progress strip."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Page heading such as 'Round 10'."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "In-page section headings such as 'Results'."
+      },
+      "score-row": {
+        "displayName": "Score row",
+        "purpose": "Scores in game rows; 500 predicted, 700 final."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Team names, menu items, general UI text."
+      },
+      "body-lg": {
+        "displayName": "Body large",
+        "purpose": "Prose in empty states and recap, max 34ch."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Dates, kickoffs, board meta line, standing line."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "'Model's score', 'win chance', stat labels, row footnotes."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase status words and tags only (Your tip, LIVE, FT); never above a heading."
+      }
+    },
+    "shadows": [
+      {
+        "name": "menu-drop",
+        "value": "0 12px 32px -8px rgb(0 0 0 / 0.6)",
+        "purpose": "The More menu only."
+      },
+      {
+        "name": "lamp-glow",
+        "value": "0 0 10px 1px oklch(0.91 0.2 126 / 0.55)",
+        "purpose": "Transient peak of the perfect-round lamp chase; never at rest."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Pitch-bar fill and tick pop."
+      },
+      {
+        "name": "pitch-fill",
+        "value": "900ms ease-out-expo, from width 50%",
+        "purpose": "Bar fills slide out from halfway once, when 60% of the bar is visible."
+      },
+      {
+        "name": "tick-pop",
+        "value": "420ms ease-out-expo, scale 0.4 > 1.18 > 1",
+        "purpose": "Your correct tip's tick."
+      },
+      {
+        "name": "lamp-chase",
+        "value": "700ms ease-out, 70ms stagger, 300ms delay",
+        "purpose": "Perfect-round lamps chase once, left to right."
+      },
+      {
+        "name": "live-pulse",
+        "value": "1.6s ease-in-out infinite, opacity 1 > 0.35",
+        "purpose": "Live dot only."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation: none; transition: none",
+        "purpose": "All motion off under prefers-reduced-motion; resting states are final."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "Bottom tab bar gives way to the top bar; bottom padding 112px to 48px."
+      }
+    ],
+    "teamColours": {
+      "source": "web/lib/teams.ts",
+      "fields": {
+        "primary": "badge fill",
+        "secondary": "code lettering and stripe",
+        "ink": "lettering when secondary is too dark on the fill",
+        "bar": "pitch-bar fill, lightened for the dark ground"
+      },
+      "clashRule": "Away bar swaps to away primary when its RGB distance to the home bar is under 90 (barColours in web/components/pitch-bar.tsx)."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Lime pill for the one action on a surface.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/></svg>Try again</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:9999px;background:var(--color-lime);color:var(--color-lime-ink);padding:12px 20px;font:700 15px/1 var(--font-sans);cursor:pointer;transition:background-color .15s}.ds-btn-primary:hover{background:oklch(0.94 0.19 126)}.ds-btn-primary:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}"
+    },
+    {
+      "name": "Loud Tipping Strip",
+      "kind": "custom",
+      "refersTo": "tipping-strip-loud",
+      "description": "What you owe: the largest type on home, lime while tips are missing, with the inverted on-lime action.",
+      "html": "<a class=\"ds-strip\" href=\"#\"><div><p class=\"ds-strip-big\">3 of 7 tipped</p><p class=\"ds-strip-sub\">Next lockout: Fri 6:00pm</p></div><span class=\"ds-strip-cta\">Tip 4 <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></span></a>",
+      "css": ".ds-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;width:360px;padding:14px 16px;border-radius:12px;background:var(--color-lime);color:var(--color-lime-ink);text-decoration:none;transition:background-color .15s}.ds-strip:hover{background:oklch(0.94 0.19 126)}.ds-strip:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}.ds-strip-big{margin:0;font:800 56px/0.86 var(--font-display);text-transform:uppercase;font-variant-numeric:tabular-nums lining-nums}.ds-strip-sub{margin:6px 0 0;font:600 14px/1.3 var(--font-sans);opacity:.8}.ds-strip-cta{display:flex;align-items:center;gap:4px;flex-shrink:0;border-radius:9999px;background:var(--color-lime-ink);color:var(--color-lime);padding:10px 16px;font:700 14px/1 var(--font-sans)}.ds-strip-cta svg{transition:transform .15s}.ds-strip:hover .ds-strip-cta svg{transform:translateX(2px)}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Pill filter or state switch; selected is solid floodlight.",
+      "html": "<div class=\"ds-chips\"><a class=\"ds-chip ds-chip-on\" href=\"#\" aria-current=\"page\">Tipping open</a><a class=\"ds-chip\" href=\"#\">Recap</a></div>",
+      "css": ".ds-chips{display:flex;gap:8px}.ds-chip{border-radius:9999px;padding:6px 12px;font:600 13px/1.2 var(--font-sans);color:var(--color-ink-2);box-shadow:inset 0 0 0 1px var(--color-line);text-decoration:none;transition:color .15s,box-shadow .15s}.ds-chip:hover{color:var(--color-ink);box-shadow:inset 0 0 0 1px var(--color-ink-3)}.ds-chip:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}.ds-chip-on,.ds-chip-on:hover{background:var(--color-ink);color:var(--color-ground);box-shadow:none}"
+    },
+    {
+      "name": "Team Badge",
+      "kind": "custom",
+      "refersTo": "team-badge-md",
+      "description": "A team as its two colours and three-letter code; the Model badge in floodlight with a lime stripe.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge\" style=\"background:#22457f;color:#fff\">SYD<i style=\"background:#e31e26\"></i></span><span class=\"ds-badge\" style=\"background:#0091cc;color:#f8b818\">GLD<i style=\"background:#f8b818\"></i></span><span class=\"ds-badge ds-badge-model\">MDL<i></i></span></div>",
+      "css": ".ds-badges{display:flex;gap:8px}.ds-badge{position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;width:44px;height:28px;border-radius:5px;font:700 15px/1 var(--font-display);letter-spacing:.04em;box-shadow:inset 0 0 0 1px rgb(255 255 255/.1)}.ds-badge i{position:absolute;left:0;right:0;bottom:0;height:3px;opacity:.85}.ds-badge-model{background:var(--color-ink);color:var(--color-ground);font-weight:800;box-shadow:none}.ds-badge-model i{background:var(--color-lime);opacity:1}"
+    },
+    {
+      "name": "Pitch Bar",
+      "kind": "custom",
+      "refersTo": "pitch-bar-lg",
+      "description": "Signature: win probability as a field, filled from each end in team colours, with ten-metre lines and a ground-ringed halfway post.",
+      "html": "<div class=\"ds-pitch\" role=\"img\" aria-label=\"Model: Roosters 74% to win, Titans 26%\"><div class=\"ds-pitch-track\"><div class=\"ds-pitch-home\" style=\"width:74%;background:#5a83c8\"></div><div class=\"ds-pitch-away\" style=\"width:26%;background:#f2b42a\"></div><div class=\"ds-pitch-lines\"></div></div><div class=\"ds-pitch-half\"></div></div><div class=\"ds-pitch-labels\"><b>74%</b><span>win chance</span><b class=\"ds-dim\">26%</b></div>",
+      "css": ".ds-pitch{position:relative;padding:5px 0;width:320px}.ds-pitch-track{position:relative;height:14px;overflow:hidden;border-radius:3px;background:var(--color-pitch)}.ds-pitch-home,.ds-pitch-away{position:absolute;top:0;bottom:0}.ds-pitch-home{left:0}.ds-pitch-away{right:0;opacity:.42}.ds-pitch-lines{position:absolute;inset:0;background-image:repeating-linear-gradient(to right,transparent 0,transparent calc(10% - 1px),rgb(10 20 16/.55) calc(10% - 1px),rgb(10 20 16/.55) 10%)}.ds-pitch-half{position:absolute;top:0;bottom:0;left:50%;width:3px;transform:translateX(-50%);border-radius:9999px;background:var(--color-ink);box-shadow:0 0 0 1.5px var(--color-ground)}.ds-pitch-labels{display:flex;justify-content:space-between;align-items:center;width:320px;margin-top:4px;font:600 17px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--color-ink)}.ds-pitch-labels span{font:500 12px/1 var(--font-sans);color:var(--color-ink-3)}.ds-dim{color:var(--color-ink-3)}"
+    },
+    {
+      "name": "Game Row",
+      "kind": "custom",
+      "refersTo": "game-row",
+      "description": "Dense hairline row for every game outside the board; predicted scores dimmed and labelled.",
+      "html": "<a class=\"ds-row\" href=\"#\"><div class=\"ds-row-main\"><div class=\"ds-tl ds-lead\"><span class=\"ds-b\" style=\"background:#1f4a80;color:#ffc425\">NQL</span><span class=\"ds-n\">Cowboys</span><span class=\"ds-yours\">Your tip</span><span class=\"ds-s\">29</span></div><div class=\"ds-tl\"><span class=\"ds-b\" style=\"background:#0a6cb0;color:#ffd200\">PAR</span><span class=\"ds-n\">Eels</span><span class=\"ds-s ds-s3\">18</span></div><div class=\"ds-row-bar\"><div class=\"ds-mini\"><i style=\"width:74%;background:#f0b92a\"></i><i class=\"ds-away\" style=\"width:26%;background:#0a6cb0\"></i><em></em></div><span class=\"ds-cap\">Model NQL <b>74%</b></span></div></div><div class=\"ds-when\">Fri<b>8:00pm</b></div></a>",
+      "css": ".ds-row{display:flex;gap:16px;align-items:flex-start;width:360px;padding:12px;border-radius:8px;border-bottom:1px solid var(--color-line-soft);color:var(--color-ink-2);text-decoration:none;font-family:var(--font-sans);transition:background-color .15s}.ds-row:hover{background:var(--color-raised)}.ds-row:focus-visible{background:var(--color-raised);outline:2px solid var(--color-lime);outline-offset:2px}.ds-row-main{flex:1;min-width:0}.ds-tl{display:flex;align-items:center;gap:10px;padding:3px 0}.ds-b{display:inline-flex;align-items:center;justify-content:center;width:38px;height:24px;border-radius:5px;font:700 13px/1 var(--font-display);letter-spacing:.04em}.ds-n{flex:1;font-size:15px}.ds-lead .ds-n{color:var(--color-ink);font-weight:600}.ds-yours{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-lime)}.ds-s{width:32px;text-align:right;font:500 21px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--color-ink-2)}.ds-s3{color:var(--color-ink-3)}.ds-row-bar{display:flex;align-items:center;gap:10px;margin-top:8px}.ds-mini{position:relative;flex:1;height:7px;overflow:visible;border-radius:3px;background:var(--color-pitch)}.ds-mini i{position:absolute;top:0;bottom:0;left:0}.ds-mini i.ds-away{left:auto;right:0;opacity:.42}.ds-mini em{position:absolute;top:-3px;bottom:-3px;left:50%;width:2px;transform:translateX(-50%);border-radius:9999px;background:var(--color-ink);box-shadow:0 0 0 1.5px var(--color-ground)}.ds-cap{font-size:12px;font-weight:600;color:var(--color-ink-3)}.ds-cap b{font:600 15px/1 var(--font-display);color:var(--color-ink-2)}.ds-when{display:flex;flex-direction:column;align-items:flex-end;width:64px;font-size:13px;font-weight:500;line-height:1.25}.ds-when b{color:var(--color-ink);font-weight:600}"
+    },
+    {
+      "name": "Bottom Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Phone navigation; the active tab is lit by a lime mark and icon.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab ds-tab-on\" href=\"#\" aria-current=\"page\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/></svg>Round</a><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/></svg>Tips</a><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M3 3v18h18\"/><path d=\"m19 9-5 5-4-4-3 3\"/></svg>Elo</a></nav>",
+      "css": ".ds-tabs{display:flex;height:64px;width:360px;background:color-mix(in oklch,var(--color-raised) 95%,transparent);border-top:1px solid var(--color-line);backdrop-filter:blur(12px)}.ds-tab{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 11px/1 var(--font-sans);letter-spacing:.025em;color:var(--color-ink-3);text-decoration:none}.ds-tab:hover{color:var(--color-ink-2)}.ds-tab:focus-visible{outline:2px solid var(--color-lime);outline-offset:-2px}.ds-tab-on{color:var(--color-ink)}.ds-tab-on svg{color:var(--color-lime)}.ds-tab-on::before{content:\"\";position:absolute;top:0;width:32px;height:3px;border-radius:0 0 9999px 9999px;background:var(--color-lime)}"
+    },
+    {
+      "name": "Record Strip",
+      "kind": "custom",
+      "description": "Hairline strip, not a card: the Model's season record in three tabular stats.",
+      "html": "<section class=\"ds-rec\"><div class=\"ds-rec-h\">The Model&rsquo;s record<span>2026 season</span></div><dl><div><dt>Tips correct</dt><dd class=\"ds-big\">52<span>/80</span></dd><dd>65%</dd></div><div><dt>Bookies&rsquo; favourite</dt><dd class=\"ds-big ds-2\">50<span>/80</span></dd><dd>63%</dd></div><div><dt>Margin miss</dt><dd class=\"ds-big ds-2\">12.4</dd><dd>points a game</dd></div></dl></section>",
+      "css": ".ds-rec{width:360px;padding:16px 0;border-top:1px solid var(--color-line-soft);border-bottom:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-rec-h{display:flex;font-size:15px;font-weight:600;color:var(--color-ink)}.ds-rec-h span{margin-left:auto;font-size:12px;font-weight:500;color:var(--color-ink-3)}.ds-rec dl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 0;font-size:12px;color:var(--color-ink-3)}.ds-rec dd{margin:2px 0 0;font-weight:600;color:var(--color-ink-2)}.ds-rec .ds-big{margin-top:4px;font:700 22px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--color-ink)}.ds-rec .ds-2{color:var(--color-ink-2)}.ds-big span{color:var(--color-ink-3)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Night Game Under Lights",
+    "overview": "The site is a stadium scoreboard read from the stands: a green-black ground, floodlight-white figures, and one lime lamp that only lights for you. Every screen leads with the plain call (\"Roosters by 14\") and then shows how sure the Model is, drawn on a small pitch. Numbers are set in a condensed scoreboard face with fixed-width figures so scores and percentages line up down a column.\n\nDensity follows the dark match-row apps (Sofascore, Fotmob): one centred phone column, games as dense hairline-divided rows, and a single lit board for the game that matters most. The system rejects the betting-app card grid and the sports-portal hero: no stacks of tiles, no photography, no club logos, no gambling chrome. Teams exist only as their two colours and a three-letter code.\n\nDark only. Motion is rare and earns its place: bars fill as they appear, a correct tip pops, a perfect round chases its lamps once. With reduce motion, nothing moves.",
+    "keyCharacteristics": [
+      "Green-black tonal ground with floodlight-white ink in three steps; no light theme.",
+      "One accent (lime), reserved for you, actions and right calls.",
+      "Saira Extra Condensed uppercase for calls, headings and every score; Sofia Sans for everything you read as sentences.",
+      "Tabular, lining figures everywhere.",
+      "Hairline rows and strips; one raised board per page.",
+      "The pitch bar is the signature: win probability as a field with a halfway line and ten-metre lines."
+    ],
+    "rules": [
+      {
+        "name": "The One Lamp Rule",
+        "body": "Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration (\"Margin game\" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime.",
+        "section": "colors"
+      },
+      {
+        "name": "The Clash Rule",
+        "body": "A game's two bar colours must sit at least 90 RGB distance apart. When the away team's `bar` is closer than that to the home team's, the away fill swaps to its `primary` (`barColours` in `pitch-bar.tsx`). New team colours must be checked against likely opponents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scoreboard Figures Rule",
+        "body": "Every number is tabular. Scores, percentages, positions and counts use the score face (`font-score`: display family with `tnum` and `lnum`); body text inherits `tabular-nums` from the page.",
+        "section": "typography"
+      },
+      {
+        "name": "The Marked Prediction Rule",
+        "body": "A predicted score never passes for a result. Predicted scores are set one step dimmer and lighter (`ink-2` at most, weight 500 to 600), carry a \"Model's score\" caption on the board and a screen-reader \"predicted\", and bars are labelled \"Model XXX nn%\". While a game is live or awaiting its result, the score slot shows \"–\" in `ink-3`, never a number.",
+        "section": "typography"
+      },
+      {
+        "name": "The Loudest Line Rule",
+        "body": "On home, \"N of M tipped\" (56px) is the biggest thing on the page and the board score (48px) is next. Nothing else on a page outranks what you owe.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Eyebrow Rule",
+        "body": "No small uppercase kicker above a heading. Context goes on a meta line beside or below the heading in sentence case (`ink-3`, 13px), as the board does with \"Margin game · Fri 6:00pm · Polytec Stadium\".",
+        "section": "typography"
+      },
+      {
+        "name": "The One Board Rule",
+        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap). Never build a grid or stack of cards.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do lead every game with the plain call (\"Roosters by 14\") before any number or bar.",
+      "Do set every figure in the score face with tabular, lining numerals.",
+      "Do mark every predicted score: dimmer weight and `ink-2`, a \"Model's score\" caption on boards, \"Model XXX nn%\" beside bars; show \"–\" in `ink-3` while a game is live or awaiting its result.",
+      "Do keep \"N of M tipped\" (56px) the largest type on home and the board score (48px) next.",
+      "Do draw win probability with the pitch bar, called team at full strength, halfway line ringed in `ground`.",
+      "Do run new team colours through the 90-distance clash check against likely opponents.",
+      "Do separate lists with `line-soft` hairlines and give each page at most one raised board.",
+      "Do put context on a sentence-case `ink-3` meta line beside or below a heading.",
+      "Do turn off every animation and transition under reduced motion, with the resting state already final."
+    ],
+    "donts": [
+      "Don't use lime for labels, categories, headings or decoration; it is only for you, actions and right calls.",
+      "Don't put an eyebrow or kicker label above a heading.",
+      "Don't build card grids or stacks of bordered tiles; games are rows.",
+      "Don't show a number in the score slot of a live or awaiting game, or let a predicted score look like a result.",
+      "Don't use club logos, photography or bookmaker colours; teams are two colours and a code.",
+      "Don't use team colours outside badges and pitch bars.",
+      "Don't add a light theme or a second accent."
+    ]
+  }
+}

@@ -11,3 +11,6 @@ data/processed/features.csv
 reports/*.csv
 data/processed/features_pre_kickoff.csv
 reports/predictions/
+
+# Impeccable review screenshots (regenerated each review)
+.impeccable/review/
