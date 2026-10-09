@@ -1,6 +1,6 @@
 # NRL Predictor: Weekly Automation and Website Plan
 
-This plan extends [PLAN.md](PLAN.md). The website's working name is **rugbyleague-tipper**. It covers two things:
+This plan extends [PLAN.md](PLAN.md). The visual and UX design is in [DESIGN_BRIEF.md](DESIGN_BRIEF.md). The website's working name is **rugbyleague-tipper**. It covers two things:
 
 1. **Weekly automation:** run the model on a fixed schedule each week. Fetch team lists, stats, results and odds, rebuild the features, and publish new predicted scores, winners and margins.
 2. **A personal website** with five sections:
@@ -318,7 +318,7 @@ This is where the rules are enforced, not just in the website code:
 
 One card per game, ordered by kickoff:
 
-- Teams with logos, kickoff time in the viewer's local time, venue
+- Teams as colour badges (see §3.7), kickoff time in the viewer's local time, venue
 - **Predicted score**, e.g. "Storm 24 – 16 Broncos"
 - **Predicted winner** and **win probability** as a bar (e.g. 68% / 32%)
 - **Margin**, e.g. "Storm by 8"
@@ -344,7 +344,7 @@ A season tab shows how the model and the market have done over time: cumulative 
 
 Notes:
 
-- Present it as analysis for a few friends, not betting advice. No bookmaker logos, links or affiliate deals, a responsible gambling message with the national helpline, and a note that odds may be out of date. Keeping it non-promotional and personal keeps it clear of gambling advertising rules.
+- Just show the odds: no disclaimer or gambling message on the page (decided October 2026, see DESIGN_BRIEF.md). Bookmaker names appear as plain text only, with no logos, links or affiliate deals.
 - Odds data has terms of use. The Odds API allows display, but check the plan's terms, and credit the source.
 
 ### 3.4 Elo
@@ -420,10 +420,10 @@ Rule details to settle while building:
 
 ### 3.7 General
 
-- **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** and a "personal project" tag, and every page has a footer saying: personal project for a few friends, not affiliated with or endorsed by the NRL or any club, not betting advice. Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
+- **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** and a "personal project" tag, and every page has a one-line footer: "Tipping comp and predictor for the boys. I'm not responsible if you lose money." Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
 - **Kept out of search engines:** `noindex` on every page and a `robots.txt` that blocks crawlers. Friends get the link directly.
 - **Phone first:** most tipping happens on a phone. Design every page for a narrow screen first.
-- **Dark mode** and team colours, with enough contrast to read.
+- **Dark only** (see DESIGN_BRIEF.md), with team colours lightened where needed to read on the dark background.
 - **Caching:** prediction, odds and Elo pages are cached and refreshed when the pipeline calls the revalidation hook. Tipping pages are rendered per user and never cached.
 - **Times:** store everything in UTC; show times in the viewer's time zone.
 - **Privacy:** a short note on the about page saying the site stores only email addresses, display names and tips, for running the comp. Let users delete their account and tips.
