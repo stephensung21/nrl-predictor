@@ -6,17 +6,17 @@ The goal is to beat the bookmakers' closing odds.
 
 The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested the no-odds model beat the market, and the backtest showed that was luck.
 
-**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble ties with with-odds linear (0.625 vs 0.624; difference +0.0007, 95% interval −0.006 to +0.008), but it won 2 of the 3 seasons (2024 and 2025), so it's the more robust choice. All model types are still fitted and reported.
+**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble ties with with-odds linear (0.6245 vs 0.6243). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
 
 Pooled backtest results for the current setup:
 
 | | Win log loss | Margin MAE | Total MAE |
 |---|---|---|---|
-| **With-odds ensemble** (main model) | 0.625 | **13.59** | 10.80 |
-| With-odds linear | **0.624** | 13.59 | **10.73** |
-| **No-odds ensemble** (main model) | 0.630 | 13.61 | 10.84 |
-| No-odds linear | 0.628 | 13.61 | 10.80 |
-| With-odds LightGBM | 0.634 | 13.86 | 10.95 |
+| **With-odds ensemble** (main model) | 0.625 | **13.51** | 10.78 |
+| With-odds linear | **0.624** | 13.59 | **10.72** |
+| **No-odds ensemble** (main model) | 0.628 | 13.54 | 10.83 |
+| No-odds linear | 0.628 | 13.60 | 10.81 |
+| With-odds LightGBM | 0.630 | 13.57 | 10.91 |
 | Market closing (Odds Portal average) | 0.620 | – | 10.72 |
 | Market opening | 0.633 | 13.66 | 10.84 |
 | Elo only | 0.638 | – | – |
@@ -53,9 +53,16 @@ The with-odds model adds the opening odds. LightGBM uses the full feature set. F
 
 Regularised plus-minus: each player is rated by how the team's margin changes with them in the named 17. It's a ridge regression over earlier games, refitted before every round (penalty 300, 90-day half-life, chosen on 2022–24 CV). **RAPM total is the strongest single feature** and was picked first in every backtest season.
 
-## 4. Drop or constrain LightGBM ⬜ (on hold, probably not needed)
+## 4. Improve and stabilise LightGBM ✅ (adopted)
 
-The case for this came from 2025 alone. In the backtest, LightGBM beat the linear model in some seasons, and the **ensembles were the most robust models**. Leave it as it is.
+Reopened once the ensemble became the main model, since LightGBM is half of it. After the score fix (item 34), LightGBM moved by up to ±0.006 just from re-tuning on slightly different data. `python src/experiments.py --only lightgbm` (`reports/experiments_lightgbm.md`) compared five variants on accuracy and stability:
+
+- **Stability:** with Optuna on the full ~50 features, a different random seed moved each game's win probability by about **3 percentage points** on average. Fixed settings averaged over 5 seeds: **0.4–0.6 points**, about six times more stable.
+- **Accuracy:** a compact feature set was the biggest gain (the full set overfit). LightGBM alone improved from 0.640 to **0.630** with odds and from 0.638 to 0.634 without. The with-odds ensemble went from 0.628 to **0.6245**, margin 13.61 → 13.51, and **total clearly better** (10.85 → 10.78). The no-odds ensemble was about unchanged on win (0.6281 → 0.6279).
+
+**Adopted:** fixed conservative settings (depth 2, learning rate 0.02, at least 40 games per leaf, L2 10, 70% of features and 80% of games per tree; only the number of trees chosen by CV), on a **compact set of 16 features** (every linear-model feature plus RAPM attack, RAPM missing, rookies, rest days, travel, neutral venue and finals flag; plus the 3 opening-odds features for the with-odds model), **averaged over 5 seeds** (`LGB_TUNING`, `LGB_FIXED`, `LGB_COMPACT`, `LGB_SEEDS` in `train.py`). These settings were chosen in advance, not tuned on the backtest. The backtest now takes about 10 seconds instead of about 10 minutes. `--tune-lgb` restores Optuna on the full feature set.
+
+Betting with the new ensembles (opening prices, 0% minimum edge): with-odds head-to-head +9.8% (95% interval +0.9% to +19%), −4.7% at closing prices. Same story as before: the edge is against opening prices only.
 
 ## 5. More seasons of data ✅
 

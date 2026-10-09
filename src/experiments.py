@@ -18,10 +18,15 @@ Usage:
     python src/experiments.py                 ->  reports/experiments.md
     python src/experiments.py --only robust   ->  reports/experiments_robust.md (robust margin/total
                                                   training against the current pipeline)
+    python src/experiments.py --only lightgbm ->  reports/experiments_lightgbm.md (LightGBM accuracy
+                                                  and stability, and the main ensembles)
 """
 
 import argparse
 import warnings
+
+import lightgbm as lgb
+import optuna
 
 import numpy as np
 import pandas as pd
@@ -37,8 +42,9 @@ import train
 from elo import run_elo, tune as tune_elo
 from features import SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
 from ingest import PROCESSED, join_odds_to_matches, load_odds
-from train import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FIRST_SEASON, LINEAR_FEATURES, REPORTS,
-                   TARGETS, VARIANT_LABEL, VARIANTS, linear, linear_predict, md_table, platt)
+from train import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FEATURE_SETS, FIRST_SEASON, LINEAR_FEATURES, REPORTS,
+                   TARGETS, VARIANT_LABEL, VARIANTS, LGB_COMPACT_EXTRA, LGB_FIXED, LGB_SEEDS, cv_lgb, lgb_base,
+                   linear, linear_predict, md_table, platt, tune_lgb)
 
 ODDS = ["open_logit", "open_line", "open_total"]
 BASELINE_FEATURES = {
@@ -434,6 +440,133 @@ def robust_targets():
     print("wrote reports/experiments_robust.md")
 
 
+# ---------------------------------------------------------------- 8. LightGBM accuracy and stability
+
+# Fixed settings and compact set: the pipeline's (train.LGB_FIXED, train.lgb_features), which were
+# chosen in advance, not tuned on the backtest. Only the number of trees is chosen, by walk-forward
+# early stopping on earlier seasons.
+N_SEEDS = LGB_SEEDS
+COMPACT_EXTRA = LGB_COMPACT_EXTRA
+PIPELINE_LGB_VARIANT = "fixed settings, compact features, 5 seeds"  # adopted into train.py
+
+
+def lgb_features(variant, compact):
+    return train.lgb_features(compact) + (ODDS if variant == "with_odds" else [])
+
+
+def lgb_backtest(df, variant, target, compact=False, tuned=True, seeds=(0,), sampler_seed=0):
+    """LightGBM backtest for one target, as train.py does it (tuned on earlier seasons, fitted, and for
+    the win model Platt-calibrated on out-of-fold predictions), optionally with fixed settings, the
+    compact feature set, and predictions averaged over several random seeds."""
+    feats, kind = lgb_features(variant, compact), TARGETS[target]
+    out = []
+    for season in BACKTEST_SEASONS:
+        tr, te = df[df["season"] < season], df[df["season"] == season]
+        cv = list(range(FIRST_SEASON + 1, season))
+        if tuned:
+            params, rounds = tune_lgb(tr, feats, target, cv, sampler_seed=sampler_seed)
+        else:
+            params = {**lgb_base(kind), **LGB_FIXED}
+            rounds = cv_lgb(tr, feats, target, params, cv)[2]
+        preds, oofs = [], []
+        for sd in seeds:
+            p = {**params, "seed": sd}
+            preds.append(lgb.train(p, lgb.Dataset(tr[feats], tr[target]), num_boost_round=rounds).predict(te[feats]))
+            if kind == "clf":
+                oofs.append(cv_lgb(tr, feats, target, p, cv, n_rounds=rounds)[1])
+        pred = np.mean(preds, axis=0)
+        if kind == "clf":
+            oof = pd.concat(oofs, axis=1).mean(axis=1)
+            done = oof.notna()
+            pred = platt(oof[done], tr.loc[done, target])(pred)
+        out.append(pd.Series(pred, index=te["match_id"].to_numpy()))
+    return pd.concat(out)
+
+
+LGB_VARIANTS = {
+    # name: (compact features, Optuna-tuned, seeds, Optuna sampler seed)
+    "previous (Optuna, full features, 1 seed)": (False, True, (0,), 0),
+    "Optuna, full features, 5 seeds": (False, True, tuple(range(N_SEEDS)), 0),
+    "fixed settings, full features, 5 seeds": (False, False, tuple(range(N_SEEDS)), 0),
+    "fixed settings, compact features, 5 seeds": (True, False, tuple(range(N_SEEDS)), 0),
+    "Optuna, compact features, 5 seeds": (True, True, tuple(range(N_SEEDS)), 0),
+}
+# Stability: the same variant rerun with different randomness (Optuna sampler seed, or other bagging seeds).
+LGB_REPEATS = {
+    "previous (Optuna, full features, 1 seed)": (False, True, (0,), 1),
+    "fixed settings, full features, 5 seeds": (False, False, tuple(range(N_SEEDS, 2 * N_SEEDS)), 0),
+    "fixed settings, compact features, 5 seeds": (True, False, tuple(range(N_SEEDS, 2 * N_SEEDS)), 0),
+}
+
+
+def lightgbm_experiments():
+    """Compare LightGBM variants on accuracy (LightGBM alone, and the main ensemble = average with the
+    linear model) and stability (how much the pooled result moves when only the randomness changes).
+    Run before adoption, the baseline was the previous Optuna setup; after adoption it is the pipeline's
+    fixed-settings LightGBM (reports/experiments_lightgbm.md records the run that led to adoption)."""
+    warnings.filterwarnings("ignore")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    rows, stability = [], []
+
+    def score(target, p):
+        y = test.loc[p.index, target].to_numpy()
+        p = np.asarray(p, float)
+        if TARGETS[target] == "clf":
+            p = np.clip(p, 1e-6, 1 - 1e-6)
+            return float(np.mean(-(y * np.log(p) + (1 - y) * np.log(1 - p))))
+        return float(np.mean(np.abs(y - p)))
+
+    for v in VARIANTS:
+        results = {}
+        for name, (compact, tuned, seeds, ss) in LGB_VARIANTS.items():
+            print(f"{VARIANT_LABEL[v]}: {name}...")
+            results[name] = {t: lgb_backtest(df, v, t, compact, tuned, seeds, ss) for t in TARGETS}
+            if name == PIPELINE_LGB_VARIANT:  # must reproduce the pipeline's backtest exactly
+                for t in TARGETS:
+                    assert np.allclose(results[name][t], bt.loc[results[name][t].index, f"{v}|lightgbm|{t}"]), (v, t)
+        base_ens = {t: bt[f"{v}|ensemble|{t}"] for t in TARGETS}
+        for name, preds in results.items():
+            for t in TARGETS:
+                lin = bt.loc[preds[t].index, f"{v}|linear|{t}"]
+                ens = (lin + preds[t]) / 2
+                record(f"8 {name}: ensemble", v, t, test.loc[ens.index], ens, base_ens[t].loc[ens.index])
+                rows.append({"model": VARIANT_LABEL[v], "LightGBM variant": name, "target": t,
+                             "LightGBM": score(t, preds[t]), "linear": score(t, lin), "ensemble": score(t, ens)})
+        for name, (compact, tuned, seeds, ss) in LGB_REPEATS.items():
+            print(f"{VARIANT_LABEL[v]}: {name} (repeat with different randomness)...")
+            again = lgb_backtest(df, v, "home_win", compact, tuned, seeds, ss)
+            first = results[name]["home_win"]
+            stability.append({"model": VARIANT_LABEL[v], "LightGBM variant": name,
+                              "win log loss, run 1": score("home_win", first),
+                              "win log loss, run 2": score("home_win", again),
+                              "change": score("home_win", again) - score("home_win", first),
+                              "mean abs prob change": float(np.mean(np.abs(again - first.loc[again.index])))})
+
+    table, stab = pd.DataFrame(rows), pd.DataFrame(stability)
+    res = pd.DataFrame(RESULTS)
+    report = ["# LightGBM accuracy and stability (2023–2025 backtest)", "",
+              "Each LightGBM variant is backtested as `train.py` does it (tuned on earlier seasons only, win "
+              "model Platt-calibrated) and averaged with the linear model to form the main ensemble. The fixed "
+              "settings were chosen in advance (depth 2, learning rate 0.02, at least 40 games per leaf, L2 10, "
+              "70% of features and 80% of games per tree); only the number of trees is chosen by CV. The compact "
+              "set is every linear-model feature plus " + ", ".join(COMPACT_EXTRA) + ".", "",
+              "## Scores (log loss for `home_win`, MAE for margin and total)", "",
+              md_table(table.set_index("model")), "",
+              "## Ensemble against the current ensemble (paired bootstrap; negative = better)", "",
+              md_table(res.set_index("experiment")), "",
+              "## Stability: the same variant rerun with different randomness (win model)", "",
+              "Run 2 changes only the randomness: the Optuna sampler seed for the current setup, or a "
+              "different set of 5 bagging seeds for the fixed settings.", "",
+              md_table(stab.set_index("model")), ""]
+    (REPORTS / "experiments_lightgbm.md").write_text("\n".join(report), encoding="utf-8")
+    print(md_table(table.set_index("model")))
+    print(md_table(stab.set_index("model")))
+    print("wrote reports/experiments_lightgbm.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -557,6 +690,6 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["robust"], help="run just one experiment group")
+    parser.add_argument("--only", choices=["robust", "lightgbm"], help="run just one experiment group")
     args = parser.parse_args()
-    robust_targets() if args.only == "robust" else main()
+    {"robust": robust_targets, "lightgbm": lightgbm_experiments}.get(args.only, main)()

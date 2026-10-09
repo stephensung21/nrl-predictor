@@ -74,6 +74,18 @@ VARIANT_LABEL = {"with_odds": "With odds", "no_odds": "No odds"}
 # choice. Every model type is still fitted and reported.
 MAIN_MODEL = "ensemble"
 
+# LightGBM: fixed conservative settings on a compact feature set, averaged over several seeds.
+# Optuna tuning on the full ~50 features overfit and was unstable (a different random seed moved each
+# game's win probability by ~3 points); this setup is ~6x more stable and more accurate on the
+# 2023-2025 backtest (see experiments.py --only lightgbm). --tune-lgb restores Optuna tuning.
+LGB_TUNING = False
+LGB_FIXED = {"max_depth": 2, "num_leaves": 4, "learning_rate": 0.02, "min_child_samples": 40,
+             "lambda_l2": 10.0, "feature_fraction": 0.7, "bagging_fraction": 0.8}
+LGB_SEEDS = 5
+LGB_COMPACT = True
+LGB_COMPACT_EXTRA = ["diff_rapm_attack", "diff_rapm_missing", "diff_rookies", "diff_rest_days",
+                     "home_travel", "away_travel", "neutral", "is_final"]
+
 BASE = FEATURE_GROUPS["elo"] + FEATURE_GROUPS["form"] + FEATURE_GROUPS["context"]
 FEATURE_SETS = {
     "base": BASE,
@@ -209,7 +221,7 @@ def cv_lgb(df, feats, target, params, seasons=CV_SEASONS, n_rounds=None):
     return score(df.loc[done, target], oof[done], kind), oof, rounds
 
 
-def tune_lgb(df, feats, target, seasons=CV_SEASONS):
+def tune_lgb(df, feats, target, seasons=CV_SEASONS, sampler_seed=SEED):
     kind = TARGETS[target]
 
     def objective(trial):
@@ -227,7 +239,7 @@ def tune_lgb(df, feats, target, seasons=CV_SEASONS):
         trial.set_user_attr("rounds", rounds)
         return s
 
-    study = optuna.create_study(direction="minimize", sampler=optuna.samplers.TPESampler(seed=SEED))
+    study = optuna.create_study(direction="minimize", sampler=optuna.samplers.TPESampler(seed=sampler_seed))
     study.optimize(objective, n_trials=N_TRIALS)
     return {**lgb_base(kind), **study.best_params}, study.best_trial.user_attrs["rounds"]
 
@@ -248,7 +260,8 @@ def fit_predict(df, last_train, test_season, cfg):
     Win probabilities are Platt-calibrated on walk-forward out-of-fold predictions for
     2022..last_train, made with the same fixed settings; with MARGIN_BLEND the linear win
     probability is then averaged with the linear margin model's. Ensembles average the linear
-    and LightGBM predictions (calibrated probabilities for the win model).
+    and LightGBM predictions (calibrated probabilities for the win model); LightGBM itself is the
+    average of LGB_SEEDS models with different random seeds.
     """
     train = df[df["season"] <= last_train]
     test = df[df["season"] == test_season]
@@ -260,12 +273,15 @@ def fit_predict(df, last_train, test_season, cfg):
         for target, kind in TARGETS.items():
             lin_feats, mc = fs["linear"][target], cfg["models"][variant][target]
             lin = linear(kind, mc["linear"]).fit(train[lin_feats], train[target])
-            gbm = lgb.train(mc["lgb"], lgb.Dataset(train[gbm_feats], train[target]), num_boost_round=mc["lgb_rounds"])
+            seeds = [{**mc["lgb"], "seed": s} for s in range(mc.get("lgb_seeds", 1))]
+            gbm = [lgb.train(p, lgb.Dataset(train[gbm_feats], train[target]), num_boost_round=mc["lgb_rounds"])
+                   for p in seeds]
             p_lin = linear_predict(lin, test[lin_feats], kind)
-            p_gbm = gbm.predict(test[gbm_feats])
+            p_gbm = np.mean([g.predict(test[gbm_feats]) for g in gbm], axis=0)
             if kind == "clf":
                 _, oof_lin = cv_linear(train, lin_feats, target, mc["linear"], calib_seasons)
-                _, oof_gbm, _ = cv_lgb(train, gbm_feats, target, mc["lgb"], calib_seasons, n_rounds=mc["lgb_rounds"])
+                oof_gbm = pd.concat([cv_lgb(train, gbm_feats, target, p, calib_seasons, n_rounds=mc["lgb_rounds"])[1]
+                                     for p in seeds], axis=1).mean(axis=1)
                 done = oof_lin.notna()
                 p_lin = platt(oof_lin[done], train.loc[done, target])(p_lin)
                 p_gbm = platt(oof_gbm[done], train.loc[done, target])(p_gbm)
@@ -341,7 +357,8 @@ def importance(fitted, test):
         if target == "total":
             continue
         coef = pd.Series(np.ravel(lin[-1].coef_), index=lin_feats, name="linear_coef")
-        shap = pd.Series(np.abs(gbm.predict(test[gbm_feats], pred_contrib=True)[:, :-1]).mean(axis=0),
+        contrib = np.mean([g.predict(test[gbm_feats], pred_contrib=True)[:, :-1] for g in gbm], axis=0)
+        shap = pd.Series(np.abs(contrib).mean(axis=0),
                          index=gbm_feats, name="lightgbm_mean_abs_shap")
         both = pd.concat([coef, shap], axis=1).rename_axis("feature").reset_index()
         out.append(both.assign(variant=variant, target=target))
@@ -376,6 +393,14 @@ def bootstrap_diff(y, p_model, p_bench, seed=SEED):
 
 # ---------------------------------------------------------------- development procedure
 
+def lgb_features(compact):
+    """LightGBM's features (before odds): the full base + player set, or the compact set of every
+    linear-model feature plus LGB_COMPACT_EXTRA."""
+    if not compact:
+        return list(FEATURE_SETS["+player"])
+    return sorted({f for fs in LINEAR_FEATURES.values() for f in fs}) + LGB_COMPACT_EXTRA
+
+
 def develop(cv_df, cv_seasons):
     """Linear feature sets and tuning on walk-forward CV over cv_seasons. Returns cfg, trace, CV table.
 
@@ -395,8 +420,9 @@ def develop(cv_df, cv_seasons):
         linear_b = {t: list(f) for t, f in LINEAR_FEATURES.items()}
         trace = pd.DataFrame([{"target": t, "step": i + 1, "feature": f}
                               for t in ("home_win", "total") for i, f in enumerate(linear_b[t])]).set_index("step")
-    cfg = {"feature_sets": {"with_odds": {"linear": {t: f + odds for t, f in linear_b.items()}, "lightgbm": full + odds},
-                            "no_odds": {"linear": linear_b, "lightgbm": full}},
+    gbm = lgb_features(LGB_COMPACT)
+    cfg = {"feature_sets": {"with_odds": {"linear": {t: f + odds for t, f in linear_b.items()}, "lightgbm": gbm + odds},
+                            "no_odds": {"linear": linear_b, "lightgbm": gbm}},
            "models": {}}
     cv_rows = {}
     for variant, fs in cfg["feature_sets"].items():
@@ -404,8 +430,13 @@ def develop(cv_df, cv_seasons):
         for target in TARGETS:
             print(f"tuning model {variant} / {target}...")
             reg = tune_linear(cv_df, fs["linear"][target], target, cv_seasons)
-            lgb_params, rounds = tune_lgb(cv_df, fs["lightgbm"], target, cv_seasons)
-            cfg["models"][variant][target] = {"linear": reg, "lgb": lgb_params, "lgb_rounds": rounds}
+            if LGB_TUNING:
+                lgb_params, rounds = tune_lgb(cv_df, fs["lightgbm"], target, cv_seasons)
+            else:  # fixed settings: only the number of trees is chosen, by walk-forward early stopping
+                lgb_params = {**lgb_base(TARGETS[target]), **LGB_FIXED}
+                rounds = cv_lgb(cv_df, fs["lightgbm"], target, lgb_params, cv_seasons)[2]
+            cfg["models"][variant][target] = {"linear": reg, "lgb": lgb_params, "lgb_rounds": rounds,
+                                              "lgb_seeds": 1 if LGB_TUNING else LGB_SEEDS}
             cv_rows[(variant, target, "linear")] = cv_linear(cv_df, fs["linear"][target], target, reg, cv_seasons)[0]
             cv_rows[(variant, target, "lightgbm")] = cv_lgb(cv_df, fs["lightgbm"], target, lgb_params,
                                                             cv_seasons, n_rounds=rounds)[0]
@@ -609,10 +640,14 @@ if __name__ == "__main__":
                         help=f"rerun development for each of {BACKTEST_SEASONS} and predict it")
     parser.add_argument("--select", action="store_true",
                         help="forward feature selection for the linear models instead of LINEAR_FEATURES")
+    parser.add_argument("--tune-lgb", action="store_true",
+                        help="tune LightGBM with Optuna on the full feature set (the earlier setup)")
     parser.add_argument("--train-from", type=int, default=FIRST_SEASON,
                         help=f"first season of training rows (default {FIRST_SEASON})")
     args = parser.parse_args()
     FEATURE_SELECTION, FIRST_SEASON = args.select, args.train_from
+    if args.tune_lgb:
+        LGB_TUNING, LGB_COMPACT = True, False
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
     if args.final:
