@@ -38,7 +38,7 @@ from elo import run_elo, tune as tune_elo
 from features import SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
 from ingest import PROCESSED, join_odds_to_matches, load_odds
 from train import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FIRST_SEASON, LINEAR_FEATURES, REPORTS,
-                   TARGETS, linear, linear_predict, md_table, platt)
+                   TARGETS, VARIANT_LABEL, VARIANTS, linear, linear_predict, md_table, platt)
 
 ODDS = ["open_logit", "open_line", "open_total"]
 BASELINE_FEATURES = {
@@ -121,10 +121,10 @@ def record(experiment, variant, target, test, new, base, note=""):
     kind = TARGETS[target]
     new_s, base_s, diff, lo, hi = paired(test[target], new, base, kind)
     verdict = "better" if hi < 0 else "worse" if lo > 0 else "no clear difference"
-    RESULTS.append({"experiment": experiment, "model": variant, "target": target,
+    RESULTS.append({"experiment": experiment, "model": VARIANT_LABEL[variant], "target": target,
                     "metric": "log loss" if kind == "clf" else "MAE", "baseline": base_s, "new": new_s,
                     "diff": diff, "ci_low": lo, "ci_high": hi, "verdict": verdict, "note": note})
-    print(f"{experiment:38s} {variant:3s} {target:8s} base {base_s:.4f} new {new_s:.4f} "
+    print(f"{experiment:38s} {variant:9s} {target:8s} base {base_s:.4f} new {new_s:.4f} "
           f"diff {diff:+.4f} [{lo:+.4f}, {hi:+.4f}] {verdict}")
 
 
@@ -136,7 +136,7 @@ def load():
 
 
 def feats_for(variant, sets=BASELINE_FEATURES):
-    return {t: list(f) + (ODDS if variant == "A" else []) for t, f in sets.items()}
+    return {t: list(f) + (ODDS if variant == "with_odds" else []) for t, f in sets.items()}
 
 
 # ---------------------------------------------------------------- 1. re-tests
@@ -256,7 +256,7 @@ def probabilistic(df, preds, extra, variant):
         boot = d[np.random.default_rng(0).integers(0, len(d), (N_BOOT, len(d)))].mean(axis=1)
         conf = np.abs(p - 0.5) > 0.05
         hits = ((p > 0.5) == y)
-        summary.append({"model": variant, "market": "line" if target == "margin" else "total",
+        summary.append({"model": VARIANT_LABEL[variant], "market": "line" if target == "margin" else "total",
                         "spread": spec, "games": len(g), "log_loss": ll.mean(), "vs_50pct": d.mean(),
                         "ci_low": np.percentile(boot, 2.5), "ci_high": np.percentile(boot, 97.5),
                         "hit_rate": hits.mean(), "bets_p>55%": int(conf.sum()),
@@ -405,7 +405,7 @@ def robust_targets():
     df = load()
     test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
     bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
-    for v in ("A", "B"):
+    for v in VARIANTS:
         feats = feats_for(v, LINEAR_FEATURES)
         logistic = run_linear(lambda s: df, feats)[0]["home_win"]  # before the margin blend
         out = {}
@@ -445,7 +445,7 @@ def main():
 
     print("baseline linear backtest...")
     base, base_extra = {}, {}
-    for v in ("A", "B"):
+    for v in VARIANTS:
         base[v], base_extra[v] = run_linear(lambda s: df, feats_for(v))
         for t in ("margin", "total"):  # unchanged since; the harness must reproduce train.py exactly
             assert np.allclose(base[v][t].to_numpy(), bt.loc[base[v].index, f"{v}|linear|{t}"].to_numpy()), (v, t)
@@ -456,24 +456,24 @@ def main():
             record(name, variant, t, test.set_index("match_id").loc[preds.index], preds[t], base[variant][t])
 
     # 1. Re-tests of ideas rejected on 2025 alone.
-    for v in ("A", "B"):
+    for v in VARIANTS:
         p_margin = margin_to_prob(test, base[v], base_extra[v])
         compare("1a win prob from margin", v, pd.DataFrame({"home_win": p_margin}), ["home_win"])
         blend = (p_margin + base[v]["home_win"]) / 2
         compare("1a blend: logistic + margin", v, pd.DataFrame({"home_win": blend}), ["home_win"])
     offset = pd.concat([offset_logistic(df, s, BASELINE_FEATURES["home_win"]) for s in BACKTEST_SEASONS])
-    compare("1b market offset + B features", "A", pd.DataFrame({"home_win": offset}), ["home_win"])
+    compare("1b market offset + no-odds features", "with_odds", pd.DataFrame({"home_win": offset}), ["home_win"])
     for hl in (1, 2):
         w = lambda tr, s, hl=hl: 0.5 ** ((s - 1 - tr["season"].to_numpy()) / hl)
-        for v in ("A", "B"):
+        for v in VARIANTS:
             compare(f"1c recency weights (half-life {hl} season)", v, run_linear(lambda s: df, feats_for(v), w)[0])
     elo_all, elo_six = elo_variants(df, odds)
     for name, fn in (("1d Elo retuned 2013..year-1", elo_all), ("1d Elo retuned 2020..year-1", elo_six)):
-        for v in ("A", "B"):
+        for v in VARIANTS:
             compare(name, v, run_linear(fn, feats_for(v))[0], ["home_win", "margin"])
 
     # 2. Probabilistic margin and total vs the opening line and total.
-    prob = pd.concat([probabilistic(df, base[v], base_extra[v], v) for v in ("A", "B")])
+    prob = pd.concat([probabilistic(df, base[v], base_extra[v], v) for v in VARIANTS])
     print(md_table(prob.set_index("model")))
 
     # 3. Team margin rating and team-specific home advantage (settings chosen per backtest year).
@@ -503,7 +503,7 @@ def main():
                        ("3 + team rating + team home advantage", {"home_win": win + ["team_margin", "team_hfa"]})):
         sets = {**BASELINE_FEATURES, "home_win": sets["home_win"], "margin": sets["home_win"]}
         chosen = {s: pick(s, sets["home_win"]) for s in BACKTEST_SEASONS}
-        for v in ("A", "B"):
+        for v in VARIANTS:
             compare(name, v, run_linear(lambda s: chosen[s], feats_for(v, sets))[0], ["home_win", "margin"])
 
     # 4. Opponent-adjusted form.
@@ -515,27 +515,27 @@ def main():
             ("4 + all adjusted form", adj_all, ["sum_adj_points"])):
         sets = {"home_win": win + extra_win, "margin": win + extra_win,
                 "total": BASELINE_FEATURES["total"] + extra_total}
-        for v in ("A", "B"):
+        for v in VARIANTS:
             compare(name, v, run_linear(lambda s: dfa, feats_for(v, sets))[0])
 
     # 5. Ensembles of the backtest predictions (linear + LightGBM, A and B).
     t_idx = test.set_index("match_id")
-    for v in ("A", "B"):
+    for v in VARIANTS:
         members = {"linear": base[v]["home_win"], "lightgbm": bt[f"{v}|lightgbm|home_win"]}
         for name, p in ensembles(test, members).items():
             record(f"5 ensemble: {name}", v, "home_win", t_idx, p.loc[t_idx.index],
                    bt.loc[t_idx.index, f"{v}|ensemble|home_win"], note="baseline = current 50/50 ensemble")
     members = {f"{v}|{m}": (base[v]["home_win"] if m == "linear" else bt[f"{v}|lightgbm|home_win"])
-               for v in ("A", "B") for m in ("linear", "lightgbm")}
+               for v in VARIANTS for m in ("linear", "lightgbm")}
     for name, p in ensembles(test, members).items():
-        record(f"5 ensemble of all four: {name}", "A", "home_win", t_idx, p.loc[t_idx.index],
-               bt.loc[t_idx.index, "A|ensemble|home_win"], note="baseline = current A ensemble")
+        record(f"5 ensemble of all four: {name}", "with_odds", "home_win", t_idx, p.loc[t_idx.index],
+               bt.loc[t_idx.index, "with_odds|ensemble|home_win"], note="baseline = current with-odds ensemble")
 
     # 6. The two near misses together (chosen after seeing 1a and 3, so treat with caution): team
     # margin rating in the logistic model, blended with the margin model's win probability.
     # Adopted into the pipeline as LINEAR_FEATURES + MARGIN_BLEND.
     dft = team_dfs[(730, 30)]  # the setting chosen in every backtest year for this feature set
-    for v in ("A", "B"):
+    for v in VARIANTS:
         new = run_linear(lambda s: dft, feats_for(v, {**BASELINE_FEATURES, "home_win": win + ["team_margin"]}))[0]
         combo = (new["home_win"] + margin_to_prob(test, base[v], base_extra[v])) / 2
         compare("6 combined: team rating + margin blend", v, pd.DataFrame({"home_win": combo}), ["home_win"])

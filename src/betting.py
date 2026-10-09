@@ -1,18 +1,20 @@
 """
 Betting simulation on the 2023-2025 backtest predictions.
 
-Uses the out-of-sample backtest predictions (each season predicted from earlier seasons only)
-and bets a flat 1 unit whenever the model's expected edge, probability x odds - 1, exceeds a
+Uses the main models' out-of-sample backtest predictions (the ensemble for both variants; each
+season predicted from earlier seasons only) and bets a flat 1 unit whenever the model's expected edge, probability x odds - 1, exceeds a
 threshold, at the OPENING prices for:
 - head to head: the win probability;
 - line: P(home covers the opening line) = Phi((predicted margin + line) / sigma);
 - total: P(over the opening total) = Phi((predicted total - total) / sigma);
-where sigma is the spread of the linear model's out-of-fold errors on earlier seasons only.
+where sigma is the spread of the linear model's out-of-fold errors on earlier seasons only (used
+for the ensemble too, whose errors are very similar; LightGBM has no out-of-fold errors here).
 
 Reports profit and ROI (with a bootstrap 95% interval), and closing line value (CLV): whether
 the price or line moved towards the bet by kickoff, a much less noisy sign of real edge than
 profit. Totals are simulated with and without the wet-conditions flag, which is only known near
-kickoff while opening prices come out early in the week.
+kickoff while opening prices come out early in the week; that version is linear only, because
+LightGBM would need retraining without the flag.
 
 Caveats: draws were excluded from the backtest (a head-to-head bet loses on a draw); the
 models use the named 17, which may come out after the opening price; and the backtest informed
@@ -29,7 +31,7 @@ from scipy.stats import norm
 
 import experiments
 from ingest import join_odds_to_matches, load_odds
-from train import BACKTEST_SEASONS, LINEAR_FEATURES, REPORTS, md_table
+from train import BACKTEST_SEASONS, LINEAR_FEATURES, MAIN_MODEL, REPORTS, VARIANT_LABEL, VARIANTS, md_table
 
 THRESHOLDS = [0.0, 0.02, 0.05, 0.10]
 N_BOOT = 10000
@@ -50,20 +52,22 @@ def load():
     prices = odds.set_index("odds_id")[[c for c in PRICE_COLS if c not in test.columns]]
     games = test.set_index("match_id").join(ids.set_index("match_id")["odds_id"]).join(prices, on="odds_id")
 
-    # Margin and total predictions with out-of-fold errors per season (the same linear models as the
-    # backtest), and a total model without the wet flag for bets placed early in the week.
+    # The main model's predictions for every market. Sigma comes from the linear models' out-of-fold
+    # errors per season (rerun here exactly as in the backtest). Totals without the wet flag, for bets
+    # placed early in the week, are linear only.
     preds, sigma = {}, {}
     no_wet = {**LINEAR_FEATURES, "total": [f for f in LINEAR_FEATURES["total"] if f != "wet_conditions"]}
-    for v in ("A", "B"):
-        for name, sets in (("", LINEAR_FEATURES), (" (no rain flag)", no_wet)):
+    for v in VARIANTS:
+        main, early = f"{v} {MAIN_MODEL}", f"{v} linear (no rain flag)"
+        for name, sets in ((main, LINEAR_FEATURES), (early, no_wet)):
             p, extra = experiments.run_linear(lambda s: df, experiments.feats_for(v, sets))
-            if not name:  # must match the backtest exactly
+            if name == main:  # must match the backtest exactly
                 for t in ("margin", "total"):
                     assert np.allclose(p[t], bt.loc[p.index, f"{v}|linear|{t}"]), (v, t)
             for t in ("margin", "total"):
-                preds[(v + name, t)] = p[t]
-                sigma[(v + name, t)] = {s: np.std(tr[t] - oof) for (s, tt), (tr, oof) in extra.items() if tt == t}
-        preds[(v, "home_win")] = bt.loc[games.index, f"{v}|linear|home_win"]
+                preds[(name, t)] = bt.loc[games.index, f"{v}|{MAIN_MODEL}|{t}"] if name == main else p[t]
+                sigma[(name, t)] = {s: np.std(tr[t] - oof) for (s, tt), (tr, oof) in extra.items() if tt == t}
+        preds[(main, "home_win")] = bt.loc[games.index, f"{v}|{MAIN_MODEL}|home_win"]
     return games, preds, sigma
 
 
@@ -115,6 +119,13 @@ def candidate_bets(games, preds, sigma, model):
     return bets
 
 
+def label(model):
+    """Display name, e.g. 'with_odds (no rain flag)' -> 'With odds (no rain flag)'."""
+    for v, name in VARIANT_LABEL.items():
+        model = model.replace(v, name)
+    return model
+
+
 def summarise(bets):
     rows = []
     for (model, market), b in bets.groupby(["model", "market"], sort=False):
@@ -127,7 +138,7 @@ def summarise(bets):
             clv = x["clv"].dropna()
             close = x[x["close_odds"].notna()]
             rows.append({
-                "model": model, "market": market, "min edge": f"{thr:.0%}", "bets": len(x),
+                "model": label(model), "market": market, "min edge": f"{thr:.0%}", "bets": len(x),
                 "won": (x["result"] == 1).mean(), "profit (units)": profit.sum(), "ROI": profit.mean(),
                 "ROI ci_low": np.percentile(boot, 2.5), "ROI ci_high": np.percentile(boot, 97.5),
                 "P(ROI > 0)": (boot > 0).mean(),
@@ -142,7 +153,7 @@ def summarise(bets):
 
 def main():
     games, preds, sigma = load()
-    models = ["A", "B", "A (no rain flag)", "B (no rain flag)"]
+    models = [*(f"{v} {MAIN_MODEL}" for v in VARIANTS), *(f"{v} linear (no rain flag)" for v in VARIANTS)]
     bets = pd.concat([candidate_bets(games, preds, sigma, m) for m in models])
     # The no-rain models only differ on totals.
     bets = bets[~(bets["model"].str.contains("no rain") & (bets["market"] != "total"))]
@@ -156,8 +167,10 @@ def main():
     report = ["# Betting simulation, 2023–2025 backtest", "",
               "Flat 1-unit bets at the **opening** prices whenever probability × odds − 1 exceeds the minimum "
               "edge, using out-of-sample backtest predictions (each season predicted from earlier seasons "
-              "only). Model A is the main model (uses opening odds as inputs); Model B uses no odds. "
-              "`(no rain flag)` totals don't use the wet-conditions flag, which is only known near kickoff.", "",
+              "only), using the main models: the ensemble (average of linear and LightGBM) for both variants. The "
+              "with-odds models use the opening odds as inputs; the no-odds models use no odds. "
+              "`linear (no rain flag)` totals don't use the wet-conditions flag, which is only known near kickoff "
+              "(linear only: LightGBM would need retraining without it).", "",
               clv_note, "",
               "Caveats: draws were excluded from the backtest; the line-up features use the named 17, which "
               "may come out after the opening price; and the backtest has informed many modelling decisions, "

@@ -58,13 +58,21 @@ MARGIN_BLEND = True  # forward selection: minimum pooled CV gain (log loss / MAE
 # Fixed linear feature sets: the features chosen consistently across the 2023-2025 backtest's
 # forward selection, plus the team margin rating (win) and wet-conditions flag (totals).
 # Selecting per season from 1-3 CV seasons overfit, so it is off by default (--select turns it
-# back on). Model A adds the opening odds to each set.
+# back on). The with-odds models add the opening odds to each set.
 FEATURE_SELECTION = False
 LINEAR_FEATURES = {
     "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual", "team_margin"],
     "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
     "total": ["rapm_points", "origin_period", "wet_conditions"],
 }
+
+# Model variants: the same features with or without the opening odds as inputs.
+VARIANTS = ("with_odds", "no_odds")
+VARIANT_LABEL = {"with_odds": "With odds", "no_odds": "No odds"}
+# Main model type for both variants: the ensemble (50/50 average of linear and LightGBM). It ties
+# with the linear model on the pooled backtest and won 2 of the 3 seasons, so it's the more robust
+# choice. Every model type is still fitted and reported.
+MAIN_MODEL = "ensemble"
 
 BASE = FEATURE_GROUPS["elo"] + FEATURE_GROUPS["form"] + FEATURE_GROUPS["context"]
 FEATURE_SETS = {
@@ -314,7 +322,7 @@ def results_table(test, preds, baseline, closing):
     for col in preds.columns:
         variant, model, target = col.split("|")
         if target == "home_win":
-            key = f"Model {variant}: {model}"
+            key = f"{VARIANT_LABEL[variant]}: {model}"
             rows[key] = evaluate(test, preds[col], preds[f"{variant}|{model}|margin"],
                                  preds[f"{variant}|{model}|total"])
     rows["Benchmark: home team"] = evaluate(test, baseline["home_win"], baseline["margin"], baseline["total"])
@@ -387,8 +395,8 @@ def develop(cv_df, cv_seasons):
         linear_b = {t: list(f) for t, f in LINEAR_FEATURES.items()}
         trace = pd.DataFrame([{"target": t, "step": i + 1, "feature": f}
                               for t in ("home_win", "total") for i, f in enumerate(linear_b[t])]).set_index("step")
-    cfg = {"feature_sets": {"B": {"linear": linear_b, "lightgbm": full},
-                            "A": {"linear": {t: f + odds for t, f in linear_b.items()}, "lightgbm": full + odds}},
+    cfg = {"feature_sets": {"with_odds": {"linear": {t: f + odds for t, f in linear_b.items()}, "lightgbm": full + odds},
+                            "no_odds": {"linear": linear_b, "lightgbm": full}},
            "models": {}}
     cv_rows = {}
     for variant, fs in cfg["feature_sets"].items():
@@ -402,7 +410,7 @@ def develop(cv_df, cv_seasons):
             cv_rows[(variant, target, "lightgbm")] = cv_lgb(cv_df, fs["lightgbm"], target, lgb_params,
                                                             cv_seasons, n_rounds=rounds)[0]
     cv_table = pd.Series(cv_rows).unstack([1])
-    cv_table.index = pd.Index([f"Model {v}: {m}" for v, m in cv_table.index], name="model")
+    cv_table.index = pd.Index([f"{VARIANT_LABEL[v]}: {m}" for v, m in cv_table.index], name="model")
     return cfg, trace, cv_table
 
 
@@ -411,7 +419,7 @@ def develop(cv_df, cv_seasons):
 def run_dev():
     df = load_data()
     cv_df = df[df["season"] <= max(CV_SEASONS)]
-    report = [f"# Dev evaluation ({DEV_SEASON})", ""]
+    report = [f"# Dev evaluation ({DEV_SEASON})", "", f"**Main models:** the {MAIN_MODEL} (average of linear and LightGBM) for both variants, with odds and no odds.", ""]
 
     # 1. Feature-set comparison with logistic / ridge.
     print("comparing feature sets...")
@@ -436,13 +444,13 @@ def run_dev():
         report += ["## Linear model features (fixed)", "",
                    "Fixed sets from the features chosen consistently in the backtest's forward selection. "
                    "The win and margin models use the `home_win` set, the total model the `total` set; "
-                   "Model A adds the opening odds. LightGBM uses the full set.", "", md_table(trace), ""]
+                   "The with-odds models add the opening odds. LightGBM uses the full set.", "", md_table(trace), ""]
     else:
         report += ["## Forward feature selection (linear models)", "",
                f"Greedy selection from the {len(full)} base + player features on walk-forward CV, adding a "
                f"feature only if it improves the score in every CV season and the pooled score by at least "
                f"{MIN_GAIN['clf']} (log loss, `home_win`) or {MIN_GAIN['reg']} points (MAE, `total`). The win and "
-               f"margin models use the `home_win` selection, the total model the `total` one; Model A adds the "
+               f"margin models use the `home_win` selection, the total model the `total` one; the with-odds models add the "
                f"opening odds. LightGBM uses the full set.", "",
                md_table(trace), ""]
 
@@ -463,8 +471,8 @@ def run_dev():
                md_table(results), ""]
 
     imp = importance(fitted, test)
-    report += ["## Feature importance (`home_win`, Model B; linear coefficients for selected features only)", "",
-               md_table(imp[(imp["variant"] == "B") & (imp["target"] == "home_win")]
+    report += ["## Feature importance (`home_win`, with odds; linear coefficients for the linear model's features only)", "",
+               md_table(imp[(imp["variant"] == "with_odds") & (imp["target"] == "home_win")]
                         .drop(columns=["variant", "target"])
                         .sort_values("lightgbm_mean_abs_shap", ascending=False).set_index("feature")), ""]
 
@@ -505,10 +513,10 @@ def run_backtest():
 
     # Paired bootstrap against the market (Odds Portal average) and Elo, pooled over all seasons.
     boots = {}
-    for col in ["B|linear|home_win", "B|ensemble|home_win", "A|linear|home_win", "A|ensemble|home_win"]:
+    for col in [f"{v}|{m}|home_win" for v in VARIANTS for m in ("linear", "ensemble")]:
         variant, model, _ = col.split("|")
         for bench, name in (("p_avg", "market average"), ("p_open", "market opening"), ("elo_prob", "Elo")):
-            boots[(f"Model {variant}: {model}", name)] = bootstrap_diff(test["home_win"], preds[col], test[bench])
+            boots[(f"{VARIANT_LABEL[variant]}: {model}", name)] = bootstrap_diff(test["home_win"], preds[col], test[bench])
     boots = pd.DataFrame(boots).T.rename_axis(["model", "vs"])
     boots.index = [f"{m} vs {b}" for m, b in boots.index]
     boots = boots.rename_axis("comparison")
@@ -516,8 +524,9 @@ def run_backtest():
     # Real closing odds where they exist and are reliable (mostly 2023).
     ok = test["close_ok"].astype(bool)
     closing = results_table(test[ok], preds[ok], baseline[ok], ("p_close", "close_line", "close_total"))
-    closing_boot = pd.DataFrame({"Model B: linear vs market closing": bootstrap_diff(
-        test.loc[ok, "home_win"], preds.loc[ok, "B|linear|home_win"], test.loc[ok, "p_close"])}).T.rename_axis("comparison")
+    closing_boot = pd.DataFrame({f"{VARIANT_LABEL[v]}: linear vs market closing": bootstrap_diff(
+        test.loc[ok, "home_win"], preds.loc[ok, f"{v}|linear|home_win"], test.loc[ok, "p_close"])
+        for v in VARIANTS}).T.rename_axis("comparison")
 
     pool = FEATURE_SETS["+player"]
     stability = pd.DataFrame({s: [f in sel["home_win"] for f in pool] for s, sel in selections.items()}, index=pool)
@@ -527,7 +536,7 @@ def run_backtest():
 
     seasons_txt = f"{BACKTEST_SEASONS[0]}–{BACKTEST_SEASONS[-1]}"
     method = "forward selection, " if FEATURE_SELECTION else "fixed linear feature sets, "
-    report = [f"# Backtest {seasons_txt}", "",
+    report = [f"# Backtest {seasons_txt}", "", f"**Main models:** the {MAIN_MODEL} (average of linear and LightGBM) for both variants, with odds and no odds.", "",
               f"Training seasons start in {FIRST_SEASON}. For each season, the whole development procedure "
               f"({method}tuning of the linear models and LightGBM, Platt calibration) is rerun on earlier "
               "seasons only, then the season is "
@@ -575,7 +584,7 @@ def run_final(force):
     reliable = results_table(test[ok], preds[ok], baseline[ok], closing)
     everything = results_table(test, preds, baseline, ("p_avg", None, None))
 
-    report = [f"# Final test ({TEST_SEASON})", "",
+    report = [f"# Final test ({TEST_SEASON})", "", f"**Main models:** the {MAIN_MODEL} (average of linear and LightGBM) for both variants, with odds and no odds.", "",
               f"Settings and feature sets come from the dev run; models refit on {FIRST_SEASON}–{DEV_SEASON}.", "",
               f"## Games with reliable closing odds ({ok.sum()} of {len(test)})", "", md_table(reliable), "",
               f"## All {len(test)} games (closing benchmark = Odds Portal average)", "", md_table(everything), ""]

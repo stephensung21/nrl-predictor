@@ -4,26 +4,26 @@ The goal is to beat the bookmakers' closing odds.
 
 ## Where things stand
 
-The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested Model B beat the market, and the backtest showed that was luck.
+The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested the no-odds model beat the market, and the backtest showed that was luck.
 
-**Main model: Model A linear** (logistic / ridge with the opening odds as inputs). It's the best on win probability and totals, and the simplest. The ensemble is still reported for comparison, but since the linear model improved it no longer adds anything.
+**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble ties with with-odds linear (0.625 vs 0.624; difference +0.0007, 95% interval −0.006 to +0.008), but it won 2 of the 3 seasons (2024 and 2025), so it's the more robust choice. All model types are still fitted and reported.
 
 Pooled backtest results for the current setup:
 
 | | Win log loss | Margin MAE | Total MAE |
 |---|---|---|---|
-| **Model A linear** (main model) | **0.624** | 13.59 | **10.73** |
-| Model A ensemble | 0.625 | **13.59** | 10.80 |
-| Model B linear (no odds) | 0.628 | 13.61 | 10.80 |
-| Model B ensemble | 0.630 | 13.61 | 10.84 |
-| Model A LightGBM | 0.634 | 13.86 | 10.95 |
+| **With-odds ensemble** (main model) | 0.625 | **13.59** | 10.80 |
+| With-odds linear | **0.624** | 13.59 | **10.73** |
+| **No-odds ensemble** (main model) | 0.630 | 13.61 | 10.84 |
+| No-odds linear | 0.628 | 13.61 | 10.80 |
+| With-odds LightGBM | 0.634 | 13.86 | 10.95 |
 | Market closing (Odds Portal average) | 0.620 | – | 10.72 |
 | Market opening | 0.633 | 13.66 | 10.84 |
 | Elo only | 0.638 | – | – |
 
-- **Win probability:** Model A linear is 0.004 behind the market average (95% interval −0.008 to +0.016), down from +0.024 at the start of the backtest work. By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
+- **Win probability:** with-odds linear is 0.004 behind the market average (95% interval −0.008 to +0.016), down from +0.024 at the start of the backtest work. By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
 - **Margin:** the models beat the opening line on average error, but not on line-cover probability (item 14).
-- **Totals:** Model A linear is level with the closing total and beats the opening total.
+- **Totals:** with-odds linear is level with the closing total and beats the opening total.
 - **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +11–12% ROI, but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
 - **Caveat:** the backtest has now informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 `--final` run is the honest verdict.
 
@@ -41,7 +41,7 @@ It's now replaced by **fixed feature sets** (`LINEAR_FEATURES` in `train.py`), b
 - win and margin: Elo, RAPM total, RAPM defence, RAPM compared with usual line-ups;
 - totals: RAPM expected points, Origin period, wet conditions.
 
-Model A adds the opening odds. LightGBM uses the full feature set. Forward selection is still available with `--select`. Fixed sets improved the backtest: Model B linear went from 0.645 to 0.634, and its total MAE from 11.05 to 10.88.
+The with-odds model adds the opening odds. LightGBM uses the full feature set. Forward selection is still available with `--select`. Fixed sets improved the backtest: no-odds linear went from 0.645 to 0.634, and its total MAE from 11.05 to 10.88.
 
 ## 2. Team-news features ✅
 
@@ -82,6 +82,8 @@ Note: the wet-conditions flag assumes predictions just before kickoff. For early
 - ✅ A **paired bootstrap** against the market average, opening odds and Elo is built into the backtest report.
 - ✅ **Betting simulation** (`python src/betting.py` → `reports/betting.md`). Flat 1-unit bets at the **opening** prices whenever probability × odds − 1 exceeds 0%, 2%, 5% or 10%, on the out-of-sample 2023–2025 backtest predictions. Line and total probabilities come from the predicted margin and total, with the error spread from earlier seasons. Closing line value (CLV) = whether the price or line moved towards the bet by kickoff.
 
+`betting.py` now bets on the main models (the ensembles): with-odds ensemble head-to-head made +8.4% ROI at opening prices (95% interval −0.2% to +17%) and −6.6% at closing prices, the same story as below. The table below is from the earlier run on the linear models.
+
 Results at a 0% minimum edge (the other thresholds tell the same story):
 
 | Market | Model | Bets | ROI at opening price | 95% interval | Price moved towards bet | ROI at closing price |
@@ -93,7 +95,7 @@ Results at a 0% minimum edge (the other thresholds tell the same story):
 | Total, with rain flag | A | 446 | +5.0% | −4% to +14% | 35% | +5.6% |
 | Total, no rain flag | A | 407 | +1.2% | −8% to +10% | 31% | +1.8% |
 
-- **The head-to-head edge is team news.** With no line-up features (Elo and the team rating only), ROI at opening prices falls to +3.7% (Model A) and +2.2% (Model B), both within noise, and the share of prices moving towards the bet falls from about 70% to 57–59%. Opening prices usually come before team lists, so this edge probably can't be bet (item 6).
+- **The head-to-head edge is team news.** With no line-up features (Elo and the team rating only), ROI at opening prices falls to +3.7% (the with-odds model) and +2.2% (the no-odds model), both within noise, and the share of prices moving towards the bet falls from about 70% to 57–59%. Opening prices usually come before team lists, so this edge probably can't be bet (item 6).
 - **Every market loses or breaks even at closing prices.** Closing prices for head-to-head and line only exist for 2023 and part of 2024.
 - **The totals signal was mostly the rain flag.** Without it (the honest version for early-week bets), totals are about break-even.
 - Optimistic: draws were excluded from the backtest (about −1 to −2% ROI on head-to-head); 2025 contributes heavily (the market was overconfident that year); the backtest informed many decisions.
@@ -115,15 +117,15 @@ The `--backtest` mode, described above.
 - ❌ **Stats-based prior** (fantasy points): worse on CV. It's off, but available as `RAPM_STATS_PRIOR`.
 - The RAPM changes improved CV but didn't move the backtest much on their own.
 
-## 11. Unused match data and other markets 🔶
+## 11. Unused match data and other markets ✅
 
-- ✅ **Wet conditions** (rain, or a slippery/wet/heavy/muddy ground): cut total MAE by about 0.09 (Model A linear 10.82 → 10.73). It's recorded on the day, so it assumes betting near kickoff.
+- ✅ **Wet conditions** (rain, or a slippery/wet/heavy/muddy ground): cut total MAE by about 0.09 (with-odds linear 10.82 → 10.73). It's recorded on the day, so it assumes betting near kickoff.
 - ❌ **Referee records** (shrunk total points and penalties): no signal.
-- ⬜ **Line and total markets:** the models beat the opening line and opening total, so these markets may offer more edge than head-to-head. Closing lines are missing for most of 2024–25, so the comparison needs 2026 or another odds source.
+- ✅ **Line and total markets:** tested in the betting simulation (item 7) and the probabilistic margin/total model (item 14). Although the models beat the opening line and total on average error, that didn't translate into betting value: **no edge on the line** (+2% to +4% ROI at opening prices, within noise; about −3% to 0% at closing prices), and **totals about break-even without the rain flag** (+1% at opening prices). Closing lines are missing for most of 2024–25, so the closing comparison mainly covers 2023.
 
 ## 12. Fix the ensemble ❌
 
-Tested (experiment 5): averaging in logit space, stacking learned on earlier seasons, and stacking all four models were all no better than the plain average (+0.0002 to +0.002). Since the linear model improved (item 22), the ensemble no longer beats the linear model on its own, so Model A linear is now the main model.
+Tested (experiment 5): averaging in logit space, stacking learned on earlier seasons, and stacking all four models were all no better than the plain average (+0.0002 to +0.002). Since the linear model improved (item 22), the ensemble no longer beats the linear model on the pooled backtest, but the two are tied within noise and the ensemble won 2 of the 3 seasons, so the plain-average ensemble is the main model for both variants.
 
 ---
 
@@ -151,7 +153,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Logit-average or stacked ensembles | no better than the plain average |
 | Margin and total models trained on capped targets (margin ±40, total ±25) | margin MAE −0.03, win −0.0005: real but too small to adopt |
 | Huber regression for margin and total | mixed (A −0.03, B +0.03 margin MAE), no gain |
-| Median (quantile) regression for margin and total | no gain; Model B totals clearly worse (+0.11) |
+| Median (quantile) regression for margin and total | no gain; the no-odds model's totals clearly worse (+0.11) |
 
 ---
 
@@ -169,32 +171,32 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 
 ---
 
-## Further approaches (items 13–33)
+## Further approaches (items 13–37)
 
 ### 13. Rerun the 2025-only rejections on the backtest ✅
 
 Results are in `reports/experiments.md` (`python src/experiments.py`):
-- **Win probability from the predicted margin: reversed.** On its own it was −0.005 for Model A; blended with the logistic model −0.005 [−0.010, +0.0005]. That's a near miss, adopted as part of item 22.
+- **Win probability from the predicted margin: reversed.** On its own it was −0.005 for the with-odds model; blended with the logistic model −0.005 [−0.010, +0.0005]. That's a near miss, adopted as part of item 22.
 - ❌ Market as a fixed starting point with learned adjustments: −0.0003, no difference.
 - ❌ Recency weighting (half-life 1 or 2 seasons): −0.002 to +0.001, no difference.
-- ❌ Elo retuned inside each backtest year (2013+ or the six-again era 2020+): slightly **worse** (Model B +0.001 to +0.003). Keep the current Elo settings.
+- ❌ Elo retuned inside each backtest year (2013+ or the six-again era 2020+): slightly **worse** (the no-odds model +0.001 to +0.003). Keep the current Elo settings.
 
 ### 14. Probabilistic margin and total model 🔶
 
 Tested in `experiments.py`: a Normal or t distribution around the linear prediction, with constant spread or spread depending on mismatch and wet conditions, scored on covering the opening line and going over the opening total. The market is 50% by construction; break-even at $1.91 is 52.4%.
-- **Line: no edge.** Model A log loss −0.0007 vs a coin flip; hit rate 53.1%, and 53.8% when over 55% sure.
-- **Totals: the most promising signal so far.** Model A hit rate 54.5%, and **57.1% on the 308 games where it's over 55% sure**, about 1.7 standard errors above break-even. Not conclusive, and it relies on the rain flag (betting near kickoff).
+- **Line: no edge.** The with-odds model log loss −0.0007 vs a coin flip; hit rate 53.1%, and 53.8% when over 55% sure.
+- **Totals: the most promising signal so far.** The with-odds model hit rate 54.5%, and **57.1% on the 308 games where it's over 55% sure**, about 1.7 standard errors above break-even. Not conclusive, and it relies on the rain flag (betting near kickoff).
 - Varying the spread or using a t-distribution made no difference.
 
 Next: the betting simulation on totals against the opening total (item 7).
 
 ### 15. Team-level margin rating ✅
 
-`team_ratings` in `features.py`: a ridge regression of capped margins since 2009 on team strengths, a league home advantage and each team's own home advantage (shrunk), refitted weekly with a two-year half-life (the setting chosen inside every backtest year). Adding it to the win model: −0.004 [−0.008, +0.0002] for Model A, a near miss, adopted as part of item 22. Using it instead of Elo was about the same, so both are kept.
+`team_ratings` in `features.py`: a ridge regression of capped margins since 2009 on team strengths, a league home advantage and each team's own home advantage (shrunk), refitted weekly with a two-year half-life (the setting chosen inside every backtest year). Adding it to the win model: −0.004 [−0.008, +0.0002] for The with-odds model, a near miss, adopted as part of item 22. Using it instead of Elo was about the same, so both are kept.
 
 ### 16. Team-specific home advantage ❌
 
-Each team's own home advantage as a separate feature added nothing beyond the team margin rating (which already includes it): −0.002 for Model A, within noise.
+Each team's own home advantage as a separate feature added nothing beyond the team margin rating (which already includes it): −0.002 for the with-odds model, within noise.
 
 ### 17. Opponent-adjusted form ❌
 
@@ -222,15 +224,15 @@ Re-choose the RAPM settings (and any other feature settings) inside each backtes
 ### 22. Team margin rating + margin-blended win probability ✅ (adopted)
 
 The two near misses (items 13 and 15) tested together: `team_margin` in the linear win model, and the calibrated logistic probability averaged with Φ(predicted margin / σ) from the linear margin model (`MARGIN_BLEND` in `train.py`).
-- Linear harness: Model A −0.006 [−0.013, −0.0002], just clear; Model B −0.005 [−0.012, +0.0005].
-- Full backtest: Model A linear 0.631 → **0.624**, Model A ensemble 0.628 → 0.625, Model B linear 0.633 → 0.628.
+- Linear harness: the with-odds model −0.006 [−0.013, −0.0002], just clear; the no-odds model −0.005 [−0.012, +0.0005].
+- Full backtest: with-odds linear 0.631 → **0.624**, with-odds ensemble 0.628 → 0.625, no-odds linear 0.633 → 0.628.
 - This combination was chosen after seeing the individual results, out of about 50 comparisons, so part of the gain may be chance. Both parts point the same way independently and the idea is principled (margins carry more information than win/loss), which is why it was adopted.
 
 ### 23. Second review: findings ⬜
 
 From a second pass over the pipeline (October 2026):
-- **The final model is overconfident.** Calibration slope on the backtest is 0.85 for Model A linear and 0.82 for the ensemble (1.0 would be perfect), against about 1.0 for the market. Each part is calibrated, but blending them and moving to test seasons leaves the result too extreme. Shrinking the final probability towards 50%, with the amount learned from earlier seasons, is a cheap likely gain.
-- **The market underrates home teams slightly:** its calibration intercept is +0.10 in logit terms (about 2–3 percentage points). Model A already learns this through its intercept.
+- **The final model is overconfident.** Calibration slope on the backtest is 0.85 for with-odds linear and 0.82 for the ensemble (1.0 would be perfect), against about 1.0 for the market. Each part is calibrated, but blending them and moving to test seasons leaves the result too extreme. Shrinking the final probability towards 50%, with the amount learned from earlier seasons, is a cheap likely gain.
+- **The market underrates home teams slightly:** its calibration intercept is +0.10 in logit terms (about 2–3 percentage points). The with-odds model already learns this through its intercept.
 - **Robust training for margin and total** was tested and not adopted (see "Already tried").
 
 ### 24. Pipeline: prediction time and live use ⬜
@@ -247,7 +249,7 @@ From a second pass over the pipeline (October 2026):
 
 ### 26. Better bookmaker-margin removal ⬜
 
-The opening and closing probabilities split the bookmaker's margin proportionally. The **Shin** or **power** methods correct for favourite–longshot bias. This affects Model A's input, every market benchmark and the betting edges.
+The opening and closing probabilities split the bookmaker's margin proportionally. The **Shin** or **power** methods correct for favourite–longshot bias. This affects the with-odds model's input, every market benchmark and the betting edges.
 
 ### 27. Team-level total rating ⬜
 
@@ -279,14 +281,54 @@ For example, the margin implied by the head-to-head price against the opening li
 - **Closing line value as the main measure,** plus a **paper-trading season**: log predictions and prices every week from now on. That's the only fully clean test of real betting value.
 - **Betfair Exchange prices** usually have lower margins than bookmakers, and timestamped history helps item 6.
 
+### 34. Third review: wrong scores in the scraped data ⬜ (bug)
+
+Six games have missing or incorrect scores in the nrl.com data; the odds sheet has the correct results:
+
+| Game | Scraped (nrl.com) | Actual (odds sheet) |
+|---|---|---|
+| 2020 R8 Titans v Sharks | 0–0 | 10–40 |
+| 2021 R2 Bulldogs v Panthers | 0–26 | 0–28 |
+| 2021 R4 Sea Eagles v Panthers | 6–42 | 6–46 |
+| 2021 R7 Storm v Warriors | 0–0 | 42–20 |
+| 2021 R13 Knights v Eels | 0–0 | 4–40 |
+| 2021 R19 Cowboys v Storm | 0–0 | 16–20 |
+
+- The four 0–0 games are treated as **draws** and dropped from training. They're also 4 of the 6 "draws" quoted in item 32, so real draws are rarer.
+- RAPM learns from them as if they were level, and the team form and points stats are wrong for them. The two other games slightly distort the margin and total targets.
+- Elo is unaffected (it uses the odds sheet's results). The effect is probably small (6 of about 1,400 games), but it's a correctness bug.
+
+**Fix:** when building features, check scores against the odds sheet, correct mismatches (including points in the team stats) and log every correction; then rebuild and rerun the backtest. This is the kind of check item 25 (data checks) is for.
+
+### 35. Third review: the with-odds model's opening-odds source changes ⬜
+
+The opening prices come from **bet365 until April 2024 and BlueBet after**, and they behave differently: on win log loss, bet365 openers were 0.017 worse than the market average, BlueBet openers only 0.008 worse. BlueBet opens closer to the eventual market price. The with-odds model learns mostly from bet365 seasons, but the **2026 test is entirely BlueBet**, so it may give the opening price the wrong weight.
+
+**Fix to test:** a BlueBet indicator that lets the opening-odds weight differ by bookmaker, or weighting the BlueBet-era seasons more for the with-odds model. Worth checking before `--final`, since it affects the main model.
+
+### 36. Third review: make the final run auditable ⬜
+
+`--final` uses `reports/params.json` from the latest dev run (currently up to date) and refits on 2021–2025, but nothing records which code produced it.
+- Tag the commit (e.g. `final-2026`) before running.
+- Write the git commit hash and a hash of `features.csv` into `final_2026.md`.
+- Refuse to run with uncommitted changes.
+
+### 37. Third review: code structure ⬜
+
+- **Split `train.py`** (over 600 lines, mixing fitting, the dev run, the backtest, the final run and reports) into `models.py` (fit and predict), `evaluate.py` (metrics, bootstrap, benchmarks) and `reports.py`, keeping `train.py` as the command-line entry point.
+- **One shared linear-backtest function.** `experiments.py` and `betting.py` reimplement the linear backtest; assertions catch drift today, but `train.py` should expose a `linear_backtest()` they all use.
+- **Stop committing regenerable data and reports** (`player_match_stats.csv` is 10 MB; `features.csv` and the prediction CSVs are rewritten every run). Keep the raw odds sheet and code, or use DVC or Git LFS for versioned data.
+- **Fast unit tests** (joins, score checks, the margin blend, `md_table`) to run on every change, keeping the 2–4 minute leakage test as the slow, thorough check.
+
 ---
 
 ## Suggested next steps
 
-1. **`predict.py` for upcoming games and pinned requirements** (items 24–25): without them the model can't be used.
-2. **Cheap fixes to test with the experiments harness:** shrinking overconfident probabilities (item 23) and Shin margin removal (item 26). Adopt only if the gain is meaningful.
-3. **Tuesday-list snapshot** (items 6, 24, 30): team-list scrape, late-change prediction, and prices from Tuesday evening. The route to a real betting test.
-4. **Paper trading** from now on (item 33).
-5. Bigger projects when there's time: reserve-grade player priors (28), team-level total rating (27), weekly refitting (24) and the Bayesian model (31).
+1. **Fix the wrong scores** (item 34): a correctness bug, so before anything else. Then **check the bookmaker change** (item 35), which affects the main model's 2026 test.
+2. **`predict.py` for upcoming games and pinned requirements** (items 24–25): without them the model can't be used.
+3. **Cheap fixes to test with the experiments harness:** shrinking overconfident probabilities (item 23) and Shin margin removal (item 26). Adopt only if the gain is meaningful.
+4. **Tuesday-list snapshot** (items 6, 24, 30): team-list scrape, late-change prediction, and prices from Tuesday evening. The route to a real betting test.
+5. **Paper trading** from now on (item 33).
+6. Bigger projects when there's time: reserve-grade player priors (28), team-level total rating (27), weekly refitting (24), the Bayesian model (31) and the code clean-up (37).
 
-When development is finished, run the one-time **`--final` test on 2026**, with Model A linear as the main model.
+When development is finished, make the final run auditable (item 36) and run the one-time **`--final` test on 2026**, with the ensemble (with odds and no odds) as the main models.

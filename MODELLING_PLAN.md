@@ -42,7 +42,7 @@ Every feature uses only games played before the match. Features are expressed as
 | **Team form** | Exponentially weighted averages of points for and against, margin, completion rate, run metres, post-contact metres, line breaks, tackle breaks, errors, penalties conceded, missed tackles and possession. At each new season the averages are pulled one-third of the way back to the league average. |
 | **Context** | Rest-day difference, away team travelling interstate or overseas, home team playing at its own ground, neutral venue (Magic Round, Las Vegas and similar), finals flag. |
 | **Player ratings** | See section 4. |
-| **Odds** (Model A only) | **Opening** head-to-head probability with the margin removed (as a logit), opening line, opening total. |
+| **Odds** (the with-odds model only) | **Opening** head-to-head probability with the margin removed (as a logit), opening line, opening total. |
 
 **Preprocessing**
 - **Team names:** odds-sheet names, including the pre-2014 spellings, are mapped to nrl.com short names. Odds rows are joined to matches on date (±1 day) plus home and away team.
@@ -64,8 +64,8 @@ Player names are **not** used as features. With about 700 players and about 800 
 
 ## 5. Two model variants
 
-- **Model B, no odds** (default): an independent view of the match. It is compared with the market to find value.
-- **Model A, with opening odds:** the opening price is the starting point and the model learns where the market is wrong.
+- **No-odds model** (default): an independent view of the match. It is compared with the market to find value.
+- **With-odds model:** the opening price is the starting point and the model learns where the market is wrong.
 
 ## 6. Training pipeline
 
@@ -97,7 +97,7 @@ Player names are **not** used as features. With about 700 players and about 800 
 
 | Field | Use |
 |---|---|
-| Open | ✅ Feature (Model A) |
+| Open | ✅ Feature (the with-odds model) |
 | Close / Odds Portal average | Benchmark only |
 | Min / Max | ❌ Never, not even for ROI |
 | Open → close line movement | ❌ Never a feature |
