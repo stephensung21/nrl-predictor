@@ -3,8 +3,8 @@ Train and evaluate the match models (command line).
 
 Walk-forward cross-validation on 2021-2024 (train on earlier seasons, test on the next),
 tuning, Platt calibration, and an evaluation on the 2025 dev season against benchmarks.
-The 2026 season is only touched by --final, which refits on 2021-2025 using the settings
-chosen in the dev run and scores 2026 once against closing odds.
+The 2026 season is only touched by --final, which runs the backtest procedure once for 2026
+(develop on 2021-2025, predict 2026) and scores it against closing odds.
 
 --backtest repeats the whole development procedure (feature sets, tuning, calibration) for
 each of 2023-2025 using only earlier seasons, then predicts that season: about 630
@@ -20,7 +20,9 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
+import subprocess
 import warnings
 
 import optuna
@@ -174,33 +176,88 @@ def run_backtest():
 
 # ---------------------------------------------------------------- final run
 
+def audit_record():
+    """What the final run was made from: commit, uncommitted changes, features.csv hash and settings."""
+    def git(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True, cwd=config.ROOT).stdout.strip()
+    features = config.PROCESSED / "features.csv"
+    settings = {k: v for k, v in vars(config).items()
+                if k.isupper() and isinstance(v, (int, float, str, bool, list, tuple, dict))}
+    return {"run_at": f"{pd.Timestamp.now():%Y-%m-%d %H:%M}", "commit": git("rev-parse", "HEAD"),
+            "uncommitted_changes": git("status", "--porcelain", "--untracked-files=no").splitlines(),
+            "features_sha256": hashlib.sha256(features.read_bytes()).hexdigest(),
+            "settings": json.loads(json.dumps(settings, default=str))}
+
+
 def run_final(force):
+    """The one-time test on TEST_SEASON, with exactly the backtest procedure: develop (feature sets,
+    tuning, calibration) on every earlier season, fit, and predict the season. Features for each game
+    use only results before it (Elo, ratings, RAPM), as in the backtest; the models are not refitted
+    during the season."""
+    season = config.TEST_SEASON
     if config.FINAL_LOCK.exists() and not force:
-        raise SystemExit(f"The {config.TEST_SEASON} final test has already been run "
+        raise SystemExit(f"The {season} final test has already been run "
                          f"({config.FINAL_LOCK.read_text().strip()}). Pass --force only if you really mean to score it again.")
-    if not config.PARAMS_OUT.exists():
-        raise SystemExit("reports/params.json not found: run `python src/train.py` (the dev run) first.")
-    cfg = json.loads(config.PARAMS_OUT.read_text())
+    audit = audit_record()
+    if audit["uncommitted_changes"] and not force:
+        raise SystemExit("Commit your changes first, so the final run is reproducible from a commit:\n"
+                         + "\n".join(audit["uncommitted_changes"]))
     df = load_data()
 
-    print(f"refitting on {config.FIRST_SEASON}-{config.DEV_SEASON}, evaluating {config.TEST_SEASON}...")
-    preds, _ = fit_predict(df, config.DEV_SEASON, config.TEST_SEASON, cfg)
-    train, test = df[df["season"] <= config.DEV_SEASON], df.loc[preds.index]
+    preds, details = backtest(df, [season])
+    cfg = details[season][0]
+    train, test = df[df["season"] < season], df.loc[preds.index]
     ok = test["close_ok"].astype(bool)
     baseline = baseline_preds(train, test)
     reliable = results_table(test[ok], preds[ok], baseline[ok], ("p_close", "close_line", "close_total"))
-    everything = results_table(test, preds, baseline, ("p_avg", None, None))
+    everything = results_table(test, preds, baseline, ("p_avg", None, "close_total"))
 
-    report = [f"# Final test ({config.TEST_SEASON})", "", main_models_line(), "",
-              f"Settings and feature sets come from the dev run; models refit on "
-              f"{config.FIRST_SEASON}–{config.DEV_SEASON}.", "",
-              f"## Games with reliable closing odds ({ok.sum()} of {len(test)})", "", md_table(reliable), "",
-              f"## All {len(test)} games (closing benchmark = Odds Portal average)", "", md_table(everything), ""]
-    (config.REPORTS / f"final_{config.TEST_SEASON}.md").write_text("\n".join(report), encoding="utf-8")
-    save_predictions(test, preds, config.REPORTS / f"predictions_{config.TEST_SEASON}.csv")
-    config.FINAL_LOCK.write_text(f"run {pd.Timestamp.now():%Y-%m-%d %H:%M}\n")
+    boots = {}
+    for v in config.VARIANTS:
+        for model in ("linear", "lightgbm", "ensemble"):
+            for bench, name, rows in (("p_close", "market closing", ok), ("p_avg", "market average", None),
+                                      ("p_open", "market opening", None), ("elo_prob", "Elo", None)):
+                t = test if rows is None else test[rows]
+                boots[f"{config.VARIANT_LABEL[v]}: {model} vs {name}"] = bootstrap_diff(
+                    t["home_win"], preds.loc[t.index, f"{v}|{model}|home_win"], t[bench])
+    boots = pd.DataFrame(boots).T.rename_axis("comparison")
+
+    # Calibration of the main models: predicted vs actual home-win rate by probability band.
+    calib = {}
+    for v in config.VARIANTS:
+        p = preds[f"{v}|{config.MAIN_MODEL}|home_win"]
+        bands = pd.cut(p, [0, 0.35, 0.5, 0.65, 1], include_lowest=True)
+        g = test["home_win"].groupby(bands, observed=True)
+        calib[config.VARIANT_LABEL[v]] = pd.DataFrame({"games": g.size(), "predicted": p.groupby(bands, observed=True).mean(),
+                                                       "actual": g.mean()})
+    calib = pd.concat(calib, names=["variant", "home-win probability"]).reset_index()
+    calib["home-win probability"] = calib["home-win probability"].astype(str)
+    calib = calib.set_index(["variant", "home-win probability"])
+    calib.index = [f"{a} {b}" for a, b in calib.index]
+    calib.index.name = "variant, probability band"
+
+    report = [f"# Final test ({season})", "", main_models_line(), "",
+              f"Run once, with exactly the backtest procedure: feature sets, tuning and calibration developed on "
+              f"{config.FIRST_SEASON}–{season - 1} only, then every {season} game predicted. Features for each "
+              "game use only results before it; the models are not refitted during the season. Commit "
+              f"`{audit['commit'][:7]}`; settings and the features.csv hash are in "
+              f"`reports/final_{season}_run.json`.", "",
+              f"## Games with reliable closing odds ({ok.sum()} of {len(test)})", "",
+              "The main benchmark: the market's closing price, line and total.", "", md_table(reliable), "",
+              f"## All {len(test)} games (closing benchmark = Odds Portal average price, closing total)", "",
+              md_table(everything), "",
+              "## Paired bootstrap (log-loss difference; negative = model better)", "",
+              f"Against market closing on the {ok.sum()} reliable games, the others on all {len(test)}.", "",
+              md_table(boots), "",
+              "## Calibration of the main models", "", md_table(calib), ""]
+    config.REPORTS.mkdir(exist_ok=True)
+    (config.REPORTS / f"final_{season}.md").write_text("\n".join(report), encoding="utf-8")
+    (config.REPORTS / f"final_{season}_run.json").write_text(json.dumps({**audit, "cfg": cfg}, indent=2))
+    save_predictions(test, preds, config.REPORTS / f"predictions_{season}.csv")
+    config.FINAL_LOCK.write_text(f"run {audit['run_at']} at commit {audit['commit'][:7]}\n")
     print(md_table(reliable))
-    print(f"wrote reports/final_{config.TEST_SEASON}.md")
+    print(md_table(boots))
+    print(f"wrote reports/final_{season}.md")
 
 
 def main():
