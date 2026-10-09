@@ -10,9 +10,9 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 631 | 0.6223 | 0.2162 | 0.6482 | 13.5470 | 10.7185 | 8.5620 |
-| With odds: lightgbm | 631 | 0.6290 | 0.2191 | 0.6450 | 13.5615 | 10.8919 | 8.6311 |
-| With odds: ensemble | 631 | 0.6230 | 0.2167 | 0.6418 | 13.4924 | 10.7696 | 8.5610 |
+| With odds: linear | 631 | 0.6209 | 0.2155 | 0.6466 | 13.5340 | 10.7185 | 8.5461 |
+| With odds: lightgbm | 631 | 0.6287 | 0.2189 | 0.6466 | 13.5620 | 10.9068 | 8.6382 |
+| With odds: ensemble | 631 | 0.6220 | 0.2162 | 0.6434 | 13.4944 | 10.7776 | 8.5588 |
 | No odds: linear | 631 | 0.6261 | 0.2177 | 0.6403 | 13.5628 | 10.8072 | 8.6400 |
 | No odds: lightgbm | 631 | 0.6332 | 0.2208 | 0.6513 | 13.5789 | 10.9343 | 8.6899 |
 | No odds: ensemble | 631 | 0.6266 | 0.2181 | 0.6387 | 13.5158 | 10.8333 | 8.6289 |
@@ -25,12 +25,12 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | comparison | games | mean_diff | ci_low | ci_high | p_model_better |
 |---|---|---|---|---|---|
-| With odds: linear vs market average | 631 | 0.0020 | -0.0095 | 0.0135 | 0.3657 |
-| With odds: linear vs market opening | 631 | -0.0107 | -0.0211 | -0.0000 | 0.9750 |
-| With odds: linear vs Elo | 631 | -0.0156 | -0.0291 | -0.0021 | 0.9880 |
-| With odds: ensemble vs market average | 631 | 0.0026 | -0.0103 | 0.0159 | 0.3411 |
-| With odds: ensemble vs market opening | 631 | -0.0101 | -0.0218 | 0.0019 | 0.9507 |
-| With odds: ensemble vs Elo | 631 | -0.0149 | -0.0282 | -0.0017 | 0.9857 |
+| With odds: linear vs market average | 631 | 0.0005 | -0.0117 | 0.0128 | 0.4639 |
+| With odds: linear vs market opening | 631 | -0.0122 | -0.0233 | -0.0010 | 0.9835 |
+| With odds: linear vs Elo | 631 | -0.0170 | -0.0298 | -0.0043 | 0.9947 |
+| With odds: ensemble vs market average | 631 | 0.0016 | -0.0115 | 0.0152 | 0.3949 |
+| With odds: ensemble vs market opening | 631 | -0.0111 | -0.0230 | 0.0008 | 0.9643 |
+| With odds: ensemble vs Elo | 631 | -0.0159 | -0.0285 | -0.0032 | 0.9930 |
 | No odds: linear vs market average | 631 | 0.0058 | -0.0097 | 0.0211 | 0.2290 |
 | No odds: linear vs market opening | 631 | -0.0069 | -0.0224 | 0.0086 | 0.8054 |
 | No odds: linear vs Elo | 631 | -0.0118 | -0.0236 | 0.0004 | 0.9705 |
@@ -72,9 +72,9 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 212 | 0.6419 | 0.2255 | 0.6132 | 13.6397 | 10.9934 | 8.7055 |
-| With odds: lightgbm | 212 | 0.6445 | 0.2267 | 0.6132 | 13.7255 | 11.1571 | 8.7933 |
-| With odds: ensemble | 212 | 0.6414 | 0.2253 | 0.6132 | 13.6153 | 11.0170 | 8.7057 |
+| With odds: linear | 212 | 0.6375 | 0.2234 | 0.6085 | 13.6012 | 10.9934 | 8.6580 |
+| With odds: lightgbm | 212 | 0.6437 | 0.2263 | 0.6179 | 13.7269 | 11.2016 | 8.8144 |
+| With odds: ensemble | 212 | 0.6385 | 0.2239 | 0.6179 | 13.6211 | 11.0408 | 8.6989 |
 | No odds: linear | 212 | 0.6378 | 0.2240 | 0.6226 | 13.5664 | 10.9248 | 8.6648 |
 | No odds: lightgbm | 212 | 0.6483 | 0.2286 | 0.6274 | 13.7417 | 11.0896 | 8.7986 |
 | No odds: ensemble | 212 | 0.6411 | 0.2254 | 0.6179 | 13.6052 | 10.9645 | 8.6852 |
@@ -87,9 +87,9 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | model | games | log_loss | brier | accuracy | margin_mae | total_mae | score_mae |
 |---|---|---|---|---|---|---|---|
-| With odds: linear | 271 | 0.6023 | 0.2074 | 0.6900 | 13.5151 | 10.3499 | 8.3974 |
-| With odds: lightgbm | 271 | 0.6173 | 0.2131 | 0.6716 | 13.6330 | 10.3020 | 8.3961 |
-| With odds: ensemble | 271 | 0.6062 | 0.2090 | 0.6642 | 13.5251 | 10.3048 | 8.3718 |
+| With odds: linear | 271 | 0.6020 | 0.2072 | 0.6900 | 13.5111 | 10.3499 | 8.3955 |
+| With odds: lightgbm | 271 | 0.6171 | 0.2131 | 0.6716 | 13.6327 | 10.3013 | 8.3959 |
+| With odds: ensemble | 271 | 0.6059 | 0.2089 | 0.6642 | 13.5230 | 10.3044 | 8.3707 |
 | No odds: linear | 271 | 0.6132 | 0.2123 | 0.6568 | 13.6353 | 10.4091 | 8.5219 |
 | No odds: lightgbm | 271 | 0.6239 | 0.2160 | 0.6642 | 13.7046 | 10.3444 | 8.5129 |
 | No odds: ensemble | 271 | 0.6147 | 0.2128 | 0.6458 | 13.6050 | 10.3588 | 8.4994 |
@@ -100,5 +100,5 @@ Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–
 
 | comparison | games | mean_diff | ci_low | ci_high | p_model_better |
 |---|---|---|---|---|---|
-| With odds: linear vs market closing | 271 | 0.0142 | -0.0036 | 0.0315 | 0.0575 |
+| With odds: linear vs market closing | 271 | 0.0139 | -0.0039 | 0.0312 | 0.0614 |
 | No odds: linear vs market closing | 271 | 0.0251 | 0.0025 | 0.0474 | 0.0133 |

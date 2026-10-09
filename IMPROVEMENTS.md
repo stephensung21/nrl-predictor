@@ -6,25 +6,25 @@ The goal is to beat the bookmakers' closing odds.
 
 The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested the no-odds model beat the market, and the backtest showed that was luck.
 
-**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble is within 0.001 of with-odds linear (0.6230 vs 0.6223). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
+**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble is within 0.001 of with-odds linear (0.6220 vs 0.6209). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
 
 Pooled backtest results for the current setup:
 
 | | Win log loss | Margin MAE | Total MAE |
 |---|---|---|---|
-| **With-odds ensemble** (main model) | 0.623 | **13.49** | 10.77 |
-| With-odds linear | **0.622** | 13.55 | **10.72** |
+| **With-odds ensemble** (main model) | 0.622 | **13.49** | 10.78 |
+| With-odds linear | **0.621** | 13.53 | **10.72** |
 | **No-odds ensemble** (main model) | 0.627 | 13.52 | 10.83 |
 | No-odds linear | 0.626 | 13.56 | 10.81 |
-| With-odds LightGBM | 0.629 | 13.56 | 10.89 |
+| With-odds LightGBM | 0.629 | 13.56 | 10.91 |
 | Market closing (Odds Portal average) | 0.620 | – | 10.72 |
 | Market opening | 0.633 | 13.66 | 10.84 |
 | Elo only | 0.638 | – | – |
 
-- **Win probability:** the with-odds ensemble is 0.003 behind the market average (95% interval −0.010 to +0.016) and with-odds linear 0.002 behind, down from +0.024 at the start of the backtest work. (The per-season and real-closing-odds figures below are from before the star absences were added.) By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
+- **Win probability:** the with-odds ensemble is 0.002 behind the market average (95% interval −0.012 to +0.015) and with-odds linear 0.0005 behind, essentially level, down from +0.024 at the start of the backtest work. (The per-season and real-closing-odds figures below are from before the star absences and BlueBet inputs were added.) By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
 - **Margin:** the models beat the opening line on average error, but not on line-cover probability (item 14).
 - **Totals:** with-odds linear is level with the closing total and beats the opening total.
-- **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +9–12% ROI (with-odds ensemble +11.5%, interval +2.8% to +21%), but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
+- **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +9–13% ROI (with-odds ensemble +12.6%, interval +3.0% to +22%), but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
 - **Caveat:** the backtest has now informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 `--final` run is the honest verdict.
 
 2026 stays untouched until `python src/train.py --final`. Settings for that run come from the dev run (`reports/params.json`).
@@ -173,6 +173,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Key-position absences weighted by form (V1–V3) | −0.001 to −0.002, not clear (item 38) |
 | Star impact learned from each player's with/without history (V4) | no effect (item 38) |
 | Origin-only star absences (S1) | −0.0012 / −0.0007, not clear; S2 adopted instead (item 38) |
+| Recalibrating the final win probability on earlier backtest seasons | −0.001 (slope only), redundant after the BlueBet fix (item 23) |
 
 ---
 
@@ -263,10 +264,10 @@ The two near misses (items 13 and 15) tested together: `team_margin` in the line
 - Full backtest: with-odds linear 0.631 → **0.624**, with-odds ensemble 0.628 → 0.625, no-odds linear 0.633 → 0.628.
 - This combination was chosen after seeing the individual results, out of about 50 comparisons, so part of the gain may be chance. Both parts point the same way independently and the idea is principled (margins carry more information than win/loss), which is why it was adopted.
 
-### 23. Second review: findings ⬜
+### 23. Second review: findings ✅
 
 From a second pass over the pipeline (October 2026):
-- **The final model is overconfident.** Calibration slope on the backtest is 0.85 for with-odds linear and 0.82 for the ensemble (1.0 would be perfect), against about 1.0 for the market. Each part is calibrated, but blending them and moving to test seasons leaves the result too extreme. Shrinking the final probability towards 50%, with the amount learned from earlier seasons, is a cheap likely gain.
+- **The final model is overconfident** (calibration slope 0.81–0.86 in 2024–25 for the with-odds ensemble; 1.0 would be perfect). ❌ **Recalibrating the final probability** (`python src/experiments.py --only calibration`, `reports/experiments_calibration.md`), fitted for each season on earlier seasons' out-of-sample backtest predictions: slope-only shrinking −0.0009 to −0.0014 on 2024–25 (not clear), slope and intercept slightly worse. Not adopted: **most of the overconfidence came from the bookmaker change** (item 35), and once that was fixed recalibration added only 0.0002.
 - **The market underrates home teams slightly:** its calibration intercept is +0.10 in logit terms (about 2–3 percentage points). The with-odds model already learns this through its intercept.
 - **Robust training for margin and total** was tested and not adopted (see "Already tried").
 
@@ -370,11 +371,16 @@ Six games have missing or incorrect scores in the nrl.com data; the odds sheet h
 
 Effect on the backtest: the linear models barely changed (no-odds linear 0.6279 → 0.6275; with-odds linear unchanged at 0.6243). LightGBM moved by up to ±0.006 in opposite directions for the two variants (with-odds 0.6340 → 0.6397, no-odds 0.6405 → 0.6375), and the main ensembles with it (with-odds 0.6251 → 0.6280, no-odds 0.6302 → 0.6281). That's LightGBM's tuning landing on different settings after a tiny data change, not the fix itself, and it's why LightGBM's stability is now the next priority (item 4).
 
-### 35. Third review: the with-odds model's opening-odds source changes ⬜
+### 35. Third review: the with-odds model's opening-odds source changes ✅ (adopted)
 
-The opening prices come from **bet365 until April 2024 and BlueBet after**, and they behave differently: on win log loss, bet365 openers were 0.017 worse than the market average, BlueBet openers only 0.008 worse. BlueBet opens closer to the eventual market price. The with-odds model learns mostly from bet365 seasons, but the **2026 test is entirely BlueBet**, so it may give the opening price the wrong weight.
+The opening prices come from **bet365 until April 2024 and BlueBet after**, and they behave in opposite ways: bet365's opening prices were **under-confident** (calibration slope 1.23 in 2021–24: favourites won even more often than priced), BlueBet's **over-confident** (0.77 in 2024–25). The with-odds model learned from mostly bet365 seasons to stretch the opening price, then applied that to BlueBet's already-extreme prices, which made it overconfident (item 23). The **2026 test is entirely BlueBet.**
 
-**Fix to test:** a BlueBet indicator that lets the opening-odds weight differ by bookmaker, or weighting the BlueBet-era seasons more for the with-odds model. Worth checking before `--final`, since it affects the main model.
+**Adopted:** the with-odds models get a **BlueBet indicator** and the **opening log-odds × BlueBet** (`bluebet`, `open_logit_bluebet` in the `odds` feature group), so they can weight BlueBet's opening prices differently. The linear **totals** model doesn't get them (they made totals worse: 10.72 → 10.78), via `linear_odds` in `train.py`; LightGBM shares one feature list across targets and keeps them (its totals barely moved).
+
+Results (full pipeline backtest, `python src/experiments.py --only calibration`):
+- **2025 calibration fixed:** with-odds ensemble slope 0.86 → **1.01**. 2024 is unchanged (0.81), as its model was trained before any BlueBet data existed.
+- With-odds ensemble win 0.6230 → **0.6220** (2025 alone −0.003, not clear); with-odds linear 0.6223 → 0.6209 (2025 −0.004); margins −0.01 to 0; totals unchanged. No-odds models unaffected.
+- The gain isn't statistically clear in the backtest, but it corrects a measured problem and should matter more for 2026, whose model trains on about 1.7 seasons of BlueBet prices instead of 0.7.
 
 ### 36. Third review: make the final run auditable ⬜
 

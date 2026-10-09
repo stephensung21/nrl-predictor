@@ -56,7 +56,7 @@ from train import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FEATURE_SETS, FIRST_SEA
                    TARGETS, VARIANT_LABEL, VARIANTS, LGB_COMPACT_EXTRA, LGB_FIXED, LGB_SEEDS, cv_lgb, lgb_base,
                    linear, linear_predict, md_table, platt, tune_lgb)
 
-ODDS = ["open_logit", "open_line", "open_total"]
+ODDS = FEATURE_GROUPS_ODDS = train.FEATURE_GROUPS["odds"]  # the with-odds models' extra inputs
 BASELINE_FEATURES = {
     "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
     "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
@@ -152,7 +152,7 @@ def load():
 
 
 def feats_for(variant, sets=BASELINE_FEATURES):
-    return {t: list(f) + (ODDS if variant == "with_odds" else []) for t, f in sets.items()}
+    return {t: list(f) + (train.linear_odds(t) if variant == "with_odds" else []) for t, f in sets.items()}
 
 
 # ---------------------------------------------------------------- 1. re-tests
@@ -934,6 +934,70 @@ LADDER_GROUPS = {
 }
 
 
+# ---------------------------------------------------------------- 19. recalibration and bookmaker change
+
+def recalibrate(preds, test, col, slope_only):
+    """Recalibrate a model's final win probabilities for each season from 2024 using the earlier
+    backtest seasons' (out-of-sample) predictions: logit(p') = a + b * logit(p), with a = 0 if
+    slope_only. 2023 has no earlier backtest season and is left unchanged."""
+    out = preds[col].copy()
+    seasons = test.loc[preds.index, "season"]
+    for season in BACKTEST_SEASONS[1:]:
+        fit_rows, apply_rows = (seasons < season).to_numpy(), (seasons == season).to_numpy()
+        z = logit(preds.loc[fit_rows, col].to_numpy()).reshape(-1, 1)
+        m = LogisticRegression(C=1e6, fit_intercept=not slope_only).fit(z, test.loc[preds.index[fit_rows], "home_win"])
+        out[apply_rows] = m.predict_proba(logit(preds.loc[apply_rows, col].to_numpy()).reshape(-1, 1))[:, 1]
+    return out
+
+
+def calibration_experiments():
+    """Item 23 (recalibrating the final probabilities) and item 35 (the bookmaker change)."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        # BlueBet inputs are now part of the odds group; this compares with the group without them.
+        without = {**train.FEATURE_GROUPS, "odds": [f for f in train.FEATURE_GROUPS["odds"]
+                                                   if f not in ("bluebet", "open_logit_bluebet")]}
+        bookmaker, base = base, pipeline_backtest(df, FEATURE_GROUPS=without)
+    finally:
+        builtins.print = quiet
+    assert np.allclose(bookmaker.to_numpy(), bt.loc[bookmaker.index, bookmaker.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    later = test.loc[base.index, "season"].ge(BACKTEST_SEASONS[1]).to_numpy()
+    for v in VARIANTS:
+        for m in ("linear", "ensemble"):
+            col = f"{v}|{m}|home_win"
+            for slope_only, name in ((True, "slope only"), (False, "slope and intercept")):
+                new = recalibrate(base, test, col, slope_only)
+                record(f"19 recalibration ({name}): {m}, 2024-25", v, "home_win", test.loc[base.index[later]],
+                       new[later], base.loc[later, col])
+                record(f"19 recalibration ({name}): {m}, 2023-25", v, "home_win", test.loc[base.index], new, base[col])
+    compare_pipelines("19 BlueBet inputs (with-odds models)", test, bookmaker, base)
+    is_2025 = test.loc[base.index, "season"].eq(2025).to_numpy()
+    for m in ("linear", "ensemble"):
+        col = f"with_odds|{m}|home_win"
+        record(f"19 BlueBet inputs: {m}, 2025 only", "with_odds", "home_win", test.loc[base.index[is_2025]],
+               bookmaker.loc[is_2025, col], base.loc[is_2025, col])
+    res = pd.DataFrame(RESULTS)
+    report = ["# Recalibration and the bookmaker change (2023–2025 backtest)", "",
+              "**Item 23:** the main models' final win probabilities are recalibrated for each season from 2024 "
+              "using earlier backtest seasons' out-of-sample predictions (logit(p') = a + b·logit(p); slope only "
+              "sets a = 0). 2023 has no earlier backtest season and is unchanged, so the 2024–25 rows are the "
+              "fair comparison.", "",
+              "**Item 35:** opening prices come from bet365 until April 2024 and BlueBet after. The with-odds "
+              "models get a BlueBet indicator and opening log-odds × BlueBet as extra inputs, run through the full "
+              "pipeline backtest; 2025 (all BlueBet, with part of 2024 in training) is where it can show.", "",
+              "`diff` is new minus current (negative = better), with a paired bootstrap 95% interval.", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_calibration.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_calibration.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -1058,7 +1122,8 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
-                                           "context2", "ladder", "stars", "key_absence", "origin_stars"],
+                                           "context2", "ladder", "stars", "key_absence", "origin_stars",
+                                           "calibration"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -1070,4 +1135,5 @@ if __name__ == "__main__":
      "key_absence": lambda: context2_experiments(KEY_ABSENCE_GROUPS, "17", "experiments_key_absence.md",
                                                  "Key-position star absences"),
      "origin_stars": lambda: context2_experiments(ORIGIN_STAR_GROUPS, "18", "experiments_origin_stars.md",
-                                                  "Origin-based star absences")}.get(args.only, main)()
+                                                  "Origin-based star absences"),
+     "calibration": calibration_experiments}.get(args.only, main)()

@@ -403,6 +403,16 @@ def bootstrap_diff(y, p_model, p_bench, seed=SEED):
 
 # ---------------------------------------------------------------- development procedure
 
+BOOKMAKER_INPUTS = ["bluebet", "open_logit_bluebet"]
+
+
+def linear_odds(target):
+    """The opening-odds inputs a with-odds linear model gets. The BlueBet inputs fix the win and margin
+    models' calibration after the bookmaker change but made the totals model worse, so it doesn't get them."""
+    odds = FEATURE_GROUPS["odds"]
+    return [f for f in odds if f not in BOOKMAKER_INPUTS] if target == "total" else list(odds)
+
+
 def lgb_features(compact):
     """LightGBM's features (before odds): the full base + player set, or the compact set of every
     linear-model feature plus LGB_COMPACT_EXTRA."""
@@ -431,7 +441,8 @@ def develop(cv_df, cv_seasons):
         trace = pd.DataFrame([{"target": t, "step": i + 1, "feature": f}
                               for t in ("home_win", "total") for i, f in enumerate(linear_b[t])]).set_index("step")
     gbm = lgb_features(LGB_COMPACT)
-    cfg = {"feature_sets": {"with_odds": {"linear": {t: f + odds for t, f in linear_b.items()}, "lightgbm": gbm + odds},
+    cfg = {"feature_sets": {"with_odds": {"linear": {t: f + linear_odds(t) for t, f in linear_b.items()},
+                                          "lightgbm": gbm + odds},
                             "no_odds": {"linear": linear_b, "lightgbm": gbm}},
            "models": {}}
     cv_rows = {}

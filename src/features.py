@@ -150,7 +150,10 @@ FEATURE_GROUPS = {
                 "night_game", "kickoff_thursday", "kickoff_friday", "kickoff_sunday",
                 "diff_travel_km", "diff_tz_change", "diff_ladder_pos", "diff_out_of_contention"],
     "player": [f"diff_{f}" for f in PLAYER_TEAM_FEATURES] + ["rapm_points"],
-    "odds": ["open_logit", "open_line", "open_total"],
+    # Opening prices come from bet365 until April 2024 and BlueBet after, which open differently
+    # (bet365 under-confident, BlueBet over-confident), so the with-odds models also get a BlueBet
+    # indicator and the opening log-odds x BlueBet.
+    "odds": ["open_logit", "open_line", "open_total", "bluebet", "open_logit_bluebet"],
 }
 
 WET_GROUNDS = {"Slippery", "Wet", "Heavy", "Muddy"}
@@ -910,6 +913,8 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
     m["rapm_points"] = m[["home_rapm_attack", "away_rapm_attack", "home_rapm_defence", "away_rapm_defence"]].sum(axis=1)
     m["elo_logit"] = logit(m["elo_prob"])
     m["open_logit"] = logit(m["p_open"])
+    m["bluebet"] = (m["bookmaker"] == "BlueBet").astype(int)
+    m["open_logit_bluebet"] = m["open_logit"] * m["bluebet"]
 
     m["margin"] = m["home_score"] - m["away_score"]
     m["total"] = m["home_score"] + m["away_score"]

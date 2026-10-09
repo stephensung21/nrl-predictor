@@ -12,7 +12,9 @@
           "diff_s2_stars_out_other",
           "open_logit",
           "open_line",
-          "open_total"
+          "open_total",
+          "bluebet",
+          "open_logit_bluebet"
         ],
         "margin": [
           "elo_logit",
@@ -23,7 +25,9 @@
           "diff_s2_stars_out_other",
           "open_logit",
           "open_line",
-          "open_total"
+          "open_total",
+          "bluebet",
+          "open_logit_bluebet"
         ],
         "total": [
           "rapm_points",
@@ -55,7 +59,9 @@
         "is_final",
         "open_logit",
         "open_line",
-        "open_total"
+        "open_total",
+        "bluebet",
+        "open_logit_bluebet"
       ]
     },
     "no_odds": {
