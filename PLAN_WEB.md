@@ -69,6 +69,45 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 **Suggested order for the rest:** `pipeline/run.py` with the weekly grading step (both testable now on 2026 replays), then The Odds API fetcher and the automatic odds-sheet download, then the GitHub Actions workflows, then Supabase and the website.
 
+### Notes for the next phase
+
+Things learned while building the model and `predict.py` that the automation has to handle. Each has a recommendation.
+
+**1. Where the scraped data lives in automated runs.**
+`data/raw/` (the cached nrl.com pages) is in `.gitignore`, but `scrape.py`'s `build_tables` rebuilds `matches.csv`, `team_match_stats.csv` and `player_match_stats.csv` from the raw files of every season it's given. A GitHub Actions run starts with an empty cache, so it would either re-download every game since 2020 (about 1,500 pages) or rebuild the tables from one season and lose the rest.
+- *Recommendation:* make the weekly scrape **incremental**. Fetch only the current season (`--years 2027`), rebuild that season's rows, and replace just those rows in the committed processed tables. Keep the current season's raw pages between runs with `actions/cache` (keyed by season) so each run only fetches new games. The results job then commits the updated tables, which also keeps the repo active (scheduled workflows stop after 60 days without activity).
+- The same applies to `reports/predictions/` (also ignored): run records and predictions must be kept somewhere durable for grading (see 6), so commit them or write them to the database from the start.
+
+**2. Which round to predict.**
+`predict.py` needs `--round N`.
+- *Recommendation:* the predict and refresh jobs take the first round in the nrl.com draw (`vue-draw` data, as `scrape.fetch_fixtures` reads it) that has a game with `matchMode` not `Post`, and predict only its games that haven't kicked off. A round with byes simply has fewer games.
+- **Postponed games:** predict them in whichever round's run comes before their new kickoff. Fixtures are keyed by match id, so a moved game isn't predicted twice.
+- **Neutral venues** (Magic Round, Las Vegas, grand finals): when the odds sheet doesn't have the game yet, `predict.py` adds a placeholder row that assumes the home team is at its own ground. Before that matters, set the neutral flag from the draw: a venue where the home team isn't drawn to host at least 2 regular-season games is neutral, the same rule `ingest.add_venue_flags` uses.
+
+**3. Weather is unknown on Tuesday.**
+The wet-conditions flag (rain or a wet ground) is used by the total-points models. It's known on the day; on Tuesday `predict.py` sets it to 0, so totals are slightly worse than in the backtest.
+- *Recommendation:* keep 0 for the Tuesday prediction. Add the flag in the game-day refresh if nrl.com's match centre shows ground conditions before kickoff, or from a rain forecast. Measure the cost first by replaying 2026 rounds with `--no-weather` against the recorded conditions.
+
+**4. The odds sheet.**
+`data/nrl_betting odds.xlsx` comes from aussportsbetting.com's historical NRL results-and-odds download. It's the only source of the *opening* prices the with-odds model was trained on, and of closing prices for grading against the market.
+- *Recommendation:* download it in the Monday results job (confirm the direct file link and the site's terms first), and check whether it already lists the coming round's games with opening odds. If it does, it's the most consistent source of opening prices for the with-odds model until The Odds API is set up.
+- `ingest.load_odds` stops on unknown team names, so a new team or renamed column fails loudly rather than silently.
+- Run the impossible-price check (implied probabilities summing to under 100%) on every download; the 2026 sheet had bad line and totals prices.
+
+**5. The yearly routine (after each grand final, before the next Round 1).**
+1. Scrape the finished season and download the final odds sheet; rebuild the features.
+2. Check for rule or format changes, like the 2026 six-man interchange on Tuesday lists, and **new teams**. A new club (the Perth Bears are due to join in 2027) needs entries in `ingest.TEAM_MAP` (the odds sheet's name), `TEAM_STATE` and `features.TEAM_BASE`. It starts with an average Elo and team rating; its players' ratings carry over from their old clubs. Expect its early predictions to be rough.
+3. Optionally add the finished season to the backtest (`BACKTEST_SEASONS`) and rerun `train.py --backtest` to confirm nothing has drifted.
+4. Commit, then freeze the models for the new season: set `config.PREDICT_SEASON` and run `python src/train.py --freeze` (it refuses to run with uncommitted changes).
+5. Rerun the tests, including the replay test, and replay a few rounds of the finished season with its own frozen models as a final check.
+6. Check `requirements.txt` still installs; upgrading scikit-learn or LightGBM means refreezing.
+
+**6. Weekly grading and the season record.**
+- **Prediction of record:** for each game, the latest prediction made before its kickoff (from the run records; each run has a `run_at` time and a model version).
+- **Grading (Monday results job):** join the round's predictions of record to the results and to the market (opening and closing prices from the odds sheet), and append one row per game to a season record (committed CSV first, later the `predictions` table and `model_accuracy` view).
+- **Metrics per round and cumulative:** tips correct and accuracy, margin and total-points error, log loss and Brier score, each for the model, the opening market, the closing market and Elo.
+- **Paper trading** (IMPROVEMENTS.md item 33): with live odds, also record the bets the model would have made (2% minimum edge at the price available when predicting), and grade them for profit and closing line value. This is the honest test of the betting edge on fully live information.
+
 ---
 
 ## Overview
