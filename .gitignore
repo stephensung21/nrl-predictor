@@ -9,3 +9,4 @@ data/raw/
 # stay committed.
 data/processed/features.csv
 reports/*.csv
+data/processed/features_pre_kickoff.csv

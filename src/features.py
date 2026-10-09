@@ -120,6 +120,7 @@ STAR_MIN_MINUTES = 20
 STAR_ACTIVE_DAYS = 365
 
 RESERVE_FILE = PROCESSED / "reserve_player_stats.csv"
+PRE_KICKOFF_FILE = PROCESSED / "pre_kickoff_teamlists.csv"  # teamlists.py (item 40)
 RESERVE_NEWCOMER_GAMES = 10   # "newcomer": fewer NRL games than this before the match
 RESERVE_MIN_MINUTES = 20      # reserve-grade games with less time on the field are too noisy to rate
 RESERVE_RAPM_HALF_LIFE_DAYS = 365  # reserve plus-minus: newcomers' history spans longer than a regular's
@@ -376,7 +377,8 @@ def weighted_ridge(X, y, w, penalty):
     return cho_solve(cho_factor(A), XtW @ y)
 
 
-def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=None, stats_prior=None):
+def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=None, stats_prior=None,
+                  current=None):
     """Regularised plus-minus ratings, refitted before each round on earlier games only.
 
     Two ridge regressions over earlier games, one row per game, older games down-weighted:
@@ -398,6 +400,8 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
     the team's previous USUAL_WINDOW line-ups, valued with the same ratings), rapm_missing (usual
     players not named), rapm_attack and rapm_defence (expected points scored / conceded relative
     to average; lower defence is better).
+    With `current` (named-17 rows from pre-kickoff team lists), those line-ups replace the final
+    named 17 for the match being predicted; history still uses the line-ups that actually played.
     """
     alpha = RAPM_ALPHA if alpha is None else alpha
     half_life = RAPM_HALF_LIFE_DAYS if half_life is None else half_life
@@ -449,6 +453,12 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
     for key, j, st, rt in zip(zip(named["match_id"], named["team"]), pids.get_indexer(named["player_id"]),
                               starter, named_rating):
         lineups[key].append((j, st, rt))
+    current_lineups = defaultdict(list)
+    if current is not None:  # players with no NRL games yet get column -1 (rating 0)
+        cur_rating = current["rating_vs_group"].to_numpy() if stats_prior else np.zeros(len(current))
+        for key, j, st, rt in zip(zip(current["match_id"], current["team"]), pids.get_indexer(current["player_id"]),
+                                  (current["position"] != "Interchange").to_numpy(), cur_rating):
+            current_lineups[key].append((j, st, rt))
 
     kickoff = games["start_time_utc"]
     fit, block, out = None, None, []
@@ -481,10 +491,13 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
                 return 0.0
             coef, gamma = fit[kind]
             s_start, s_bench = fit["share"]
-            return float(sum((s_start if st else s_bench) * (coef[j] + gamma * rt) for j, st, rt in entries))
+            return float(sum((s_start if st else s_bench) * ((coef[j] if j >= 0 else 0.0) + gamma * rt)
+                             for j, st, rt in entries))
 
         for team in (g.home_team, g.away_team):
-            lineup, prev = lineups.get((g.match_id, team), []), recent[team]
+            key = (g.match_id, team)
+            lineup = current_lineups[key] if key in current_lineups else lineups.get(key, [])
+            prev = recent[team]
             latest = {e[0]: e for lineup_prev in prev for e in lineup_prev}  # most recent entry per player
             counts = Counter(e[0] for lineup_prev in prev for e in lineup_prev)
             missing = [latest[j] for j, k in counts.items() if k >= USUAL_MIN and j not in {e[0] for e in lineup}]
@@ -652,7 +665,7 @@ def team_total_ratings(odds, half_life=None, penalty=None):
     return pd.DataFrame({"odds_id": g["odds_id"], "team_total": pred})
 
 
-def star_features(matches, p, origin_by_player=None, return_sets=False):
+def star_features(matches, p, origin_by_player=None, return_sets=False, current=None):
     """Stats-based stars: per NRL team and match, how many stars are named, and how many of the team's
     usual players (named in USUAL_MIN of its last USUAL_WINDOW games) who are stars are missing.
     Ratings and thresholds come from games before the round; each round's games are added afterwards.
@@ -667,6 +680,7 @@ def star_features(matches, p, origin_by_player=None, return_sets=False):
     state = {}  # player -> [ewma, games, position group, last game time]
     recent = defaultdict(lambda: deque(maxlen=USUAL_WINDOW))
     lineups = named.groupby(["match_id", "team"])["player_id"].agg(set).to_dict()
+    current_ids = {} if current is None else current.groupby(["match_id", "team"])["player_id"].agg(set).to_dict()
     played_by_match = {mid: list(zip(g["player_id"], per80[played.index.get_indexer(g.index)], g["pos_group"]))
                        for mid, g in played.groupby("match_id")}
     out = []
@@ -686,7 +700,7 @@ def star_features(matches, p, origin_by_player=None, return_sets=False):
             snapshots[start] = (stars, origin_stars)
         for g in block.itertuples():
             for team in (g.home_team, g.away_team):
-                ids = lineups.get((g.match_id, team), set())
+                ids = current_ids.get((g.match_id, team), lineups.get((g.match_id, team), set()))
                 counts = Counter(pid for lineup in recent[team] for pid in lineup)
                 usual = {pid for pid, c in counts.items() if c >= USUAL_MIN}
                 missing = usual - ids
@@ -814,8 +828,14 @@ def impact_features(matches, p):
     return pd.DataFrame(out).set_index(["match_id", "team"])
 
 
-def player_team_features(matches, players, origin, reserve=None):
-    """Rate every named player before each match, then aggregate the named 17 to team level."""
+def player_team_features(matches, players, origin, reserve=None, pre_kickoff=None):
+    """Rate every named player before each match, then aggregate the named 17 to team level.
+
+    With pre_kickoff (team lists from before kickoff, teamlists.py), each match that has one for
+    both teams is described by that list instead of the final named 17: the team ratings, rookies,
+    RAPM and star-absence features. History (usual players, ratings) still comes from the teams
+    that actually played. The other team-news features (lineup_changes, spine changes) keep the final
+    named 17; the main models don't use them."""
     p = players.merge(matches[["match_id", "start_time_utc"]], on="match_id", how="left")
     p["pos_group"] = p["position"].map(POS_GROUP).fillna("bench")
     p["fantasy"] = p["fantasyPointsTotal"].astype(float)
@@ -825,17 +845,27 @@ def player_team_features(matches, players, origin, reserve=None):
 
     # Line-up: the named 17 (known before kickoff), whether or not each player got minutes.
     named = p[~p["position"].isin(NOT_NAMED)].sort_values(["start_time_utc", "match_id", "player_id"])
+    current, named_now = None, named
+    if pre_kickoff is not None:
+        cur = pre_kickoff[~pre_kickoff["position"].isin(NOT_NAMED)][["match_id", "team", "player_id", "position"]]
+        cur = cur[cur["match_id"].isin(set(named["match_id"]))]
+        cur = cur.merge(matches[["match_id", "start_time_utc"]], on="match_id")
+        cur["pos_group"] = cur["position"].map(POS_GROUP).fillna("bench")
+        current = cur.join(rate_players(cur[["player_id", "pos_group", "start_time_utc"]], history, group_avgs))
+        keys = pd.MultiIndex.from_frame(current[["match_id", "team"]].drop_duplicates())
+        replaced = pd.MultiIndex.from_frame(named[["match_id", "team"]]).isin(keys)
+        named_now = pd.concat([named[~replaced], current]).sort_values(["start_time_utc", "match_id", "player_id"])
 
-    team = named.pivot_table(index=["match_id", "team"], columns="pos_group", values="rating",
+    team = named_now.pivot_table(index=["match_id", "team"], columns="pos_group", values="rating",
                              aggfunc="sum", fill_value=0)
     team.columns = [f"rating_{c}" for c in team.columns]
     team["rating_total"] = team.sum(axis=1)
-    team["rookies"] = named.assign(r=named["n_prior"] < ROOKIE_GAMES).groupby(["match_id", "team"])["r"].sum()
+    team["rookies"] = named_now.assign(r=named_now["n_prior"] < ROOKIE_GAMES).groupby(["match_id", "team"])["r"].sum()
     team["spine_ids"] = named[named["pos_group"] == "spine"].groupby(["match_id", "team"])["player_id"].agg(frozenset)
     team["halfback_id"] = named[named["position"] == "Halfback"].groupby(["match_id", "team"])["player_id"].first()
     team = team.join(lineup_changes(named, history, group_avgs, origin_squads(origin)))
-    team = team.join(rapm_features(matches, p))
-    team = team.join(star_features(matches, p, origin_squads(origin)))  # includes the adopted S2 star absences
+    team = team.join(rapm_features(matches, p, current=current))
+    team = team.join(star_features(matches, p, origin_squads(origin), current=current))  # includes the adopted S2 star absences
     if EXPERIMENTAL:
         team["reserve_newcomers"] = reserve_newcomers(named, reserve)
         team["reserve_rapm_newcomers"] = reserve_rapm_newcomers(matches, named, reserve)
@@ -844,7 +874,11 @@ def player_team_features(matches, players, origin, reserve=None):
     team = team.sort_values(["start_time_utc", "match_id"]).reset_index(drop=True)
 
     g = team.groupby("team")
-    usual = g["rating_spine"].transform(lambda s: s.shift(1).ewm(alpha=FORM_ALPHA).mean())
+    # The usual spine rating comes from the line-ups that actually played (as all history does).
+    actual_spine = named[named["pos_group"] == "spine"].groupby(["match_id", "team"])["rating"].sum()
+    actual_spine = pd.Series(actual_spine.reindex(pd.MultiIndex.from_frame(team[["match_id", "team"]])).to_numpy(),
+                             index=team.index).fillna(0)
+    usual = actual_spine.groupby(team["team"]).transform(lambda s: s.shift(1).ewm(alpha=FORM_ALPHA).mean())
     team["spine_vs_usual"] = (team["rating_spine"] - usual).fillna(0)
     prev_spine = g["spine_ids"].shift(1)
     team["spine_changes"] = [
@@ -892,7 +926,7 @@ def ladder_features(m):
     return res.reindex(m["match_id"]).fillna(0).reset_index()
 
 
-def build_features(matches, team_stats, players, odds, origin, elo_params, reserve=None):
+def build_features(matches, team_stats, players, odds, origin, elo_params, reserve=None, pre_kickoff=None):
     matches = matches.copy()
     matches["start_time_utc"] = pd.to_datetime(matches["start_time_utc"], utc=True)
     team_stats = team_stats.copy()
@@ -912,7 +946,7 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
     travel_cols = ["travel_km", "tz_change"] if EXPERIMENTAL else []
     side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel"] + travel_cols \
         + [f"form_{s}" for s in FORM_STATS]
-    long = long.merge(player_team_features(m, players, origin, reserve), on=["match_id", "team"], how="left")
+    long = long.merge(player_team_features(m, players, origin, reserve, pre_kickoff), on=["match_id", "team"], how="left")
     side_cols += team_features()
 
     for side, is_home in (("home", True), ("away", False)):
@@ -954,11 +988,14 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
     m["home_win"] = (m["margin"] > 0).astype(int)
     m["is_draw"] = m["margin"] == 0
     m["min_hist"] = m[["home_n_hist", "away_n_hist"]].min(axis=1)
+    if pre_kickoff is not None:  # both teams' line-ups come from a pre-kickoff list
+        teams_listed = pre_kickoff.groupby("match_id")["team"].nunique()
+        m["pre_kickoff_list"] = m["match_id"].map(teams_listed).eq(2).astype(int)
 
     keep = ["match_id", "season", "round", "round_title", "start_time_utc", "home_team", "away_team",
             "venue", "home_score", "away_score", "margin", "total", "home_win", "is_draw", "min_hist",
             "elo_prob", "bookmaker", "p_open", "p_close", "close_ok", "p_avg", "close_line", "close_total",
-            "data_issue"]
+            "data_issue"] + (["pre_kickoff_list"] if pre_kickoff is not None else [])
     return m[keep + [f for f in feature_columns() if f not in keep]].sort_values("start_time_utc").reset_index(drop=True)
 
 
@@ -1028,11 +1065,18 @@ def load_reserve():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--experimental", action="store_true", help="also build the tested-but-unused features")
-    EXPERIMENTAL = parser.parse_args().experimental
+    parser.add_argument("--pre-kickoff", action="store_true",
+                        help="describe each game by its pre-kickoff team list where there is one (teamlists.py) "
+                             "-> features_pre_kickoff.csv")
+    args = parser.parse_args()
+    EXPERIMENTAL = args.experimental
     matches, team_stats, players, odds, origin, reserve = load_inputs()
-    feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds), reserve=reserve)
-    feats.to_csv(PROCESSED / "features.csv", index=False)
-    print(f"wrote features.csv: {feats.shape}")
+    pre = pd.read_csv(PRE_KICKOFF_FILE) if args.pre_kickoff else None
+    feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds), reserve=reserve,
+                           pre_kickoff=pre)
+    out = "features_pre_kickoff.csv" if args.pre_kickoff else "features.csv"
+    feats.to_csv(PROCESSED / out, index=False)
+    print(f"wrote {out}: {feats.shape}")
     usable = feats[(feats["min_hist"] >= MIN_HISTORY) & ~feats["is_draw"]]
     print("usable games per season:", usable.groupby("season").size().to_dict())
     print(usable[feature_columns()].describe().T[["mean", "std", "min", "max"]].round(2))

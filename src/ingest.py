@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import brentq
 
 ROOT = Path(__file__).resolve().parents[1]
 ODDS_FILE = ROOT / "data" / "nrl_betting odds.xlsx"
@@ -65,6 +66,27 @@ def two_way_prob(home_odds, away_odds):
     return ih / (ih + ia)
 
 
+def shin_prob(home_odds, away_odds):
+    """Implied home-win probability with the margin removed by Shin's method, which assumes part of
+    the money comes from bettors with inside information and so takes more of the margin off the
+    longshot (correcting favourite-longshot bias). For two outcomes, with p_i = 1 / odds_i and
+    B = p_1 + p_2, the true probability is (sqrt(z^2 + 4 (1 - z) p_i^2 / B) - z) / (2 (1 - z)),
+    where the insider share z makes the two sum to 1."""
+    ih, ia = 1 / np.asarray(home_odds, float), 1 / np.asarray(away_odds, float)
+    out = np.full(ih.shape, np.nan)
+    for i, (h, a) in enumerate(zip(ih, ia)):
+        if not (np.isfinite(h) and np.isfinite(a)):
+            continue
+        b = h + a
+        if b <= 1:  # no margin to remove
+            out[i] = h / b
+            continue
+        prob = lambda z, x: (np.sqrt(z * z + 4 * (1 - z) * x * x / b) - z) / (2 * (1 - z))
+        z = brentq(lambda z: prob(z, h) + prob(z, a) - 1, 0.0, 0.99)
+        out[i] = prob(z, h)
+    return out
+
+
 def load_odds(path=ODDS_FILE):
     raw = pd.read_excel(path, header=1)
     o = pd.DataFrame({
@@ -97,6 +119,10 @@ def load_odds(path=ODDS_FILE):
     o["close_line"] = raw["Home Line Close"]
     o["close_total"] = raw["Total Score Close"]
     o["p_avg"] = two_way_prob(raw["Home Odds"], raw["Away Odds"])  # draw outcome removed as well
+    # The same three with Shin's method (item 42; for comparison, not used by the models).
+    o["p_open_shin"] = shin_prob(raw["Home Odds Open"], raw["Away Odds Open"])
+    o["p_close_shin"] = shin_prob(raw["Home Odds Close"], raw["Away Odds Close"])
+    o["p_avg_shin"] = shin_prob(raw["Home Odds"], raw["Away Odds"])
 
     # Prices for the betting simulation only (betting.py); never used as features.
     for when in ("Open", "Close"):

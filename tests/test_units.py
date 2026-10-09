@@ -17,7 +17,7 @@ import models  # noqa: E402
 from elo import run_elo  # noqa: E402
 from evaluate import bootstrap_diff  # noqa: E402
 from features import distance_km, repair_scraped_games, tz_change  # noqa: E402
-from ingest import join_odds_to_matches, two_way_prob  # noqa: E402
+from ingest import join_odds_to_matches, shin_prob, two_way_prob  # noqa: E402
 from reports import md_table  # noqa: E402
 
 
@@ -27,6 +27,14 @@ def test_two_way_prob_removes_margin():
     p = two_way_prob(np.array([1.80, 2.00]), np.array([2.00, 2.00]))
     assert p[1] == pytest.approx(0.5)
     assert p[0] == pytest.approx((1 / 1.8) / (1 / 1.8 + 1 / 2.0))
+
+
+def test_shin_prob_favours_the_favourite_and_sums_to_one():
+    h, a = np.array([1.20, 1.90]), np.array([4.50, 1.90])
+    p_home, p_away = shin_prob(h, a), shin_prob(a, h)
+    assert p_home + p_away == pytest.approx([1.0, 1.0])
+    assert p_home[1] == pytest.approx(0.5)
+    assert p_home[0] > two_way_prob(h, a)[0]  # more of the margin comes off the longshot
 
 
 def test_join_odds_to_matches_within_a_day():

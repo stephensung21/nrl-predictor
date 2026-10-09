@@ -40,3 +40,16 @@ Caveats: draws were excluded from the backtest; the line-up features use the nam
 | No odds linear (no rain flag) | total | 2% | 459 | 0.5359 | 5.2940 | 0.0115 | -0.0760 | 0.0964 | 0.6046 | 459 | 0.1198 | 0.2745 | 0.2636 | 0.0280 | -0.0047 | -0.0612 | 0.1121 |
 | No odds linear (no rain flag) | total | 5% | 390 | 0.5231 | -5.1160 | -0.0131 | -0.1051 | 0.0800 | 0.4017 | 390 | -0.0051 | 0.2641 | 0.2769 | -0.0057 | -0.0050 | -0.0426 | 0.0156 |
 | No odds linear (no rain flag) | total | 10% | 275 | 0.5491 | 9.7540 | 0.0355 | -0.0749 | 0.1468 | 0.7462 | 275 | -0.0582 | 0.2545 | 0.2873 | 0.0453 | 0.0686 | 0.0137 | 0.0376 |
+
+## Bet sizing, head to head (item 43)
+
+Bets with at least a 2% edge, in kickoff order, starting from a bankroll of 1. Flat: 1% of the starting bankroll per bet. Fractional Kelly: that fraction of the Kelly stake (edge / (odds - 1)) of the current bankroll, capped at 5%. The bootstrap resamples the bets 2000 times in random order.
+
+| model | market | staking | bets | final bankroll | largest drawdown | median final (bootstrap) | P(final < start) |
+|---|---|---|---|---|---|---|---|
+| With odds ensemble | head to head | flat 1% | 372 | 1.5960 | 0.0940 | 1.6000 | 0.0000 |
+| With odds ensemble | head to head | 0.25 Kelly | 372 | 3.6800 | 0.3150 | 3.6700 | 0.0100 |
+| With odds ensemble | head to head | 0.5 Kelly | 372 | 5.6000 | 0.3700 | 5.4050 | 0.0160 |
+| No odds ensemble | head to head | flat 1% | 431 | 1.5240 | 0.1190 | 1.5140 | 0.0080 |
+| No odds ensemble | head to head | 0.25 Kelly | 431 | 4.2260 | 0.4020 | 4.0360 | 0.0320 |
+| No odds ensemble | head to head | 0.5 Kelly | 431 | 6.0490 | 0.4480 | 6.1580 | 0.0260 |

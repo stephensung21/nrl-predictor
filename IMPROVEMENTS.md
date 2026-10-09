@@ -320,9 +320,9 @@ From a second pass over the pipeline (October 2026):
 - **A single entry point and a config file** instead of module constants and a manual run order (scrape → features → train), recording which settings produced each report.
 - **Data checks** beyond the leakage test: unmatched odds joins, scores matching stat totals, duplicate games, and scrapes that silently drop games.
 
-### 26. Better bookmaker-margin removal ⬜
+### 26. Better bookmaker-margin removal ❌
 
-The opening and closing probabilities split the bookmaker's margin proportionally. The **Shin** or **power** methods correct for favourite–longshot bias. This affects the with-odds model's input, every market benchmark and the betting edges.
+The opening and closing probabilities split the bookmaker's margin proportionally. The **Shin** or **power** methods correct for favourite–longshot bias. This affects the with-odds model's input, every market benchmark and the betting edges. Shin tested in item 42: no difference.
 
 ### 27. Team-level total rating ❌
 
@@ -533,17 +533,41 @@ How well the general rules recognise the reference list: S1 counts 58% of their 
 
 Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use the final named 17, which can include late changes the opening price never saw, so the 2026 head-to-head betting edge (which comes from team news) is an upper bound. Historical Tuesday lists can't be recovered after the fact (nrl.com overwrites them), so: start saving each round's Tuesday list and Tuesday-evening prices now, build `predict.py` around them (item 24), and re-evaluate the betting edge on those snapshots from 2027 (with paper trading, item 33).
 
-### 41. Disagreement analysis ⬜
+### 41. Disagreement analysis ✅
 
-List the games where the model differs most from the market (backtest and 2026), check who was right, and which features drove the difference (e.g. star absences, line-up changes, Elo). It's cheap and shows where the edge really comes from, and whether it's concentrated in a few kinds of games worth betting.
+`python src/experiments.py --only disagreement`, `reports/experiments_disagreement.md`. The with-odds ensemble's out-of-sample predictions against the opening market, grouped by how much they disagree (model log-odds minus opening log-odds).
 
-### 42. Shin margin removal ⬜
+| Disagreement | Games (backtest / 2026) | Model vs opening log loss, backtest | 2026 | Closing price moved towards the model, backtest | 2026 |
+|---|---|---|---|---|---|
+| Smallest 50% (about 2 points) | 316 / 107 | 0.617 vs 0.628 | 0.664 vs 0.666 | 56% | 48% |
+| 50–80% (about 6 points) | 189 / 63 | 0.638 vs 0.634 | 0.664 vs 0.691 | 66% | 69% |
+| 80–90% (about 10 points) | 63 / 21 | 0.635 vs 0.663 | 0.671 vs 0.693 | 75% | 70% |
+| **Largest 10%** (about 14 points) | 63 / 22 | **0.588 vs 0.627** | **0.539 vs 0.544** | **86%** | **82%** |
 
-Already item 26. Footy Tipper uses the Shin method; test it for both the with-odds models' input and the market benchmarks.
+- **The edge is concentrated where the model disagrees most.** In the largest 10% of disagreements the model beats the opening price clearly, and the closing price moved towards the model in 86% of games (82% in 2026), against about a coin flip when the disagreement is small.
+- **The market catches up by kickoff:** in the biggest-disagreement games the closing average beats the model (0.568 vs 0.588 in the backtest; 0.484 vs 0.539 in 2026). The model has the information early; the market has it by kickoff.
+- **What drives it is team news:** a descriptive ridge regression of the disagreement on the model's features puts the line-up's RAPM defence and line-up vs usual first in the backtest, and line-up vs usual, Elo and RAPM defence in 2026; star absences contribute less. The features explain about a third of the disagreement (R² 0.36).
+- **For betting:** this supports betting only on large disagreements (the 2% and 5% edge thresholds already do this), and it's exactly the team-news effect that item 40 has to confirm with pre-kickoff lists.
 
-### 43. Bet sizing ⬜
+### 42. Shin margin removal ❌
 
-Add fractional Kelly staking (e.g. a quarter of Kelly, capped) to `betting.py` alongside flat stakes, reporting growth, drawdown and the chance of ruin. Only relevant once the edge is confirmed on pre-betting team lists (item 40).
+`python src/experiments.py --only shin`, `reports/experiments_shin.md`. `ingest.shin_prob` (exact two-outcome Shin solution; it moves a little more probability onto favourites, e.g. 79.0% → 80.6% at prices 1.20 / 4.50).
+- **As the market benchmark:** no difference. Opening −0.0008 (2021–25), closing −0.0011, Odds Portal average −0.0001; every interval spans 0.
+- **As the with-odds models' input** (full pipeline backtest): ensemble win +0.0001, margin +0.0001, total +0.001. The models already learn how to scale the opening log-odds, so the margin-removal method doesn't matter.
+- Not adopted; the Shin probabilities stay available in the odds table (`p_open_shin`, `p_close_shin`, `p_avg_shin`).
+
+### 43. Bet sizing ✅ (in the simulation)
+
+`betting.py` now reports flat stakes against fractional Kelly for head-to-head bets (2% minimum edge, in kickoff order, bankroll starting at 1; Kelly stake = fraction × edge / (odds − 1) of the current bankroll, capped at 5%; 2,000 bootstrap resamples of the bets in random order).
+
+| With-odds ensemble | Backtest final bankroll | Largest drawdown | Chance of ending below start | 2026 final bankroll | Largest drawdown | Chance below start |
+|---|---|---|---|---|---|---|
+| Flat 1% per bet | 1.60 | 9% | 0% | 1.29 | 7% | 1% |
+| Quarter Kelly | 3.68 | 32% | 1% | 1.48 | 20% | 11% |
+| Half Kelly | 5.60 | 37% | 2% | 1.79 | 29% | 12% |
+
+- Kelly compounds the edge much faster, at the cost of drawdowns of a third of the bankroll; in 2026 it carried an 11–12% chance of ending below the start, against 1% for flat stakes.
+- These all assume the backtest edge is real, which used the final named 17 (item 40). Kelly with an overstated edge over-bets, so **use flat stakes (or at most quarter Kelly) until the edge is confirmed on pre-kickoff lists and paper trading.**
 
 ### 44. Lower priority from Footy Tipper ⬜
 

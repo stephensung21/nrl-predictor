@@ -169,6 +169,44 @@ def summarise(bets, seasons):
     return pd.DataFrame(rows)
 
 
+KELLY_FRACTIONS = [0.25, 0.5]   # fractional Kelly (full Kelly is far too volatile with estimated edges)
+KELLY_CAP = 0.05                # never more than 5% of the bankroll on one bet
+STAKING_EDGE = 0.02             # bets with at least a 2% expected edge
+FLAT_STAKE = 0.01               # flat staking: 1% of the starting bankroll per bet
+N_STAKING_BOOT = 2000
+
+
+def simulate(x, fraction):
+    """Bankroll path over bets in kickoff order (start = 1). fraction=None: flat stakes of FLAT_STAKE;
+    otherwise stake = min(fraction x Kelly, KELLY_CAP) of the current bankroll, with Kelly = edge / (odds - 1).
+    Returns (final bankroll, largest drawdown from a peak)."""
+    bank, peak, drawdown = 1.0, 1.0, 0.0
+    for edge, odds, profit in zip(x["edge"].to_numpy(), x["odds"].to_numpy(), x["profit"].to_numpy()):
+        stake = FLAT_STAKE if fraction is None else bank * min(fraction * edge / (odds - 1), KELLY_CAP)
+        bank += stake * profit
+        peak = max(peak, bank)
+        drawdown = max(drawdown, 1 - bank / peak)
+    return bank, drawdown
+
+
+def staking(bets, kickoff):
+    """Item 43: flat stakes against fractional Kelly. The bootstrap resamples the bets (with replacement,
+    in random order) to show how likely each plan is to end below the starting bankroll."""
+    rows, rng = [], np.random.default_rng(0)
+    for (model, market), b in bets.groupby(["model", "market"], sort=False):
+        x = b[b["edge"] > STAKING_EDGE].assign(t=kickoff.reindex(b[b["edge"] > STAKING_EDGE].index).to_numpy())
+        x = x.sort_values("t", kind="stable")
+        if x.empty:
+            continue
+        for fraction, plan in [(None, f"flat {FLAT_STAKE:.0%}")] + [(f, f"{f:g} Kelly") for f in KELLY_FRACTIONS]:
+            final, dd = simulate(x, fraction)
+            boot = [simulate(x.iloc[rng.integers(0, len(x), len(x))], fraction)[0] for _ in range(N_STAKING_BOOT)]
+            rows.append({"model": label(model), "market": market, "staking": plan, "bets": len(x),
+                         "final bankroll": final, "largest drawdown": dd,
+                         "median final (bootstrap)": np.median(boot), "P(final < start)": np.mean(np.array(boot) < 1)})
+    return pd.DataFrame(rows)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--season", type=int, help="simulate one season (e.g. the final test season) instead "
@@ -198,8 +236,10 @@ def main():
     # The no-rain models only differ on totals.
     bets = bets[~(bets["model"].str.contains("no rain") & (bets["market"] != "total"))]
     summary = summarise(bets, seasons)
+    stakes = staking(bets[bets["market"] == "head to head"], games["start_time_utc"])
     pd.set_option("display.width", 250)
     print(summary.round(3).to_string(index=False))
+    print(stakes.round(3).to_string(index=False))
 
     clv_note = ("CLV is the move to the closing price or line in the bet's favour: head to head in "
                 "implied probability (only where closing prices are reliable), line and total in points.")
@@ -210,7 +250,13 @@ def main():
               "`linear (no rain flag)` totals don't use the wet-conditions flag, which is only known near kickoff "
               "(linear only: LightGBM would need retraining without it).", "",
               clv_note, "", caveat + " Thresholds are all shown, not chosen.", "",
-              md_table(summary.set_index("model").round(4)), ""]
+              md_table(summary.set_index("model").round(4)), "",
+              "## Bet sizing, head to head (item 43)", "",
+              f"Bets with at least a {STAKING_EDGE:.0%} edge, in kickoff order, starting from a bankroll of 1. "
+              f"Flat: {FLAT_STAKE:.0%} of the starting bankroll per bet. Fractional Kelly: that fraction of the "
+              f"Kelly stake (edge / (odds - 1)) of the current bankroll, capped at {KELLY_CAP:.0%}. The bootstrap "
+              f"resamples the bets {N_STAKING_BOOT} times in random order.", "",
+              md_table(stakes.set_index("model").round(3)), ""]
     (REPORTS / f"{out}.md").write_text("\n".join(report), encoding="utf-8")
     bets.to_csv(REPORTS / f"{out}_candidates.csv", index=False)
     print(f"wrote reports/{out}.md")

@@ -32,6 +32,11 @@ Usage:
                                                   distance, Origin representatives, ladder/motivation)
     python src/experiments.py --only blend    ->  reports/experiments_blend.md (no odds in the models;
                                                   the market as a separate expert in a learned blend)
+    python src/experiments.py --only shin     ->  reports/experiments_shin.md (Shin margin removal)
+    python src/experiments.py --only disagreement -> reports/experiments_disagreement.md (where the
+                                                  model and the opening market disagree, and who was right)
+    python src/experiments.py --only pre_kickoff -> reports/experiments_pre_kickoff.md (the main models fed
+                                                  pre-kickoff team lists instead of the final named 17)
 """
 
 import argparse
@@ -1272,6 +1277,289 @@ def blend_experiments():
     print("wrote reports/experiments_blend.md")
 
 
+# ---------------------------------------------------------------- 42. Shin margin removal
+
+def shin_experiments():
+    """Item 42 (and 26): Shin's margin removal instead of the proportional method, as the market
+    benchmark and as the with-odds models' opening-odds input."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    odds = load_odds()
+    ids = join_odds_to_matches(df[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
+    shin = ids.set_index("match_id")[["odds_id"]].join(
+        odds.set_index("odds_id")[["p_open_shin", "p_close_shin", "p_avg_shin"]], on="odds_id")
+    df = df.join(shin.drop(columns="odds_id"), on="match_id")
+
+    # 1. As a benchmark: the market's own log loss with each method (no fitting involved), 2021-2025.
+    bench = []
+    for name, prop, sh, rows in (("opening", "p_open", "p_open_shin", df["p_open"].notna()),
+                                 ("closing (reliable games)", "p_close", "p_close_shin", df["close_ok"].astype(bool)),
+                                 ("Odds Portal average", "p_avg", "p_avg_shin", df["p_avg"].notna())):
+        for seasons, label in ((range(FIRST_SEASON, 2026), f"{FIRST_SEASON}-2025"), (BACKTEST_SEASONS, "2023-2025")):
+            d = df[rows & df["season"].isin(seasons) & df[sh].notna()]
+            new_s, base_s, diff, lo, hi = paired(d["home_win"], d[sh], d[prop], "clf")
+            bench.append({"market": name, "seasons": label, "games": len(d), "proportional": base_s, "Shin": new_s,
+                          "diff": diff, "ci_low": lo, "ci_high": hi})
+    bench = pd.DataFrame(bench).set_index("market")
+    print(md_table(bench))
+
+    # 2. As the with-odds models' input: the full pipeline backtest with Shin opening log-odds.
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    shin_df = df.assign(open_logit=logit(df["p_open_shin"].to_numpy()))
+    shin_df["open_logit_bluebet"] = shin_df["open_logit"] * shin_df["bluebet"]
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        new = pipeline_backtest(shin_df)
+    finally:
+        builtins.print = quiet
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    for m in ("linear", "ensemble"):
+        for t in TARGETS:
+            col = f"with_odds|{m}|{t}"
+            record(f"42 Shin opening odds as input: {m}", "with_odds", t, test.loc[new.index], new[col], base[col])
+    res = pd.DataFrame(RESULTS)
+    report = ["# Shin margin removal (item 42)", "",
+              "Shin's method takes more of the bookmaker's margin off the longshot than the proportional method "
+              "(it models favourite-longshot bias). Compared two ways.", "",
+              "## As the market benchmark", "",
+              "The market's log loss with each method; `diff` is Shin minus proportional (negative = Shin better), "
+              "with a paired bootstrap 95% interval. No fitting involved.", "", md_table(bench), "",
+              "## As the with-odds models' input (2023-2025 backtest)", "",
+              "The opening log-odds (and the BlueBet interaction) computed with Shin's method, rerun through the "
+              "full backtest. `diff` is new minus current (negative = better).", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_shin.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_shin.md")
+
+
+# ---------------------------------------------------------------- 41. disagreement analysis
+
+DISAGREE_DRIVERS = ["elo_logit", "team_margin", "diff_rapm_total", "diff_rapm_vs_usual", "diff_rapm_defence",
+                    "diff_s2_stars_out_spine", "diff_s2_stars_out_other", "diff_rest_days", "diff_rookies"]
+
+
+def disagreement_experiments():
+    """Item 41: where the main with-odds model disagrees most with the opening market, who was right,
+    and what drove the disagreement. Uses the saved out-of-sample predictions only (no refitting)."""
+    warnings.filterwarnings("ignore")
+    feats = pd.read_csv(PROCESSED / "features.csv").set_index("match_id")
+    preds = {"2023-2025 backtest": pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")}
+    final = REPORTS / "predictions_2026.csv"
+    if final.exists():
+        preds["2026 final test"] = pd.read_csv(final).set_index("match_id")
+    model = f"with_odds|{config.MAIN_MODEL}|home_win"
+    report = ["# Disagreement with the market (item 41)", "",
+              f"The main with-odds model ({config.MAIN_MODEL}) against the opening market, on out-of-sample "
+              "predictions. Disagreement = model log-odds minus opening log-odds (positive = the model rates the "
+              "home team higher). `toward closing` is how often the closing price moved towards the model "
+              "(reliable closing prices only). Log loss: lower is better.", ""]
+    for name, p in preds.items():
+        d = p[[model, "home_win", "p_open", "p_close", "p_avg", "season"]].join(
+            feats[["close_ok", "home_team", "away_team", "round"] + DISAGREE_DRIVERS])
+        d["disagree"] = logit(d[model].to_numpy()) - logit(d["p_open"].to_numpy())
+        d["size"] = d["disagree"].abs()
+        d["band"] = pd.qcut(d["size"], [0, 0.5, 0.8, 0.9, 1.0],
+                            labels=["smallest 50%", "50-80%", "80-90%", "largest 10%"])
+        ok = d["close_ok"].astype(bool)
+        toward = np.sign(logit(d["p_close"].to_numpy()) - logit(d["p_open"].to_numpy())) == np.sign(d["disagree"])
+        moved = d["p_close"] != d["p_open"]
+        rows = {}
+        for band, g in d.groupby("band", observed=True):
+            gok = g[ok.loc[g.index]]
+            rows[band] = {"games": len(g), "mean |disagreement| (prob. points)":
+                              (g[model] - g["p_open"]).abs().mean() * 100,
+                          "model": models.score(g["home_win"], g[model], "clf"),
+                          "market opening": models.score(g["home_win"], g["p_open"], "clf"),
+                          "market average": models.score(g["home_win"], g["p_avg"], "clf"),
+                          "model better than opening": "yes" if models.score(g["home_win"], g[model], "clf")
+                          < models.score(g["home_win"], g["p_open"], "clf") else "no",
+                          "closing games": len(gok),
+                          "toward closing": (toward & moved)[gok.index].sum() / max(moved[gok.index].sum(), 1)}
+        bands = pd.DataFrame(rows).T.rename_axis("disagreement")
+
+        # What drives the disagreement: a descriptive regression on standardised features.
+        X = d[DISAGREE_DRIVERS].fillna(0)
+        X = (X - X.mean()) / X.std().replace(0, 1)
+        reg = Ridge(alpha=1.0).fit(X, d["disagree"])
+        r2_all = reg.score(X, d["disagree"])
+        drivers = pd.DataFrame({"standardised effect": reg.coef_}, index=DISAGREE_DRIVERS)
+        drivers["R² without it"] = [Ridge(alpha=1.0).fit(X.drop(columns=c), d["disagree"]).score(
+            X.drop(columns=c), d["disagree"]) for c in DISAGREE_DRIVERS]
+        drivers["R² lost"] = r2_all - drivers["R² without it"]
+        drivers = drivers.sort_values("R² lost", ascending=False).rename_axis("feature")
+
+        top = d.sort_values("size", ascending=False).head(15)
+        top_table = pd.DataFrame({
+            "game": top["season"].astype(str) + " R" + top["round"].astype(str) + " " + top["home_team"]
+                    + " v " + top["away_team"],
+            "model": top[model], "opening": top["p_open"],
+            "closing": top["p_close"].where(top["close_ok"].astype(bool)),
+            "home won": top["home_win"],
+            "stars out (home - away)": top["diff_s2_stars_out_spine"] + top["diff_s2_stars_out_other"],
+            "line-up vs usual (RAPM)": top["diff_rapm_vs_usual"]}).set_index("game")
+        print(name); print(md_table(bands)); print(md_table(drivers))
+        report += [f"## {name} ({len(d)} games)", "", "### By size of disagreement", "", md_table(bands), "",
+                   f"### What drives it (ridge on standardised features, R² = {r2_all:.2f})", "",
+                   "`R² lost` is how much of the disagreement this feature explains on its own share.", "",
+                   md_table(drivers), "", "### The 15 biggest disagreements", "", md_table(top_table), ""]
+    (REPORTS / "experiments_disagreement.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_disagreement.md")
+
+
+# ---------------------------------------------------------------- 40. pre-kickoff team lists
+
+def opening_h2h(g, probs, min_edge=0.02):
+    """Flat head-to-head bets at opening prices for each set of win probabilities (as betting.py):
+    ROI with a bootstrap interval, and closing line value where closing prices are reliable."""
+    odds = load_odds()
+    ids = join_odds_to_matches(g.rename_axis("match_id").reset_index()[
+        ["match_id", "start_time_utc", "home_team", "away_team"]], odds)
+    g = g.join(ids.set_index("match_id")["odds_id"]).join(
+        odds.set_index("odds_id")[["home_odds_open", "away_odds_open"]], on="odds_id")
+    ok = g["close_ok"].astype(bool)
+    rows = []
+    for name, p in probs.items():
+        p = p.loc[g.index]
+        bets = pd.concat([
+            pd.DataFrame({"edge": p * g["home_odds_open"] - 1, "odds": g["home_odds_open"], "won": g["home_win"],
+                          "clv": (g["p_close"] - g["p_open"]).where(ok)}),
+            pd.DataFrame({"edge": (1 - p) * g["away_odds_open"] - 1, "odds": g["away_odds_open"],
+                          "won": 1 - g["home_win"], "clv": (g["p_open"] - g["p_close"]).where(ok)})])
+        x = bets[bets["edge"] > min_edge]
+        profit = np.where(x["won"] == 1, x["odds"] - 1, -1.0)
+        boot = profit[np.random.default_rng(0).integers(0, len(profit), (N_BOOT, len(profit)))].mean(axis=1)
+        rows.append({"model": name, "bets": len(x), "ROI": profit.mean(), "ROI ci_low": np.percentile(boot, 2.5),
+                     "ROI ci_high": np.percentile(boot, 97.5), "CLV bets": int(x["clv"].notna().sum()),
+                     "CLV mean": x["clv"].mean(), "CLV positive": (x["clv"].dropna() > 0).mean()})
+    return pd.DataFrame(rows).set_index("model")
+
+
+def pre_kickoff_experiments():
+    """Item 40: the main models (trained as now, on final named 17s) fed each game's pre-kickoff team
+    list (teamlists.py; usually Tuesday's) instead of its final named 17, on the games that have one."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    import json
+    from features import PRE_KICKOFF_FILE
+    pre_file = PROCESSED / "features_pre_kickoff.csv"
+    if not pre_file.exists():
+        raise SystemExit("Run `python src/teamlists.py` then `python src/features.py --pre-kickoff` first.")
+    full = models.load_data()
+    pre_all = pd.read_csv(pre_file).set_index("match_id")
+    lists = pd.read_csv(PRE_KICKOFF_FILE)
+    df = full[full["season"] <= max(BACKTEST_SEASONS)]
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        _, details = models.backtest(df)
+    finally:
+        builtins.print = quiet
+    cfgs = {s: details[s][0] for s in BACKTEST_SEASONS}
+    final_run = REPORTS / f"final_{config.TEST_SEASON}_run.json"
+    if final_run.exists():
+        cfgs[config.TEST_SEASON] = json.loads(final_run.read_text())["cfg"]
+    saved = {s: pd.read_csv(REPORTS / ("backtest_predictions.csv" if s in BACKTEST_SEASONS
+                                       else f"predictions_{s}.csv")).set_index("match_id") for s in cfgs}
+
+    from features import feature_columns
+    cols = [c for c in feature_columns() if c in pre_all.columns]
+    preds = []
+    for s, cfg in cfgs.items():
+        train, test = full[full["season"] < s], full[full["season"] == s]
+        pre = pre_all.reindex(test["match_id"].to_numpy())
+        test_pre = test.copy()
+        for c in cols:
+            test_pre[c] = pre[c].to_numpy()
+        calib = list(range(FIRST_SEASON + 1, s))
+        p_final = models.fit_predict_frames(train, test, cfg, calib)[0]
+        p_pre = models.fit_predict_frames(train, test_pre, cfg, calib)[0]
+        ref = saved[s].loc[test["match_id"].to_numpy(), p_final.columns]
+        assert np.allclose(p_final.to_numpy(), ref.to_numpy()), s  # the pipeline's own predictions
+        out = pd.DataFrame({"season": s, "has_list": pre["pre_kickoff_list"].eq(1).to_numpy()},
+                           index=test["match_id"].to_numpy())
+        for v in VARIANTS:
+            for t in TARGETS:
+                out[f"{v}|final|{t}"] = p_final[f"{v}|{config.MAIN_MODEL}|{t}"].to_numpy()
+                out[f"{v}|pre|{t}"] = p_pre[f"{v}|{config.MAIN_MODEL}|{t}"].to_numpy()
+        preds.append(out)
+        print(f"  {s}: {int(out['has_list'].sum())} of {len(out)} games have a pre-kickoff list")
+    preds = pd.concat(preds)
+    feats = full.set_index("match_id")
+
+    # How different the pre-kickoff lists are from the final named 17s.
+    named_final = pd.read_csv(PROCESSED / "player_match_stats.csv")
+    named_final = named_final[~named_final["position"].isin(["Replacement", "Reserve"])]
+    final_sets = named_final.groupby(["match_id", "team"])["player_id"].agg(set)
+    pre_named = lists[~lists["position"].isin(["Replacement", "Reserve"])]
+    pre_sets = pre_named.groupby(["match_id", "team"])["player_id"].agg(set)
+    both = pre_sets.index.intersection(final_sets.index)
+    season_of = lists.groupby("match_id")["season"].first()
+    changed = pd.DataFrame({"season": season_of.reindex(both.get_level_values(0)).to_numpy(),
+                            "changes": [len(pre_sets[k] - final_sets[k]) for k in both]})
+    per_game = lists.groupby("match_id")[["season", "hours_before"]].first()
+    change_table = pd.DataFrame({
+        "teams": changed.groupby("season").size(),
+        "teams with any change": changed.assign(any=changed["changes"] > 0).groupby("season")["any"].mean(),
+        "mean players changed": changed.groupby("season")["changes"].mean(),
+        "median hours before kickoff": per_game.groupby("season")["hours_before"].median(),
+    }).rename_axis("season")
+
+    sections = []
+    for label, seasons in ((f"{BACKTEST_SEASONS[0]}-{BACKTEST_SEASONS[-1]} backtest", BACKTEST_SEASONS),
+                           (f"{config.TEST_SEASON} final test", [config.TEST_SEASON])):
+        p = preds[preds["season"].isin(seasons) & preds["has_list"]]
+        if p.empty:
+            continue
+        t = feats.loc[p.index]
+        scores = {}
+        for v in VARIANTS:
+            for when, name in (("final", "final named 17"), ("pre", "pre-kickoff list")):
+                scores[f"{VARIANT_LABEL[v]} ensemble, {name}"] = {
+                    "log_loss": models.score(t["home_win"], p[f"{v}|{when}|home_win"], "clf"),
+                    "accuracy": ((p[f"{v}|{when}|home_win"] > 0.5) == t["home_win"]).mean(),
+                    "margin_mae": np.mean(np.abs(t["margin"] - p[f"{v}|{when}|margin"])),
+                    "total_mae": np.mean(np.abs(t["total"] - p[f"{v}|{when}|total"]))}
+            record(f"40 pre-kickoff list vs final named 17, {label}", v, "home_win", t,
+                   p[f"{v}|pre|home_win"], p[f"{v}|final|home_win"])
+            record(f"40 pre-kickoff list vs market opening, {label}", v, "home_win", t,
+                   p[f"{v}|pre|home_win"], t["p_open"])
+        scores["Market opening"] = {"log_loss": models.score(t["home_win"], t["p_open"], "clf"),
+                                    "accuracy": ((t["p_open"] > 0.5) == t["home_win"]).mean(),
+                                    "margin_mae": np.mean(np.abs(t["margin"] + t["open_line"])),
+                                    "total_mae": np.mean(np.abs(t["total"] - t["open_total"]))}
+        scores["Market average (closing)"] = {"log_loss": models.score(t["home_win"], t["p_avg"], "clf"),
+                                              "accuracy": ((t["p_avg"] > 0.5) == t["home_win"]).mean()}
+        bets = opening_h2h(t, {f"{VARIANT_LABEL[v]} ensemble, {name}": p[f"{v}|{when}|home_win"]
+                               for v in VARIANTS for when, name in (("final", "final named 17"),
+                                                                    ("pre", "pre-kickoff list"))})
+        scores = pd.DataFrame(scores).T.rename_axis("model")
+        print(label); print(md_table(scores)); print(md_table(bets))
+        sections += [f"## {label} ({len(p)} games with a pre-kickoff list)", "", md_table(scores), "",
+                     "Head-to-head bets at opening prices (2% minimum edge):", "", md_table(bets), ""]
+    res = pd.DataFrame(RESULTS)
+    report = ["# Pre-kickoff team lists (item 40)", "",
+              "Footy Tipper trains and predicts on the team list as it stood at least a day before kickoff. Our "
+              "line-up features use the final named 17, which can include late changes the opening price never "
+              "saw. `teamlists.py` recovers, from the Internet Archive's snapshots of nrl.com match pages, each "
+              "game's earliest list published after the Tuesday announcement and at least 24 hours before kickoff "
+              "(usually Tuesday evening's 22-man squad: jerseys 1–17 named). `features.py --pre-kickoff` "
+              "describes each game by that list instead (team ratings, rookies, RAPM and star absences; history "
+              "still uses the teams that actually played).", "",
+              "Here the main models, trained exactly as in the backtest (and the 2026 final run), predict each "
+              "game twice: from its final named 17 (the pipeline's own predictions, checked) and from its "
+              "pre-kickoff list. Only games with a list for both teams are compared.", "",
+              "## How different the lists are", "", md_table(change_table), "",
+              *sections,
+              "## Paired comparisons (log loss; negative = the pre-kickoff version better)", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_pre_kickoff.md").write_text("\n".join(report), encoding="utf-8")
+    preds.to_csv(REPORTS / "pre_kickoff_predictions.csv")
+    print("wrote reports/experiments_pre_kickoff.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -1397,7 +1685,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
-                                           "calibration", "weekly2", "blend"],
+                                           "calibration", "weekly2", "blend", "shin",
+                                           "disagreement", "pre_kickoff"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -1411,4 +1700,5 @@ if __name__ == "__main__":
      "origin_stars": lambda: context2_experiments(ORIGIN_STAR_GROUPS, "18", "experiments_origin_stars.md",
                                                   "Origin-based star absences"),
      "calibration": calibration_experiments, "weekly2": weekly2_experiments,
-     "blend": blend_experiments}.get(args.only, main)()
+     "blend": blend_experiments, "shin": shin_experiments,
+     "disagreement": disagreement_experiments, "pre_kickoff": pre_kickoff_experiments}.get(args.only, main)()
