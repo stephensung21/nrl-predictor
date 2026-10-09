@@ -169,7 +169,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 
 ---
 
-## Further approaches (items 13–22)
+## Further approaches (items 13–33)
 
 ### 13. Rerun the 2025-only rejections on the backtest ✅
 
