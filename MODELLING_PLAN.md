@@ -110,8 +110,14 @@ python src/scrape.py          # refresh nrl.com data (cached)
 python src/elo.py             # optional: re-tune Elo settings (features.py does this if none are saved)
 python src/features.py        # odds join + Elo + features
 python src/train.py           # cross-validation, tuning, dev 2025 report -> reports/
+python src/train.py --backtest  # 2023-2025 backtest -> reports/backtest.md (main yardstick)
+python src/betting.py         # betting simulation on the backtest predictions -> reports/betting.md
 python src/train.py --final   # ONE-TIME final test on 2026 (writes reports/final.lock; re-running needs --force)
-python -m pytest tests        # leakage test
+python -m pytest -m "not slow"  # fast unit tests (seconds)
+python -m pytest              # all tests, including the slow leakage test
+
+Settings live in src/config.py; the models in src/models.py, metrics in src/evaluate.py,
+report helpers in src/reports.py. features.csv and reports/*.csv are regenerated, not committed.
 ```
 
 ## 9. Future steps

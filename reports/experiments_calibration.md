@@ -26,10 +26,10 @@
 | 19 recalibration (slope and intercept): ensemble, 2023-25 | No odds | home_win | log loss | 0.6266 | 0.6272 | 0.0006 | -0.0034 | 0.0044 | no clear difference |  |
 | 19 BlueBet inputs (with-odds models): linear | With odds | home_win | log loss | 0.6223 | 0.6209 | -0.0015 | -0.0057 | 0.0025 | no clear difference |  |
 | 19 BlueBet inputs (with-odds models): linear | With odds | margin | MAE | 13.5470 | 13.5340 | -0.0130 | -0.0938 | 0.0702 | no clear difference |  |
-| 19 BlueBet inputs (with-odds models): linear | With odds | total | MAE | 10.7185 | 10.7837 | 0.0651 | -0.0109 | 0.1430 | no clear difference |  |
+| 19 BlueBet inputs (with-odds models): linear | With odds | total | MAE | 10.7185 | 10.7185 | 0.0000 | 0.0000 | 0.0000 | no clear difference |  |
 | 19 BlueBet inputs (with-odds models): ensemble | With odds | home_win | log loss | 0.6230 | 0.6220 | -0.0010 | -0.0036 | 0.0016 | no clear difference |  |
 | 19 BlueBet inputs (with-odds models): ensemble | With odds | margin | MAE | 13.4924 | 13.4944 | 0.0020 | -0.0394 | 0.0447 | no clear difference |  |
-| 19 BlueBet inputs (with-odds models): ensemble | With odds | total | MAE | 10.7696 | 10.8151 | 0.0455 | -0.0005 | 0.0924 | no clear difference |  |
+| 19 BlueBet inputs (with-odds models): ensemble | With odds | total | MAE | 10.7696 | 10.7776 | 0.0080 | -0.0014 | 0.0179 | no clear difference |  |
 | 19 BlueBet inputs (with-odds models): linear | No odds | home_win | log loss | 0.6261 | 0.6261 | 0.0000 | 0.0000 | 0.0000 | no clear difference |  |
 | 19 BlueBet inputs (with-odds models): linear | No odds | margin | MAE | 13.5628 | 13.5628 | 0.0000 | 0.0000 | 0.0000 | no clear difference |  |
 | 19 BlueBet inputs (with-odds models): linear | No odds | total | MAE | 10.8072 | 10.8072 | 0.0000 | 0.0000 | 0.0000 | no clear difference |  |

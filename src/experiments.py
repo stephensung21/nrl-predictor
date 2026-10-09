@@ -48,15 +48,17 @@ from sklearn.linear_model import HuberRegressor, LogisticRegression, QuantileReg
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import SplineTransformer, StandardScaler
 
-import train
+import config
+import models
 from elo import run_elo, tune as tune_elo
 from features import SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
 from ingest import PROCESSED, join_odds_to_matches, load_odds
-from train import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FEATURE_SETS, FIRST_SEASON, LINEAR_FEATURES, REPORTS,
-                   TARGETS, VARIANT_LABEL, VARIANTS, LGB_COMPACT_EXTRA, LGB_FIXED, LGB_SEEDS, cv_lgb, lgb_base,
-                   linear, linear_predict, md_table, platt, tune_lgb)
+from config import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FIRST_SEASON, LGB_COMPACT_EXTRA, LGB_SEEDS,
+                    LINEAR_FEATURES, REPORTS, TARGETS, VARIANT_LABEL, VARIANTS)
+from models import cv_lgb, lgb_base, linear, linear_predict, platt, tune_lgb
+from reports import md_table
 
-ODDS = FEATURE_GROUPS_ODDS = train.FEATURE_GROUPS["odds"]  # the with-odds models' extra inputs
+ODDS = FEATURE_GROUPS_ODDS = config.FEATURE_GROUPS["odds"]  # the with-odds models' extra inputs
 BASELINE_FEATURES = {
     "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
     "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
@@ -87,7 +89,7 @@ def walk(df, feats, target, reg, seasons, weights=None):
 
 def oof_score(df, oof, target):
     d = oof.notna()
-    return train.score(df.loc[d, target], oof[d], TARGETS[target])
+    return models.score(df.loc[d, target], oof[d], TARGETS[target])
 
 
 def run_linear(df_for, feats, weights=None):
@@ -147,12 +149,12 @@ def record(experiment, variant, target, test, new, base, note=""):
 # ---------------------------------------------------------------- data
 
 def load():
-    df = train.load_data()
+    df = models.load_data()
     return df[df["season"] <= max(BACKTEST_SEASONS)].reset_index(drop=True)
 
 
 def feats_for(variant, sets=BASELINE_FEATURES):
-    return {t: list(f) + (train.linear_odds(t) if variant == "with_odds" else []) for t, f in sets.items()}
+    return {t: list(f) + (models.linear_odds(t) if variant == "with_odds" else []) for t, f in sets.items()}
 
 
 # ---------------------------------------------------------------- 1. re-tests
@@ -452,7 +454,7 @@ def robust_targets():
 
 # ---------------------------------------------------------------- 8. LightGBM accuracy and stability
 
-# Fixed settings and compact set: the pipeline's (train.LGB_FIXED, train.lgb_features), which were
+# Fixed settings and compact set: the pipeline's (config.LGB_FIXED, models.lgb_features), which were
 # chosen in advance, not tuned on the backtest. Only the number of trees is chosen, by walk-forward
 # early stopping on earlier seasons.
 N_SEEDS = LGB_SEEDS
@@ -461,7 +463,7 @@ PIPELINE_LGB_VARIANT = "fixed settings, compact features, 5 seeds"  # adopted in
 
 
 def lgb_features(variant, compact):
-    return train.lgb_features(compact) + (ODDS if variant == "with_odds" else [])
+    return models.lgb_features(compact) + (ODDS if variant == "with_odds" else [])
 
 
 def lgb_backtest(df, variant, target, compact=False, tuned=True, seeds=(0,), sampler_seed=0):
@@ -653,7 +655,7 @@ def gam_experiments():
         for name, (which, make, grid) in candidates.items():
             print(f"{VARIANT_LABEL[v]}: {name}...")
             for t in TARGETS:
-                feats = (LINEAR_FEATURES[t] if which == "linear" else train.lgb_features(True)) \
+                feats = (LINEAR_FEATURES[t] if which == "linear" else models.lgb_features(True)) \
                     + (ODDS if v == "with_odds" else [])
                 g = None if grid is None else (C_GRID if TARGETS[t] == "clf" else ALPHA_GRID)
                 new = model_backtest(df, t, feats, make, g)
@@ -687,22 +689,12 @@ def gam_experiments():
 # ---------------------------------------------------------------- 10. full-pipeline variants
 
 def pipeline_backtest(df, **settings):
-    """The full backtest procedure (train.develop, then train.fit_predict, for each season) with some
-    train.py settings temporarily changed. Returns every model's predictions, indexed by match_id."""
-    old = {k: getattr(train, k) for k in settings}
-    for k, v in settings.items():
-        setattr(train, k, v)
-    try:
-        preds = []
-        for season in BACKTEST_SEASONS:
-            cfg, _, _ = train.develop(df[df["season"] < season], list(range(FIRST_SEASON + 1, season)))
-            preds.append(train.fit_predict(df, season - 1, season, cfg)[0])
-        out = pd.concat(preds)
-        out.index = df.loc[out.index, "match_id"].to_numpy()
-        return out
-    finally:
-        for k, v in old.items():
-            setattr(train, k, v)
+    """The pipeline's backtest (models.backtest) with some config settings temporarily changed.
+    Returns every model's predictions, indexed by match_id."""
+    with config.override(**settings):
+        out, _ = models.backtest(df)
+    out.index = df.loc[out.index, "match_id"].to_numpy()
+    return out
 
 
 def compare_pipelines(name, test, new, base, models=("linear", "ensemble")):
@@ -816,13 +808,13 @@ def weekly_backtest(df):
     complete earlier seasons."""
     preds = []
     for season in BACKTEST_SEASONS:
-        cfg, _, _ = train.develop(df[df["season"] < season], list(range(FIRST_SEASON + 1, season)))
+        cfg, _, _ = models.develop(df[df["season"] < season], list(range(FIRST_SEASON + 1, season)))
         calib = list(range(FIRST_SEASON + 1, season))
         this = df[df["season"] == season]
         for rnd in sorted(this["round"].unique()):
             tr = df[(df["season"] < season) | ((df["season"] == season) & (df["round"] < rnd))]
             te = this[this["round"] == rnd]
-            preds.append(train.fit_predict_frames(tr, te, cfg, calib)[0])
+            preds.append(models.fit_predict_frames(tr, te, cfg, calib)[0])
     out = pd.concat(preds)
     out.index = df.loc[out.index, "match_id"].to_numpy()
     return out
@@ -961,7 +953,7 @@ def calibration_experiments():
     try:
         base = pipeline_backtest(df)
         # BlueBet inputs are now part of the odds group; this compares with the group without them.
-        without = {**train.FEATURE_GROUPS, "odds": [f for f in train.FEATURE_GROUPS["odds"]
+        without = {**config.FEATURE_GROUPS, "odds": [f for f in config.FEATURE_GROUPS["odds"]
                                                    if f not in ("bluebet", "open_logit_bluebet")]}
         bookmaker, base = base, pipeline_backtest(df, FEATURE_GROUPS=without)
     finally:

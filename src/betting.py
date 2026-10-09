@@ -29,9 +29,11 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-import experiments
+import config
+import models
+from config import BACKTEST_SEASONS, LINEAR_FEATURES, MAIN_MODEL, REPORTS, VARIANT_LABEL, VARIANTS
 from ingest import join_odds_to_matches, load_odds
-from train import BACKTEST_SEASONS, LINEAR_FEATURES, MAIN_MODEL, REPORTS, VARIANT_LABEL, VARIANTS, md_table
+from reports import md_table
 
 THRESHOLDS = [0.0, 0.02, 0.05, 0.10]
 N_BOOT = 10000
@@ -44,7 +46,8 @@ PRICE_COLS = ["home_odds_open", "away_odds_open", "home_odds_close", "away_odds_
 def load():
     """Backtest predictions joined to prices, plus sigma per season for margin and total."""
     warnings.filterwarnings("ignore")
-    df = experiments.load()
+    df = models.load_data()
+    df = df[df["season"] <= max(BACKTEST_SEASONS)]
     bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
     odds = load_odds()
     test = df[df["season"].isin(BACKTEST_SEASONS)]
@@ -52,22 +55,27 @@ def load():
     prices = odds.set_index("odds_id")[[c for c in PRICE_COLS if c not in test.columns]]
     games = test.set_index("match_id").join(ids.set_index("match_id")["odds_id"]).join(prices, on="odds_id")
 
-    # The main model's predictions for every market. Sigma comes from the linear models' out-of-fold
-    # errors per season (rerun here exactly as in the backtest). Totals without the wet flag, for bets
-    # placed early in the week, are linear only.
-    preds, sigma = {}, {}
+    # The main model's predictions for every market, from the shared backtest (rerun here, and checked
+    # against reports/backtest_predictions.csv). Sigma is the spread of the linear models' out-of-fold
+    # errors on earlier seasons. Totals without the wet flag, for bets placed early in the week, are
+    # linear only.
     no_wet = {**LINEAR_FEATURES, "total": [f for f in LINEAR_FEATURES["total"] if f != "wet_conditions"]}
-    for v in VARIANTS:
-        main, early = f"{v} {MAIN_MODEL}", f"{v} linear (no rain flag)"
-        for name, sets in ((main, LINEAR_FEATURES), (early, no_wet)):
-            p, extra = experiments.run_linear(lambda s: df, experiments.feats_for(v, sets))
-            if name == main:  # must match the backtest exactly
-                for t in ("margin", "total"):
-                    assert np.allclose(p[t], bt.loc[p.index, f"{v}|linear|{t}"]), (v, t)
+    preds, sigma = {}, {}
+    for name_fmt, settings in (("{v} " + MAIN_MODEL, {}), ("{v} linear (no rain flag)", {"LINEAR_FEATURES": no_wet})):
+        with config.override(**settings):
+            p, details = models.backtest(df)
+            spreads = {s: models.margin_total_sigma(df, cfg, s) for s, (cfg, _) in details.items()}
+        p.index = df.loc[p.index, "match_id"].to_numpy()
+        if not settings:  # must reproduce the pipeline's backtest exactly
+            assert np.allclose(p.to_numpy(), bt.loc[p.index, p.columns].to_numpy())
+        for v in VARIANTS:
+            name = name_fmt.format(v=v)
+            model = MAIN_MODEL if not settings else "linear"
             for t in ("margin", "total"):
-                preds[(name, t)] = bt.loc[games.index, f"{v}|{MAIN_MODEL}|{t}"] if name == main else p[t]
-                sigma[(name, t)] = {s: np.std(tr[t] - oof) for (s, tt), (tr, oof) in extra.items() if tt == t}
-        preds[(main, "home_win")] = bt.loc[games.index, f"{v}|{MAIN_MODEL}|home_win"]
+                preds[(name, t)] = p.loc[games.index, f"{v}|{model}|{t}"]
+                sigma[(name, t)] = {s: sp[(v, t)] for s, sp in spreads.items()}
+            if not settings:
+                preds[(name, "home_win")] = p.loc[games.index, f"{v}|{MAIN_MODEL}|home_win"]
     return games, preds, sigma
 
 

@@ -6,7 +6,7 @@ The goal is to beat the bookmakers' closing odds.
 
 The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested the no-odds model beat the market, and the backtest showed that was luck.
 
-**Main models: the ensemble for both variants** (`MAIN_MODEL` in `train.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble is within 0.001 of with-odds linear (0.6220 vs 0.6209). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
+**Main models: the ensemble for both variants** (`MAIN_MODEL` in `config.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble is within 0.001 of with-odds linear (0.6220 vs 0.6209). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
 
 Pooled backtest results for the current setup:
 
@@ -37,7 +37,7 @@ Pooled backtest results for the current setup:
 
 Forward selection inside walk-forward CV was built first, then made stricter: a feature had to improve every CV season. The backtest showed it was **unstable and overfit**. With only 1–2 CV seasons for the earlier backtest years, it picked 8–9 features that changed every season.
 
-It's now replaced by **fixed feature sets** (`LINEAR_FEATURES` in `train.py`), built from the features chosen consistently across backtest seasons:
+It's now replaced by **fixed feature sets** (`LINEAR_FEATURES` in `config.py`), built from the features chosen consistently across backtest seasons:
 - win and margin: Elo, RAPM total, RAPM defence, RAPM compared with usual line-ups;
 - totals: RAPM expected points, Origin period, wet conditions.
 
@@ -60,7 +60,7 @@ Reopened once the ensemble became the main model, since LightGBM is half of it. 
 - **Stability:** with Optuna on the full ~50 features, a different random seed moved each game's win probability by about **3 percentage points** on average. Fixed settings averaged over 5 seeds: **0.4–0.6 points**, about six times more stable.
 - **Accuracy:** a compact feature set was the biggest gain (the full set overfit). LightGBM alone improved from 0.640 to **0.630** with odds and from 0.638 to 0.634 without. The with-odds ensemble went from 0.628 to **0.6245**, margin 13.61 → 13.51, and **total clearly better** (10.85 → 10.78). The no-odds ensemble was about unchanged on win (0.6281 → 0.6279).
 
-**Adopted:** fixed conservative settings (depth 2, learning rate 0.02, at least 40 games per leaf, L2 10, 70% of features and 80% of games per tree; only the number of trees chosen by CV), on a **compact set of 16 features** (every linear-model feature plus RAPM attack, RAPM missing, rookies, rest days, travel, neutral venue and finals flag; plus the 3 opening-odds features for the with-odds model), **averaged over 5 seeds** (`LGB_TUNING`, `LGB_FIXED`, `LGB_COMPACT`, `LGB_SEEDS` in `train.py`). These settings were chosen in advance, not tuned on the backtest. The backtest now takes about 10 seconds instead of about 10 minutes. `--tune-lgb` restores Optuna on the full feature set.
+**Adopted:** fixed conservative settings (depth 2, learning rate 0.02, at least 40 games per leaf, L2 10, 70% of features and 80% of games per tree; only the number of trees chosen by CV), on a **compact set of 16 features** (every linear-model feature plus RAPM attack, RAPM missing, rookies, rest days, travel, neutral venue and finals flag; plus the 3 opening-odds features for the with-odds model), **averaged over 5 seeds** (`LGB_TUNING`, `LGB_FIXED`, `LGB_COMPACT`, `LGB_SEEDS` in `config.py`). These settings were chosen in advance, not tuned on the backtest. The backtest now takes about 10 seconds instead of about 10 minutes. `--tune-lgb` restores Optuna on the full feature set.
 
 Betting with the new ensembles (opening prices, 0% minimum edge): with-odds head-to-head +9.8% (95% interval +0.9% to +19%), −4.7% at closing prices. Same story as before: the edge is against opening prices only.
 
@@ -187,8 +187,8 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 5. Smaller code points:
    - **Attack/defence mixes capped and uncapped targets.** The RAPM margin target is capped at 40 but the total target isn't, so the "exactly equivalent" claim in the `rapm_features` docstring is only approximate. Either cap the total too or adjust the docstring.
    - **The ensemble is a plain 50/50 average of probabilities.** Averaging in logit space or weighting by out-of-fold performance is standard (item 12).
-   - **`--select` and `--train-from` overwrite module-level variables in `__main__`.** Scripts that import `train` silently get the defaults; passing them as arguments would be safer.
-   - **Stale text in `train.py`:** the `walk_forward` docstring says "from 2021", the comment above `LINEAR_FEATURES` overruns its line, and the module docstring still describes selection as part of the procedure.
+   - ✅ **`--select` and `--train-from` overwrite module-level variables:** settings now live in `config.py` and are read when functions run, so the flags change them in one place (item 37).
+   - ✅ **Stale text in `train.py`:** fixed in the restructure (item 37).
 
 ---
 
@@ -260,7 +260,7 @@ Re-choose the RAPM settings (and any other feature settings) inside each backtes
 
 ### 22. Team margin rating + margin-blended win probability ✅ (adopted)
 
-The two near misses (items 13 and 15) tested together: `team_margin` in the linear win model, and the calibrated logistic probability averaged with Φ(predicted margin / σ) from the linear margin model (`MARGIN_BLEND` in `train.py`).
+The two near misses (items 13 and 15) tested together: `team_margin` in the linear win model, and the calibrated logistic probability averaged with Φ(predicted margin / σ) from the linear margin model (`MARGIN_BLEND` in `config.py`).
 - Linear harness: the with-odds model −0.006 [−0.013, −0.0002], just clear; the no-odds model −0.005 [−0.012, +0.0005].
 - Full backtest: with-odds linear 0.631 → **0.624**, with-odds ensemble 0.628 → 0.625, no-odds linear 0.633 → 0.628.
 - This combination was chosen after seeing the individual results, out of about 50 comparisons, so part of the gain may be chance. Both parts point the same way independently and the idea is principled (margins carry more information than win/loss), which is why it was adopted.
@@ -276,7 +276,7 @@ From a second pass over the pipeline (October 2026):
 
 - **`predict.py` for upcoming games.** The scraper only keeps finished matches and nothing builds features for unplayed fixtures, so the model can't currently be used. It needs to fetch the next round's fixtures and team lists, build features, and output probabilities, fair odds and edges against current prices.
 - **Two prediction snapshots:** a **Tuesday-list model** (built from Tuesday's announced squads) and a **final-17 model** (as now), each evaluated against prices from the same time. Includes scraping historical Tuesday team lists from nrl.com.
-- ❌ **Weekly refitting** (`python src/experiments.py --only weekly`, `reports/experiments_weekly.md`): each season's settings kept, but the models refitted before every round with that season's games so far. Main ensembles: win +0.001 to +0.002, margin about 0, total −0.02 to −0.03, none clear; **from round 19 it's worse** (with-odds win +0.006, clear). The calibration comes from complete earlier seasons, so in-season refits drift away from it. Not adopted. (`train.fit_predict_frames` now fits and predicts on any rows; results unchanged.)
+- ❌ **Weekly refitting** (`python src/experiments.py --only weekly`, `reports/experiments_weekly.md`): each season's settings kept, but the models refitted before every round with that season's games so far. Main ensembles: win +0.001 to +0.002, margin about 0, total −0.02 to −0.03, none clear; **from round 19 it's worse** (with-odds win +0.006, clear). The calibration comes from complete earlier seasons, so in-season refits drift away from it. Not adopted. (`models.fit_predict_frames` now fits and predicts on any rows; results unchanged.)
 - ❌ **Weekly refitting with weekly calibration** (`python src/experiments.py --only weekly2`, `reports/experiments_weekly_calibration.md`): the model weights refitted every round, and the final win probability also recalibrated every round on all earlier out-of-sample predictions (earlier backtest seasons and this season's earlier rounds). Win log loss against the current once-a-season fit:
 
   | Set-up | With-odds ensemble | No-odds ensemble | With-odds ensemble, rounds 19+ |
@@ -386,7 +386,7 @@ Effect on the backtest: the linear models barely changed (no-odds linear 0.6279 
 
 The opening prices come from **bet365 until April 2024 and BlueBet after**, and they behave in opposite ways: bet365's opening prices were **under-confident** (calibration slope 1.23 in 2021–24: favourites won even more often than priced), BlueBet's **over-confident** (0.77 in 2024–25). The with-odds model learned from mostly bet365 seasons to stretch the opening price, then applied that to BlueBet's already-extreme prices, which made it overconfident (item 23). The **2026 test is entirely BlueBet.**
 
-**Adopted:** the with-odds models get a **BlueBet indicator** and the **opening log-odds × BlueBet** (`bluebet`, `open_logit_bluebet` in the `odds` feature group), so they can weight BlueBet's opening prices differently. The linear **totals** model doesn't get them (they made totals worse: 10.72 → 10.78), via `linear_odds` in `train.py`; LightGBM shares one feature list across targets and keeps them (its totals barely moved).
+**Adopted:** the with-odds models get a **BlueBet indicator** and the **opening log-odds × BlueBet** (`bluebet`, `open_logit_bluebet` in the `odds` feature group), so they can weight BlueBet's opening prices differently. The linear **totals** model doesn't get them (they made totals worse: 10.72 → 10.78), via `linear_odds` in `models.py`; LightGBM shares one feature list across targets and keeps them (its totals barely moved).
 
 Results (full pipeline backtest, `python src/experiments.py --only calibration`):
 - **2025 calibration fixed:** with-odds ensemble slope 0.86 → **1.01**. 2024 is unchanged (0.81), as its model was trained before any BlueBet data existed.
@@ -400,12 +400,19 @@ Results (full pipeline backtest, `python src/experiments.py --only calibration`)
 - Write the git commit hash and a hash of `features.csv` into `final_2026.md`.
 - Refuse to run with uncommitted changes.
 
-### 37. Third review: code structure ⬜
+### 37. Third review: code structure ✅
 
-- **Split `train.py`** (over 600 lines, mixing fitting, the dev run, the backtest, the final run and reports) into `models.py` (fit and predict), `evaluate.py` (metrics, bootstrap, benchmarks) and `reports.py`, keeping `train.py` as the command-line entry point.
-- **One shared linear-backtest function.** `experiments.py` and `betting.py` reimplement the linear backtest; assertions catch drift today, but `train.py` should expose a `linear_backtest()` they all use.
-- **Stop committing regenerable data and reports** (`player_match_stats.csv` is 10 MB; `features.csv` and the prediction CSVs are rewritten every run). Keep the raw odds sheet and code, or use DVC or Git LFS for versioned data.
-- **Fast unit tests** (joins, score checks, the margin blend, `md_table`) to run on every change, keeping the 2–4 minute leakage test as the slow, thorough check.
+Done; every prediction is unchanged (backtest predictions, `params.json` and the betting report identical before and after).
+- ✅ **`train.py` split** into:
+  - `config.py`: every setting in one place. Functions read settings when they run, so the command-line flags and `config.override(...)` (used by the experiments) change them in one place; this also fixes the earlier issue of flags overwriting variables across modules.
+  - `models.py`: data and folds, linear models, LightGBM, calibration, `develop`, `fit_predict`, and the shared backtest.
+  - `evaluate.py`: metrics, benchmarks, bootstrap, feature importance.
+  - `reports.py`: Markdown tables and saved predictions.
+  - `train.py`: just the dev, backtest and final runs and the command line.
+- ✅ **One shared backtest:** `models.backtest()` is used by `train.py --backtest`, `experiments.py` (`pipeline_backtest`) and `betting.py`, which no longer reimplements the linear backtest (it uses `models.margin_total_sigma` for the line/total spread). `experiments.run_linear` remains only for the historical linear-only experiments.
+- ✅ **Regenerable outputs no longer committed:** `data/processed/features.csv` and `reports/*.csv` are in `.gitignore` (rebuild with `python src/features.py`, `python src/train.py [--backtest]`, `python src/betting.py`). The scraped tables, odds sheet, `params.json`, `elo_params.json` and the Markdown reports stay committed.
+- ✅ **Fast unit tests** (`tests/test_units.py`, 12 tests, about 3 seconds): odds margin removal, the odds join, score repair, travel helpers, Elo updates, walk-forward folds, the margin blend, BlueBet inputs kept out of totals, LightGBM features, `config.override`, the bootstrap and `md_table`. The leakage test is marked `slow`: `python -m pytest -m "not slow"` runs only the fast tests.
+- Not done: the feature build (about 2 minutes) and leakage test (about 8–9 minutes) are slower than before because unused features are still computed (kept by choice, option B).
 
 ### 38. Star players ✅ (S2 adopted)
 
@@ -436,7 +443,7 @@ Teams score several points more with their stars, and **both the model and the o
 
 How well the general rules recognise the reference list: S1 counts 58% of their games (10% of other players' games), S2 67% (18%). Origin selection is by far the best detector; fantasy stats rated Walsh as average. S2 also partly covers players not eligible for Origin (Hughes, S Johnson, Fonua-Blake).
 
-**Adopted: S2** (`STAR_ABSENCES` in `train.py`: `diff_s2_stars_out_spine`, `diff_s2_stars_out_other`, in the win and margin models and so LightGBM's compact set). Each counts the team's usual players (named in 3 of the last 5 games) who are missing from the named 17 and were in an Origin 17 in the last 12 months or are in the top 10% of their position group for form, split into spine and other positions. The gain is concentrated where it should be: the 63% of games with a star missing (win −0.0022, clear) with nothing in the others. Full backtest: with-odds ensemble 0.6245 → **0.6230**, no-odds ensemble 0.6279 → 0.6266, margins −0.02. It's a small gain overall (a few points in some games barely moves average log loss), and it was the best of about eight star variants, so part of it may be luck; it was adopted because it addresses a measured blind spot. All the other star features stay computed in `features.csv` but unused.
+**Adopted: S2** (`STAR_ABSENCES` in `config.py`: `diff_s2_stars_out_spine`, `diff_s2_stars_out_other`, in the win and margin models and so LightGBM's compact set). Each counts the team's usual players (named in 3 of the last 5 games) who are missing from the named 17 and were in an Origin 17 in the last 12 months or are in the top 10% of their position group for form, split into spine and other positions. The gain is concentrated where it should be: the 63% of games with a star missing (win −0.0022, clear) with nothing in the others. Full backtest: with-odds ensemble 0.6245 → **0.6230**, no-odds ensemble 0.6279 → 0.6266, margins −0.02. It's a small gain overall (a few points in some games barely moves average log loss), and it was the best of about eight star variants, so part of it may be luck; it was adopted because it addresses a measured blind spot. All the other star features stay computed in `features.csv` but unused.
 
 ---
 

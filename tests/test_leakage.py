@@ -83,6 +83,7 @@ def truncate_and_scramble(matches, team_stats, players, odds, origin, reserve, m
     return m, ts, pl, o, og, rg
 
 
+@pytest.mark.slow
 def test_features_ignore_own_result_and_later_games(full):
     matches, team_stats, players, odds, origin, reserve, params, feats = full
     rng = np.random.default_rng(0)
@@ -95,6 +96,7 @@ def test_features_ignore_own_result_and_later_games(full):
         assert not diff.any(), f"match {match_id} leaks via {list(np.array(FEATURES)[diff])}"
 
 
+@pytest.mark.slow
 def test_scrambling_changes_targets(full):
     """Guard against a vacuous pass: the scramble must actually reach the target's outcome."""
     matches, team_stats, players, odds, origin, reserve, params, feats = full
