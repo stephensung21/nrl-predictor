@@ -60,8 +60,12 @@ RAPM_BENCH_WEIGHT = True    # weight players by minutes (past games) / typical r
 RAPM_STATS_PRIOR = False    # deviations from a fantasy-points estimate: worse on 2022-24 CV, so off
 RAPM_PRIOR_PENALTY = 1.0    # light penalty on the stats-prior coefficient
 
+TEAM_RATING_HALF_LIFE_DAYS = 730  # team margin rating: a game two years old counts half
+TEAM_HFA_PENALTY = 30.0           # shrinkage of each team's own home advantage towards the league's
+TEAM_STRENGTH_PENALTY = 1.0       # light ridge penalty on team strengths
+
 FEATURE_GROUPS = {
-    "elo": ["elo_logit"],
+    "elo": ["elo_logit", "team_margin"],
     "form": [f"diff_form_{s}" for s in FORM_STATS],
     "context": ["diff_rest_days", "home_travel", "away_travel", "neutral", "away_at_ground", "is_final",
                 "diff_short_turnaround", "diff_after_bye", "origin_period", "wet_conditions"],
@@ -336,6 +340,44 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
     return pd.DataFrame(out).set_index(["match_id", "team"])
 
 
+def team_ratings(odds, half_life=None, hfa_penalty=None, strength_penalty=None):
+    """Team margin rating from results since 2009, refitted weekly on earlier games only.
+
+    A ridge regression of capped margins on team strengths (+1 home, -1 away), a league home
+    advantage and each team's own home advantage (shrunk towards the league's, 0 at neutral
+    venues), with older games down-weighted. Unlike Elo, which only uses win/loss with a margin
+    multiplier, it is fitted to the margins directly. Returns the predicted margin per odds game,
+    and the home team's own home-advantage deviation (team_hfa, 0 at neutral venues).
+    """
+    half_life = TEAM_RATING_HALF_LIFE_DAYS if half_life is None else half_life
+    hfa_penalty = TEAM_HFA_PENALTY if hfa_penalty is None else hfa_penalty
+    strength_penalty = TEAM_STRENGTH_PENALTY if strength_penalty is None else strength_penalty
+    g = odds.sort_values("odds_id").reset_index(drop=True)
+    teams = sorted(set(g["home_team"]) | set(g["away_team"]))
+    ix = {t: i for i, t in enumerate(teams)}
+    n, T = len(g), len(teams)
+    h, a = g["home_team"].map(ix).to_numpy(), g["away_team"].map(ix).to_numpy()
+    home_adv = (~g["neutral"].astype(bool)).to_numpy().astype(float)
+    r = np.arange(n)
+    X = sparse.csr_matrix((np.r_[np.ones(n), -np.ones(n), home_adv, home_adv],
+                           (np.r_[r, r, r, r], np.r_[h, a, np.full(n, T), T + 1 + h])), shape=(n, 2 * T + 1))
+    y = (g["home_score"] - g["away_score"]).clip(-MARGIN_CAP, MARGIN_CAP).to_numpy(dtype=float)
+    penalty = np.r_[np.full(T, strength_penalty), 1e-3, np.full(T, hfa_penalty)]
+    week = g["date"].dt.to_period("W").to_numpy()
+    pred, hfa_dev = np.full(n, np.nan), np.zeros(n)
+    for wk in pd.unique(week):
+        idx = np.flatnonzero(week == wk)
+        start = g.loc[idx[0], "date"]
+        train = ((g["date"] < start) & ~np.isnan(y)).to_numpy()
+        if train.sum() < 50:
+            continue
+        w = 0.5 ** ((start - g.loc[train, "date"]).dt.days.to_numpy() / half_life)
+        b = weighted_ridge(X[train], y[train], w, penalty)
+        pred[idx] = b[h[idx]] - b[a[idx]] + home_adv[idx] * (b[T] + b[T + 1 + h[idx]])
+        hfa_dev[idx] = home_adv[idx] * b[T + 1 + h[idx]]
+    return pd.DataFrame({"odds_id": g["odds_id"], "team_margin": pred, "team_hfa": hfa_dev})
+
+
 def player_team_features(matches, players, origin):
     """Rate every named player before each match, then aggregate the named 17 to team level."""
     p = players.merge(matches[["match_id", "start_time_utc"]], on="match_id", how="left")
@@ -385,6 +427,7 @@ def build_features(matches, team_stats, players, odds, origin, elo_params):
                  "p_open", "open_line", "open_total", "p_close", "close_ok", "close_line", "close_total",
                  "p_avg", "data_issue"]
     m = m.merge(odds[odds_cols], on="odds_id", how="left")
+    m = m.merge(team_ratings(odds)[["odds_id", "team_margin"]], on="odds_id", how="left")
 
     long = add_team_form(team_long(m, team_stats))
     side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel"] + [f"form_{s}" for s in FORM_STATS]

@@ -29,6 +29,7 @@ from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, mean_absolute_error
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from scipy.stats import norm
 
 from features import FEATURE_GROUPS, MIN_HISTORY, logit
 from ingest import PROCESSED, ROOT
@@ -48,14 +49,19 @@ C_GRID = np.logspace(-3, 1, 9)        # logistic regression
 ALPHA_GRID = np.logspace(-1, 4, 11)   # ridge
 N_TRIALS = 60                         # Optuna trials per LightGBM model
 SEED = 0
-MIN_GAIN = {"clf": 0.001, "reg": 0.01}  # forward selection: minimum pooled CV gain (log loss / MAE points)
+MIN_GAIN = {"clf": 0.001, "reg": 0.01}
+# The linear win probability is the average of the logistic model and the margin model's
+# P(margin > 0) = Phi(predicted margin / sigma), sigma from out-of-fold margin errors: margins carry
+# more information than win/loss (both parts improved the 2023-2025 backtest; see experiments.py).
+MARGIN_BLEND = True  # forward selection: minimum pooled CV gain (log loss / MAE points)
 
 # Fixed linear feature sets: the features chosen consistently across the 2023-2025 backtest's
-# forward selection, plus the wet-conditions flag for totals. Selecting per season from 1-3 CV seasons overfit, so it is off by default
-# (--select turns it back on). Model A adds the opening odds to each set.
+# forward selection, plus the team margin rating (win) and wet-conditions flag (totals).
+# Selecting per season from 1-3 CV seasons overfit, so it is off by default (--select turns it
+# back on). Model A adds the opening odds to each set.
 FEATURE_SELECTION = False
 LINEAR_FEATURES = {
-    "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
+    "home_win": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual", "team_margin"],
     "margin": ["elo_logit", "diff_rapm_total", "diff_rapm_defence", "diff_rapm_vs_usual"],
     "total": ["rapm_points", "origin_period", "wet_conditions"],
 }
@@ -232,8 +238,9 @@ def fit_predict(df, last_train, test_season, cfg):
     """Fit every model on seasons up to last_train and predict test_season.
 
     Win probabilities are Platt-calibrated on walk-forward out-of-fold predictions for
-    2022..last_train, made with the same fixed settings. Ensembles average the linear and
-    LightGBM predictions (calibrated probabilities for the win model).
+    2022..last_train, made with the same fixed settings; with MARGIN_BLEND the linear win
+    probability is then averaged with the linear margin model's. Ensembles average the linear
+    and LightGBM predictions (calibrated probabilities for the win model).
     """
     train = df[df["season"] <= last_train]
     test = df[df["season"] == test_season]
@@ -258,7 +265,20 @@ def fit_predict(df, last_train, test_season, cfg):
             preds[f"{variant}|lightgbm|{target}"] = p_gbm
             preds[f"{variant}|ensemble|{target}"] = (p_lin + p_gbm) / 2
             fitted[(variant, target)] = (lin, lin_feats, gbm, gbm_feats)
+        if MARGIN_BLEND:
+            mc, m_feats = cfg["models"][variant]["margin"], fs["linear"]["margin"]
+            _, oof = cv_linear(train, m_feats, "margin", mc["linear"], calib_seasons)
+            done = oof.notna()
+            p_margin = margin_win_prob(preds[f"{variant}|linear|margin"], train.loc[done, "margin"] - oof[done])
+            p_lin = (preds[f"{variant}|linear|home_win"] + p_margin) / 2
+            preds[f"{variant}|linear|home_win"] = p_lin
+            preds[f"{variant}|ensemble|home_win"] = (p_lin + preds[f"{variant}|lightgbm|home_win"]) / 2
     return preds, fitted
+
+
+def margin_win_prob(margin_pred, oof_residuals):
+    """P(home wins) from a predicted margin: Phi(margin / sigma), sigma = SD of out-of-fold errors."""
+    return norm.cdf(np.asarray(margin_pred) / np.std(oof_residuals))
 
 
 # ---------------------------------------------------------------- evaluation
