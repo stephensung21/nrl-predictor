@@ -1,0 +1,24 @@
+# Python 3.12. Pinned to the versions the backtest, the 2026 final test and the frozen models
+# (models/<season>/bundle.joblib) were made with: the saved scikit-learn and LightGBM models need
+# these versions to load and predict identically.
+#   python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt
+
+# Data and scraping
+pandas==3.0.6
+numpy==2.5.3
+openpyxl==3.1.5          # reading the odds sheet (.xlsx)
+requests==2.34.2
+beautifulsoup4==4.15.0
+
+# Models
+scipy==1.18.1
+scikit-learn==1.9.1
+lightgbm==4.7.0
+optuna==5.0.0
+joblib==1.6.0
+
+# Experiments only (Explainable Boosting Machine, experiments.py --only gam)
+interpret-core==0.7.7
+
+# Tests
+pytest==9.1.1

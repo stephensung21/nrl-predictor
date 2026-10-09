@@ -1,0 +1,451 @@
+{
+  "version": "2026.1",
+  "season": 2026,
+  "trained_on": {
+    "seasons": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "games": 1033,
+    "last_game_utc": "2025-10-05 08:30:00+00:00"
+  },
+  "run_at": "2026-10-10 00:46",
+  "commit": "5f02c2ed427a226ceb39cefce6e27bac07be8a1e",
+  "uncommitted_changes": [],
+  "features_sha256": "3e93f126f6d0dd9572e9af4e88af55c725da1ffea9e7018ad0154d698e5e11a8",
+  "settings": {
+    "FEATURE_GROUPS": {
+      "elo": [
+        "elo_logit",
+        "team_margin"
+      ],
+      "form": [
+        "diff_form_points_for",
+        "diff_form_points_against",
+        "diff_form_completion_rate",
+        "diff_form_possession_pct",
+        "diff_form_all_run_metres",
+        "diff_form_post_contact_metres",
+        "diff_form_line_breaks",
+        "diff_form_tackle_breaks",
+        "diff_form_errors",
+        "diff_form_penalties_conceded",
+        "diff_form_missed_tackles"
+      ],
+      "context": [
+        "diff_rest_days",
+        "home_travel",
+        "away_travel",
+        "neutral",
+        "away_at_ground",
+        "is_final",
+        "diff_short_turnaround",
+        "diff_after_bye",
+        "origin_period",
+        "wet_conditions"
+      ],
+      "player": [
+        "diff_rating_total",
+        "diff_rating_spine",
+        "diff_rating_forwards",
+        "diff_rating_backs",
+        "diff_rating_bench",
+        "diff_spine_vs_usual",
+        "diff_spine_changes",
+        "diff_halfback_changed",
+        "diff_rookies",
+        "diff_missing_usual",
+        "diff_missing_usual_rating",
+        "diff_ins_forwards",
+        "diff_ins_backs",
+        "diff_ins_bench",
+        "diff_returning",
+        "diff_kicker_changed",
+        "diff_rapm_total",
+        "diff_rapm_vs_usual",
+        "diff_rapm_missing",
+        "diff_origin_backup",
+        "diff_origin_out",
+        "diff_rapm_attack",
+        "diff_rapm_defence",
+        "diff_s2_stars_out_spine",
+        "diff_s2_stars_out_other",
+        "rapm_points"
+      ],
+      "odds": [
+        "open_logit",
+        "open_line",
+        "open_total",
+        "bluebet",
+        "open_logit_bluebet"
+      ],
+      "experimental": [
+        "diff_reserve_newcomers",
+        "diff_reserve_rapm_newcomers",
+        "diff_origin_reps",
+        "diff_stars_named",
+        "diff_stars_out",
+        "diff_rapm_stars_named",
+        "diff_rapm_stars_out",
+        "diff_missq_fullback",
+        "diff_missq_halfback",
+        "diff_missq_five_eighth",
+        "diff_missq_hooker",
+        "diff_key_absence",
+        "diff_key_star_out",
+        "diff_impact_out",
+        "diff_origin_stars_out_spine",
+        "diff_origin_stars_out_other",
+        "team_total",
+        "night_game",
+        "kickoff_thursday",
+        "kickoff_friday",
+        "kickoff_sunday",
+        "diff_travel_km",
+        "diff_tz_change",
+        "diff_ladder_pos",
+        "diff_out_of_contention"
+      ]
+    },
+    "FIRST_SEASON": 2021,
+    "CV_SEASONS": [
+      2022,
+      2023,
+      2024
+    ],
+    "DEV_SEASON": 2025,
+    "TEST_SEASON": 2026,
+    "PREDICT_SEASON": 2027,
+    "BACKTEST_SEASONS": [
+      2023,
+      2024,
+      2025
+    ],
+    "N_BOOTSTRAP": 10000,
+    "TARGETS": {
+      "home_win": "clf",
+      "margin": "reg",
+      "total": "reg"
+    },
+    "N_TRIALS": 60,
+    "SEED": 0,
+    "MIN_GAIN": {
+      "clf": 0.001,
+      "reg": 0.01
+    },
+    "MARGIN_BLEND": true,
+    "FEATURE_SELECTION": false,
+    "STAR_ABSENCES": [
+      "diff_s2_stars_out_spine",
+      "diff_s2_stars_out_other"
+    ],
+    "LINEAR_FEATURES": {
+      "home_win": [
+        "elo_logit",
+        "diff_rapm_total",
+        "diff_rapm_defence",
+        "diff_rapm_vs_usual",
+        "team_margin",
+        "diff_s2_stars_out_spine",
+        "diff_s2_stars_out_other"
+      ],
+      "margin": [
+        "elo_logit",
+        "diff_rapm_total",
+        "diff_rapm_defence",
+        "diff_rapm_vs_usual",
+        "diff_s2_stars_out_spine",
+        "diff_s2_stars_out_other"
+      ],
+      "total": [
+        "rapm_points",
+        "origin_period",
+        "wet_conditions"
+      ]
+    },
+    "BOOKMAKER_INPUTS": [
+      "bluebet",
+      "open_logit_bluebet"
+    ],
+    "VARIANTS": [
+      "with_odds",
+      "no_odds"
+    ],
+    "VARIANT_LABEL": {
+      "with_odds": "With odds",
+      "no_odds": "No odds"
+    },
+    "MAIN_MODEL": "ensemble",
+    "LGB_TUNING": false,
+    "LGB_FIXED": {
+      "max_depth": 2,
+      "num_leaves": 4,
+      "learning_rate": 0.02,
+      "min_child_samples": 40,
+      "lambda_l2": 10.0,
+      "feature_fraction": 0.7,
+      "bagging_fraction": 0.8
+    },
+    "LGB_SEEDS": 5,
+    "LGB_COMPACT": true,
+    "LGB_COMPACT_EXTRA": [
+      "diff_rapm_attack",
+      "diff_rapm_missing",
+      "diff_rookies",
+      "diff_rest_days",
+      "home_travel",
+      "away_travel",
+      "neutral",
+      "is_final"
+    ]
+  },
+  "cfg": {
+    "feature_sets": {
+      "with_odds": {
+        "linear": {
+          "home_win": [
+            "elo_logit",
+            "diff_rapm_total",
+            "diff_rapm_defence",
+            "diff_rapm_vs_usual",
+            "team_margin",
+            "diff_s2_stars_out_spine",
+            "diff_s2_stars_out_other",
+            "open_logit",
+            "open_line",
+            "open_total",
+            "bluebet",
+            "open_logit_bluebet"
+          ],
+          "margin": [
+            "elo_logit",
+            "diff_rapm_total",
+            "diff_rapm_defence",
+            "diff_rapm_vs_usual",
+            "diff_s2_stars_out_spine",
+            "diff_s2_stars_out_other",
+            "open_logit",
+            "open_line",
+            "open_total",
+            "bluebet",
+            "open_logit_bluebet"
+          ],
+          "total": [
+            "rapm_points",
+            "origin_period",
+            "wet_conditions",
+            "open_logit",
+            "open_line",
+            "open_total"
+          ]
+        },
+        "lightgbm": [
+          "diff_rapm_defence",
+          "diff_rapm_total",
+          "diff_rapm_vs_usual",
+          "diff_s2_stars_out_other",
+          "diff_s2_stars_out_spine",
+          "elo_logit",
+          "origin_period",
+          "rapm_points",
+          "team_margin",
+          "wet_conditions",
+          "diff_rapm_attack",
+          "diff_rapm_missing",
+          "diff_rookies",
+          "diff_rest_days",
+          "home_travel",
+          "away_travel",
+          "neutral",
+          "is_final",
+          "open_logit",
+          "open_line",
+          "open_total",
+          "bluebet",
+          "open_logit_bluebet"
+        ]
+      },
+      "no_odds": {
+        "linear": {
+          "home_win": [
+            "elo_logit",
+            "diff_rapm_total",
+            "diff_rapm_defence",
+            "diff_rapm_vs_usual",
+            "team_margin",
+            "diff_s2_stars_out_spine",
+            "diff_s2_stars_out_other"
+          ],
+          "margin": [
+            "elo_logit",
+            "diff_rapm_total",
+            "diff_rapm_defence",
+            "diff_rapm_vs_usual",
+            "diff_s2_stars_out_spine",
+            "diff_s2_stars_out_other"
+          ],
+          "total": [
+            "rapm_points",
+            "origin_period",
+            "wet_conditions"
+          ]
+        },
+        "lightgbm": [
+          "diff_rapm_defence",
+          "diff_rapm_total",
+          "diff_rapm_vs_usual",
+          "diff_s2_stars_out_other",
+          "diff_s2_stars_out_spine",
+          "elo_logit",
+          "origin_period",
+          "rapm_points",
+          "team_margin",
+          "wet_conditions",
+          "diff_rapm_attack",
+          "diff_rapm_missing",
+          "diff_rookies",
+          "diff_rest_days",
+          "home_travel",
+          "away_travel",
+          "neutral",
+          "is_final"
+        ]
+      }
+    },
+    "models": {
+      "with_odds": {
+        "home_win": {
+          "linear": 0.03162277660168379,
+          "lgb": {
+            "objective": "binary",
+            "metric": "binary_logloss",
+            "bagging_freq": 1,
+            "num_threads": 1,
+            "deterministic": true,
+            "seed": 0,
+            "verbosity": -1,
+            "max_depth": 2,
+            "num_leaves": 4,
+            "learning_rate": 0.02,
+            "min_child_samples": 40,
+            "lambda_l2": 10.0,
+            "feature_fraction": 0.7,
+            "bagging_fraction": 0.8
+          },
+          "lgb_rounds": 152,
+          "lgb_seeds": 5
+        },
+        "margin": {
+          "linear": 100.0,
+          "lgb": {
+            "objective": "regression",
+            "metric": "l1",
+            "bagging_freq": 1,
+            "num_threads": 1,
+            "deterministic": true,
+            "seed": 0,
+            "verbosity": -1,
+            "max_depth": 2,
+            "num_leaves": 4,
+            "learning_rate": 0.02,
+            "min_child_samples": 40,
+            "lambda_l2": 10.0,
+            "feature_fraction": 0.7,
+            "bagging_fraction": 0.8
+          },
+          "lgb_rounds": 162,
+          "lgb_seeds": 5
+        },
+        "total": {
+          "linear": 100.0,
+          "lgb": {
+            "objective": "regression",
+            "metric": "l1",
+            "bagging_freq": 1,
+            "num_threads": 1,
+            "deterministic": true,
+            "seed": 0,
+            "verbosity": -1,
+            "max_depth": 2,
+            "num_leaves": 4,
+            "learning_rate": 0.02,
+            "min_child_samples": 40,
+            "lambda_l2": 10.0,
+            "feature_fraction": 0.7,
+            "bagging_fraction": 0.8
+          },
+          "lgb_rounds": 72,
+          "lgb_seeds": 5
+        }
+      },
+      "no_odds": {
+        "home_win": {
+          "linear": 0.03162277660168379,
+          "lgb": {
+            "objective": "binary",
+            "metric": "binary_logloss",
+            "bagging_freq": 1,
+            "num_threads": 1,
+            "deterministic": true,
+            "seed": 0,
+            "verbosity": -1,
+            "max_depth": 2,
+            "num_leaves": 4,
+            "learning_rate": 0.02,
+            "min_child_samples": 40,
+            "lambda_l2": 10.0,
+            "feature_fraction": 0.7,
+            "bagging_fraction": 0.8
+          },
+          "lgb_rounds": 154,
+          "lgb_seeds": 5
+        },
+        "margin": {
+          "linear": 31.622776601683793,
+          "lgb": {
+            "objective": "regression",
+            "metric": "l1",
+            "bagging_freq": 1,
+            "num_threads": 1,
+            "deterministic": true,
+            "seed": 0,
+            "verbosity": -1,
+            "max_depth": 2,
+            "num_leaves": 4,
+            "learning_rate": 0.02,
+            "min_child_samples": 40,
+            "lambda_l2": 10.0,
+            "feature_fraction": 0.7,
+            "bagging_fraction": 0.8
+          },
+          "lgb_rounds": 166,
+          "lgb_seeds": 5
+        },
+        "total": {
+          "linear": 316.22776601683796,
+          "lgb": {
+            "objective": "regression",
+            "metric": "l1",
+            "bagging_freq": 1,
+            "num_threads": 1,
+            "deterministic": true,
+            "seed": 0,
+            "verbosity": -1,
+            "max_depth": 2,
+            "num_leaves": 4,
+            "learning_rate": 0.02,
+            "min_child_samples": 40,
+            "lambda_l2": 10.0,
+            "feature_fraction": 0.7,
+            "bagging_fraction": 0.8
+          },
+          "lgb_rounds": 74,
+          "lgb_seeds": 5
+        }
+      }
+    }
+  }
+}

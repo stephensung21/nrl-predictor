@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+NRL-Data/
+data/raw/
+*.log
+
+# Regenerable outputs: rebuilt by `python src/features.py`, `python src/train.py [--backtest]`
+# and `python src/betting.py`. The scraped tables, odds sheet, params.json and Markdown reports
+# stay committed.
+data/processed/features.csv
+reports/*.csv
+data/processed/features_pre_kickoff.csv
+reports/predictions/
