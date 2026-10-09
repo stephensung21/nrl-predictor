@@ -183,10 +183,20 @@ def lgb_features(compact):
 
 # ---------------------------------------------------------------- calibration
 
+class Platt:
+    """Platt scaling fitted on out-of-fold probabilities; call it on new probabilities. A class rather
+    than a closure so fitted models can be saved (predict.py)."""
+
+    def __init__(self, p_oof, y):
+        self.lr = LogisticRegression(C=1e6).fit(logit(np.asarray(p_oof)).reshape(-1, 1), y)
+
+    def __call__(self, p):
+        return self.lr.predict_proba(logit(np.asarray(p)).reshape(-1, 1))[:, 1]
+
+
 def platt(p_oof, y):
     """Fit Platt scaling on out-of-fold probabilities; returns the calibration function."""
-    lr = LogisticRegression(C=1e6).fit(logit(np.asarray(p_oof)).reshape(-1, 1), y)
-    return lambda p: lr.predict_proba(logit(np.asarray(p)).reshape(-1, 1))[:, 1]
+    return Platt(p_oof, y)
 
 
 def margin_win_prob(margin_pred, oof_residuals):
@@ -267,8 +277,22 @@ def fit_predict_frames(train, test, cfg, calib_seasons):
     """fit_predict on explicit training and test rows. Calibration uses walk-forward out-of-fold
     predictions over calib_seasons (complete seasons only), so training rows from the test season's
     earlier rounds (weekly refitting) are used for fitting but not for calibration."""
-    preds, fitted = pd.DataFrame(index=test.index), {}
+    bundle = fit_models(train, cfg, calib_seasons)
+    fitted = {key: (m["linear"], m["linear_features"], m["lightgbm"], m["lightgbm_features"])
+              for key, m in bundle["models"].items()}
+    return predict_models(bundle, test), fitted
 
+
+def fit_models(train, cfg, calib_seasons):
+    """Fit every model (linear and LightGBM, both variants, all targets) on the training rows, with
+    the calibrations, and return them as one bundle that predict_models applies (and predict.py saves).
+
+    Win probabilities are Platt-calibrated on walk-forward out-of-fold predictions over calib_seasons,
+    made with the same fixed settings; with MARGIN_BLEND the linear win probability is then averaged
+    with Phi(predicted margin / sigma), sigma being the spread of the linear margin model's
+    out-of-fold errors. LightGBM is the average of LGB_SEEDS models with different random seeds."""
+    bundle = {"cfg": cfg, "models": {}, "margin_sigma": {}, "margin_blend": config.MARGIN_BLEND,
+              "variants": list(cfg["feature_sets"])}
     for variant, fs in cfg["feature_sets"].items():
         gbm_feats = fs["lightgbm"]
         for target, kind in config.TARGETS.items():
@@ -277,28 +301,47 @@ def fit_predict_frames(train, test, cfg, calib_seasons):
             seeds = [{**mc["lgb"], "seed": s} for s in range(mc.get("lgb_seeds", 1))]
             gbm = [lgb.train(p, lgb.Dataset(train[gbm_feats], train[target]), num_boost_round=mc["lgb_rounds"])
                    for p in seeds]
-            p_lin = linear_predict(lin, test[lin_feats], kind)
-            p_gbm = np.mean([g.predict(test[gbm_feats]) for g in gbm], axis=0)
+            m = {"kind": kind, "linear": lin, "linear_features": lin_feats, "lightgbm": gbm,
+                 "lightgbm_features": gbm_feats}
             if kind == "clf":
                 _, oof_lin = cv_linear(train, lin_feats, target, mc["linear"], calib_seasons)
                 oof_gbm = pd.concat([cv_lgb(train, gbm_feats, target, p, calib_seasons, n_rounds=mc["lgb_rounds"])[1]
                                      for p in seeds], axis=1).mean(axis=1)
                 done = oof_lin.notna()
-                p_lin = platt(oof_lin[done], train.loc[done, target])(p_lin)
-                p_gbm = platt(oof_gbm[done], train.loc[done, target])(p_gbm)
-            preds[f"{variant}|linear|{target}"] = p_lin
-            preds[f"{variant}|lightgbm|{target}"] = p_gbm
-            preds[f"{variant}|ensemble|{target}"] = (p_lin + p_gbm) / 2
-            fitted[(variant, target)] = (lin, lin_feats, gbm, gbm_feats)
+                m["platt_linear"] = platt(oof_lin[done], train.loc[done, target])
+                m["platt_lightgbm"] = platt(oof_gbm[done], train.loc[done, target])
+            bundle["models"][(variant, target)] = m
         if config.MARGIN_BLEND:
             mc, m_feats = cfg["models"][variant]["margin"], fs["linear"]["margin"]
             _, oof = cv_linear(train, m_feats, "margin", mc["linear"], calib_seasons)
             done = oof.notna()
-            p_margin = margin_win_prob(preds[f"{variant}|linear|margin"], train.loc[done, "margin"] - oof[done])
+            bundle["margin_sigma"][variant] = float(np.std(train.loc[done, "margin"] - oof[done]))
+    return bundle
+
+
+def predict_models(bundle, test, variants=None):
+    """Every model's predictions for the test rows, as columns '<variant>|<model>|<target>' with model
+    linear, lightgbm or ensemble (the average of the two)."""
+    preds = pd.DataFrame(index=test.index)
+    for (variant, target), m in bundle["models"].items():
+        if variants is not None and variant not in variants:
+            continue
+        p_lin = linear_predict(m["linear"], test[m["linear_features"]], m["kind"])
+        p_gbm = np.mean([g.predict(test[m["lightgbm_features"]]) for g in m["lightgbm"]], axis=0)
+        if m["kind"] == "clf":
+            p_lin, p_gbm = m["platt_linear"](p_lin), m["platt_lightgbm"](p_gbm)
+        preds[f"{variant}|linear|{target}"] = p_lin
+        preds[f"{variant}|lightgbm|{target}"] = p_gbm
+        preds[f"{variant}|ensemble|{target}"] = (p_lin + p_gbm) / 2
+    if bundle["margin_blend"]:
+        for variant, sigma in bundle["margin_sigma"].items():
+            if variants is not None and variant not in variants:
+                continue
+            p_margin = norm.cdf(np.asarray(preds[f"{variant}|linear|margin"]) / sigma)
             p_lin = (preds[f"{variant}|linear|home_win"] + p_margin) / 2
             preds[f"{variant}|linear|home_win"] = p_lin
             preds[f"{variant}|ensemble|home_win"] = (p_lin + preds[f"{variant}|lightgbm|home_win"]) / 2
-    return preds, fitted
+    return preds
 
 
 def backtest(df, seasons=None):

@@ -15,11 +15,13 @@ from ingest import PROCESSED, ROOT  # noqa: F401  (re-exported for the other mod
 REPORTS = ROOT / "reports"
 PARAMS_OUT = REPORTS / "params.json"
 FINAL_LOCK = REPORTS / "final.lock"
+MODELS_DIR = ROOT / "models"  # frozen model bundles for predict.py (train.py --freeze)
 
 # Seasons
 FIRST_SEASON = 2021                 # first season of training rows (2020 is history only)
 CV_SEASONS = [2022, 2023, 2024]     # walk-forward CV seasons for the dev run
 DEV_SEASON, TEST_SEASON = 2025, 2026
+PREDICT_SEASON = 2027  # the season predict.py serves; train.py --freeze fits on every earlier season
 BACKTEST_SEASONS = [2023, 2024, 2025]
 N_BOOTSTRAP = 10000
 

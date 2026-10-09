@@ -114,6 +114,9 @@ python src/train.py --backtest  # 2023-2025 backtest -> reports/backtest.md (mai
 python src/betting.py         # betting simulation on the backtest predictions -> reports/betting.md
 python src/teamlists.py       # pre-kickoff (Tuesday) team lists from the Internet Archive
 python src/features.py --pre-kickoff  # features from those lists -> features_pre_kickoff.csv
+python src/train.py --freeze  # pre-season: fit on every earlier season, save models/2027/
+python src/predict.py --round 1           # predict a round from the current team lists
+python src/predict.py --replay --season 2026 --round 10  # re-predict a past round as of its Tuesday
 python src/train.py --final   # ONE-TIME final test on 2026 (writes reports/final.lock; re-running needs --force)
 python -m pytest -m "not slow"  # fast unit tests (seconds)
 python -m pytest              # all tests, including the slow leakage test

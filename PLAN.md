@@ -117,7 +117,7 @@ Pre-match odds are public before kickoff, so **they are not leakage in themselve
 | Using **closing odds** for predictions that would really be made earlier (e.g. Tuesday) | **Yes, mild** | Closing odds already reflect late team changes, weather and big bets. Use odds from the actual prediction time, or always predict just before kickoff. |
 | Using **in-play or post-match odds** by mistake (bad scrape timestamps) | **Yes, severe** | Check every odds timestamp is before kickoff. |
 | Measuring betting ROI at the **best price seen** ("max odds" columns, e.g. in aussportsbetting data) | **Optimistic bias** | Nobody can know in advance which price will be the best one, so ROI looks better than reality. Simulate at opening or closing odds. |
-| Odds as a feature, then claiming the model **beats the market** | **No, but misleading** | The model mostly copies the odds. To find value bets, use a model *without* odds and compare it with the market (Model B below). |
+| Odds as a feature, then claiming the model **beats the market** | **No, but misleading** | The model may mostly copy the odds. To find value bets, compare a model *without* odds with the market too (Model B below). (In this project the with-odds model turned out not to just copy the odds: it learns what the opening price misses, mainly team news, and had the better betting edge; see IMPROVEMENTS.md items 7, 39 and 41.) |
 | Removing the bookmaker margin using the final odds of both teams | Fine | As long as both prices come from the same moment. |
 
 ## 6. Two ways to use betting odds

@@ -828,6 +828,15 @@ def impact_features(matches, p):
     return pd.DataFrame(out).set_index(["match_id", "team"])
 
 
+def named_from_list(lists):
+    """The named 17 from a team list: the 17 lowest-numbered players who aren't reserves. On Tuesday
+    lists that is jerseys 1-17 (since 2026 the squad lists a six-man interchange, 14-19, cut to four
+    later in the week, and clubs number their expected four 14-17); on final lists, late replacements
+    keep higher numbers, so the 17 who were named are kept whatever their numbers."""
+    eligible = lists[~lists["position"].isin(NOT_NAMED)].sort_values(["match_id", "team", "jersey_number"])
+    return eligible.groupby(["match_id", "team"], sort=False).head(17)
+
+
 def player_team_features(matches, players, origin, reserve=None, pre_kickoff=None):
     """Rate every named player before each match, then aggregate the named 17 to team level.
 
@@ -847,11 +856,8 @@ def player_team_features(matches, players, origin, reserve=None, pre_kickoff=Non
     named = p[~p["position"].isin(NOT_NAMED)].sort_values(["start_time_utc", "match_id", "player_id"])
     current, named_now = None, named
     if pre_kickoff is not None:
-        # The named 17 are jerseys 1-17 (since 2026 the Tuesday squad lists a six-man interchange, 14-19,
-        # cut to four later in the week; clubs number their expected four 14-17).
-        named_pre = ~pre_kickoff["position"].isin(NOT_NAMED) & (pre_kickoff["jersey_number"] <= 17)
-        cur = pre_kickoff[named_pre][["match_id", "team", "player_id", "position"]]
-        cur = cur[cur["match_id"].isin(set(named["match_id"]))]
+        cur = named_from_list(pre_kickoff)[["match_id", "team", "player_id", "position"]]
+        cur = cur[cur["match_id"].isin(set(matches["match_id"]))]
         cur = cur.merge(matches[["match_id", "start_time_utc"]], on="match_id")
         cur["pos_group"] = cur["position"].map(POS_GROUP).fillna("bench")
         current = cur.join(rate_players(cur[["player_id", "pos_group", "start_time_utc"]], history, group_avgs))

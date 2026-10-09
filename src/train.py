@@ -17,9 +17,11 @@ Usage:
     python src/train.py              # -> reports/dev_2025.md, reports/params.json, ...
     python src/train.py --backtest   # -> reports/backtest.md
     python src/train.py --final      # ONE-TIME -> reports/final_2026.md
+    python src/train.py --freeze     # pre-season: fit on 2021-2026, save models/2027/ for predict.py
 """
 
 import argparse
+import joblib
 import hashlib
 import json
 import subprocess
@@ -31,7 +33,7 @@ from sklearn.metrics import accuracy_score, brier_score_loss
 
 import config
 from evaluate import baseline_preds, bootstrap_diff, importance, results_table
-from models import backtest, cv_linear, develop, fit_predict, load_data, tune_linear
+from models import backtest, cv_linear, develop, fit_models, fit_predict, load_data, tune_linear
 from reports import md_table, save_predictions
 
 
@@ -260,10 +262,43 @@ def run_final(force):
     print(f"wrote reports/final_{season}.md")
 
 
+# ---------------------------------------------------------------- pre-season freeze
+
+def run_freeze(season, force):
+    """Develop (feature sets, tuning) and fit every model on all seasons before `season`, exactly as the
+    backtest does for one season, then save the fitted models for predict.py. Run once in the
+    pre-season; the models are not refitted during the season (weekly refitting tested worse, item 24),
+    only the features update. Saved to models/<season>/ with the commit, settings and data hash."""
+    out = config.MODELS_DIR / str(season)
+    if (out / "bundle.joblib").exists() and not force:
+        raise SystemExit(f"{out} already exists. Pass --force to refit it.")
+    audit = audit_record()
+    if audit["uncommitted_changes"] and not force:
+        raise SystemExit("Commit your changes first, so the frozen models are reproducible from a commit:\n"
+                         + "\n".join(audit["uncommitted_changes"]))
+    df = load_data()
+    train = df[df["season"] < season]
+    seasons = list(range(config.FIRST_SEASON + 1, season))
+    print(f"developing on {config.FIRST_SEASON}-{season - 1} ({len(train)} games), fitting the models for {season}...")
+    cfg, _, _ = develop(train, seasons)
+    bundle = fit_models(train, cfg, seasons)
+    bundle["version"] = f"{season}.1"
+    bundle["trained_on"] = {"seasons": [int(s) for s in sorted(train["season"].unique())], "games": int(len(train)),
+                            "last_game_utc": str(train["start_time_utc"].max())}
+    out.mkdir(parents=True, exist_ok=True)
+    joblib.dump(bundle, out / "bundle.joblib", compress=3)
+    (out / "meta.json").write_text(json.dumps({"version": bundle["version"], "season": season,
+                                               "trained_on": bundle["trained_on"], **audit, "cfg": cfg}, indent=2))
+    print(f"wrote {out / 'bundle.joblib'} (version {bundle['version']})")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--final", action="store_true", help=f"one-time evaluation on {config.TEST_SEASON}")
-    parser.add_argument("--force", action="store_true", help="allow --final to run again")
+    parser.add_argument("--force", action="store_true", help="allow --final or --freeze to run again")
+    parser.add_argument("--freeze", type=int, nargs="?", const=config.PREDICT_SEASON, metavar="SEASON",
+                        help=f"fit and save the models for predicting SEASON (default {config.PREDICT_SEASON}) "
+                             "on every earlier season -> models/SEASON/")
     parser.add_argument("--backtest", action="store_true",
                         help=f"rerun development for each of {config.BACKTEST_SEASONS} and predict it")
     parser.add_argument("--select", action="store_true",
@@ -278,7 +313,9 @@ def main():
         config.LGB_TUNING, config.LGB_COMPACT = True, False
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
-    if args.final:
+    if args.freeze:
+        run_freeze(args.freeze, args.force)
+    elif args.final:
         run_final(args.force)
     elif args.backtest:
         run_backtest()

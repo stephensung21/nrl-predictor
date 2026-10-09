@@ -10,6 +10,17 @@ This plan extends [PLAN.md](PLAN.md). The website's working name is **rugbyleagu
    - **Tipping comp:** a few friends sign in and tip each week, with a ladder
    - **News:** a feed from Reddit's r/nrl
 
+### Status (October 2026)
+
+The core model is built and tested (see [IMPROVEMENTS.md](IMPROVEMENTS.md) and [MODELLING_PLAN.md](MODELLING_PLAN.md)):
+
+- **Main model:** the **with-odds ensemble** (average of a linear model and LightGBM, with the opening odds as inputs). On the 2023–25 backtest it scores 0.622 log loss against 0.638 for Elo and 0.633 for the opening market, and on the unseen 2026 season it was level with the closing market. The **no-odds ensemble** (0.627) is the independent model for the model-vs-market page and the fallback when odds aren't available.
+- **Predicting from Tuesday's team lists** costs almost nothing in accuracy (+0.0014 log loss, item 40), so the Tuesday-evening job is the right main prediction.
+- **`src/predict.py` exists:** it predicts a round with frozen models from the current team lists, validates the result, and writes a CSV, a Markdown table and a run record. A replay mode re-predicts past rounds as of their Tuesday and reproduces the backtest's Tuesday-list predictions exactly.
+- **Models are frozen once before the season** (`python src/train.py --freeze` → `models/2027/`). Weekly refitting was tested and was worse (item 24); during the season only the features update.
+
+So the Elo-only stage in the milestones below is no longer needed: the website can publish the ensemble from the first run.
+
 ---
 
 ## Overview
@@ -64,7 +75,7 @@ NRL team lists are named on **Tuesday at about 4pm (Sydney time)**. Changes foll
 | Job | When (Sydney time) | What it does |
 |---|---|---|
 | **Results** | Monday 10am | Pull final scores and match stats for the round just played. Update Elo. Score the tipping comp and update the ladder. Grade last round's predictions. |
-| **Main prediction** | Tuesday 5:15pm | Pull the draw and the new team lists. Rebuild features. Refit the model. Publish predicted scores, winners and margins for the coming round. |
+| **Main prediction** | Tuesday 5:15pm | Pull the draw and the new team lists. Rebuild features. Predict with the frozen models (no refit). Publish predicted scores, winners and margins for the coming round. |
 | **Refresh** | Wednesday to Sunday, 9am and 3pm | Re-fetch odds and team-list changes. Re-predict only the games whose inputs changed. |
 | **Prediction of record** | Each game's kickoff | The last prediction made before kickoff is frozen as the official one. This is what accuracy and "beat the model" are measured against. |
 
@@ -78,32 +89,42 @@ Freezing the prediction of record doesn't need a job at kickoff. It is a databas
 
 1. **Fetch the draw:** fixtures, kickoff times, venues and match status for the season. NRL.com's draw page is backed by a JSON endpoint, which is far more stable than scraping HTML.
 2. **Fetch results and match stats** for completed games (the same scraper as the core model).
-3. **Fetch team lists:** the 17 named players plus reserves for each team, with an `announced_at` timestamp. Keep every version, so changes between Tuesday and kickoff are visible and features can be rebuilt as they were at any point.
+3. **Fetch team lists:** the named players plus reserves for each team, with an `announced_at` timestamp. Keep every version, so changes between Tuesday and kickoff are visible and features can be rebuilt as they were at any point. (`predict.py` already saves each fetch to `data/raw/teamlists_live/`.)
+   - **The named 17** is the 17 lowest-numbered players who aren't reserves (`features.named_from_list`). Since 2026 the Tuesday squad lists a **six-man interchange** (jerseys 14–19) that is cut to four later in the week, so a Tuesday list has 19 non-reserves and jerseys 1–17 are the expected team. On final lists, late replacements keep higher numbers (e.g. 20), and the rule still finds the 17.
 4. **Fetch odds:** head-to-head, line and total from [The Odds API](https://the-odds-api.com) (NRL is `rugbyleague_nrl`). Store each fetch as a timestamped snapshot. The free plan is enough (see §1.6).
+   - **Match what the model was trained on.** The with-odds model learned from *opening* prices of one bookmaker in the aussportsbetting.com sheet (bet365 until April 2024, BlueBet since, with BlueBet indicator inputs). Use the same bookmaker if The Odds API carries it (check whether BlueBet is in its Australian list), and use the **first snapshot after odds open** as the opening price. Keep downloading the aussportsbetting sheet too, for retraining.
+   - **Without odds** (not yet open, or the fetch failed), publish the no-odds model's prediction for that game; `predict.py` already does this.
 5. **Update Elo** from all completed results, and write each team's pre-match and post-match rating per game.
-6. **Build features** for the upcoming round. Use the same leakage-safe code as training (PLAN.md §2), including team-list features such as key players out and number of changes.
-7. **Refit and predict.** Refit the model on all completed games with fixed settings (tuning stays a manual, pre-season job), then predict win probability, margin and total points.
+6. **Build features** for the upcoming round with the same leakage-safe code as training (`features.build_features` with the current team lists). Every result before the round updates Elo, the team rating and the player ratings (RAPM), so the features stay current without refitting the models.
+7. **Predict with the frozen models.** The models are fitted once before the season (`python src/train.py --freeze`, which runs the backtest's development procedure on every earlier season and saves `models/<season>/bundle.joblib` with its commit, settings and data hash). **Don't refit weekly:** it was tested and was worse, clearly so late in the season (IMPROVEMENTS.md item 24). Predict win probability, margin and total points; `predict.py` does steps 6–8.
 8. **Validate** before publishing (see §1.4). If a check fails, stop and alert. Never publish a half-finished round.
 9. **Publish** to Supabase, then call the website's revalidation hook so cached pages refresh straight away.
 10. **Optional:** write a short LLM match preview for each game (PLAN.md §7).
 
 ### 1.3 Predicted scores
 
-The website shows a predicted score for each team, for example "Storm 24 – Broncos 16". That needs a **total points** model as well as the margin model. Total points was optional in PLAN.md §3; it is now required.
+The website shows a predicted score for each team, for example "Storm 24 – Broncos 16". That needs a **total points** model as well as the margin model. Both exist (the total model beats the opening total on the backtest).
 
 - Home score = (total + margin) / 2
 - Away score = (total − margin) / 2
 - Round to whole numbers for display only. Store the unrounded values.
-- The predicted winner comes from the **win probability**, not from the rounded scores. In a close game, the two can disagree after rounding, so make sure the displayed scores never contradict the tip (nudge the rounding when they would).
+- The predicted winner comes from the **win probability**, not from the rounded scores. In a close game the two can disagree (the win and margin models are separate), so the displayed scores never contradict the tip: `predict.display_scores` gives the tipped team one point more when they would.
 
 ### 1.4 Reliability
 
-- **Validation checks before publishing:** every game in the round has a prediction; probabilities are between 0 and 1; each team has 17 named players; all odds timestamps are before kickoff; no team appears twice in a round; the predicted margin and win probability point the same way.
+- **Validation checks before publishing** (`predict.validate`; a failure stops the run and writes the reason to the run record):
+  - every game in the round has a prediction, and probabilities are between 0 and 1;
+  - **every model input is present** for every game (the linear models would otherwise silently fill a gap with the median; this check caught a real bug while building `predict.py`);
+  - each team has 17 named players (by the rule in §1.2 step 3);
+  - no team appears twice in a round;
+  - all odds timestamps are before kickoff, and **no impossible prices**: a two-way market whose implied probabilities add up to less than 100% is a data error (the 2026 odds sheet had some).
+  - A predicted margin and win probability pointing different ways is a **warning**, not an error: the two models are separate and can disagree in close games.
 - **Run log table:** start time, job, status, rows written, model version and git commit for each run, so every number on the site can be traced back to the run that made it.
 - **Alerts:** GitHub emails on a failed workflow by default. Add a Discord or Slack webhook message for failures and for big changes (e.g. a favourite flipping after a late team change).
 - **Manual override:** every workflow has `workflow_dispatch`, so a run can be started by hand (e.g. for a Thursday game or a postponed match).
 - **Scraper breakage** is the most likely failure. The scraper-maintenance agent (PLAN.md §7.4) fits here later.
-- **Model versioning:** tag each published prediction with a model version. A model change mid-season starts a new version, so the accuracy record stays honest.
+- **Model versioning:** tag each published prediction with a model version (`predict.py` records it, e.g. `2027.1`, with the commit). A model change mid-season starts a new version, so the accuracy record stays honest.
+- **Replays as a test:** `python src/predict.py --replay --season 2026 --round 10` re-predicts a past round as of its Tuesday (results hidden, archived lists). It reproduces the backtest's Tuesday-list predictions exactly, and a slow test checks the replayed features match the full build. Run it after any change to the pipeline.
 - Scheduled workflows are switched off after 60 days without repo activity. The weekly commits of run logs or a monthly keep-alive avoid this, and the off-season needs a check before February.
 
 ### 1.5 Secrets
@@ -225,7 +246,7 @@ For each game in the round, a table:
 
 | Column | Meaning |
 |---|---|
-| Model win % | From Model B (the model without odds, PLAN.md §6), so the comparison is independent |
+| Model win % | From the no-odds ensemble (Model B, PLAN.md §6), so the comparison is independent. The predictions page and the "Model" tipper use the with-odds ensemble, which is more accurate. |
 | Market win % | From the latest odds, with the bookmaker margin removed |
 | Difference | Model minus market, highlighted when large |
 | Model margin vs line | Model margin next to the bookmaker line (e.g. model "Storm by 8", line "Storm −4.5") |
@@ -329,8 +350,11 @@ The repo becomes a monorepo: the Python model, the website and the database sche
 ```
 nrl-predictor/
   src/                         # core model (PLAN.md §8)
+    predict.py                 # predict a round with the frozen models (exists; live and replay modes)
+    teamlists.py               # historical pre-kickoff lists from the Internet Archive (exists)
+  models/<season>/             # frozen model bundles from `train.py --freeze` (exists)
   pipeline/
-    run.py                     # entry point: --job results|predict|refresh
+    run.py                     # entry point: --job results|predict|refresh (wraps scrape.py, features.py, predict.py)
     fetch_draw.py              # fixtures, kickoffs, match status
     fetch_team_lists.py        # versioned team lists
     fetch_odds.py              # Odds API snapshots
@@ -357,20 +381,20 @@ nrl-predictor/
 
 ## 5. Milestones
 
-The core model (PLAN.md §9) doesn't exist yet, so the site shouldn't wait for it. **Start publishing Elo-only predictions,** and swap in the ML model when it beats Elo in walk-forward testing. The website doesn't change when the model does.
+The core model is done and beats Elo, so there's no Elo-only stage: publish the ensemble from the start. The website doesn't change when the model does.
 
 | # | Milestone | Depends on | Done when |
 |---|---|---|---|
 | 1 | **Database schema** and row-level security in Supabase | — | Migrations apply cleanly; security tests pass |
 | 2 | **Pipeline skeleton:** draw, results, Elo, publish | PLAN.md milestones 1–2 | Running it by hand fills `matches` and `elo_ratings` for past seasons |
-| 3 | **Elo-only predictions** with a simple total-points estimate, published to the database | 2 | Predicted scores, winners and margins appear for a round |
+| 3 | **Ensemble predictions** published to the database: `predict.py` output written by `publish.py` | 2 | Predicted scores, winners and margins appear for a round (replays of 2026 rounds first) |
 | 4 | **Scheduled workflows** (results, predict, refresh) with validation, run log and alerts | 3 | A full week runs on its own, including a deliberately broken run that alerts and doesn't publish |
 | 5 | **Website, read-only:** predictions, round and match pages, Elo tab | 3 | Deployed on Vercel; pages refresh after a pipeline run |
 | 6 | **News feed** | — (independent) | r/nrl posts show with filters and caching |
 | 7 | **Odds:** odds fetching plus the model vs market page | 4, 5 | Round and season comparisons show, with odds history |
 | 8 | **Tipping comp:** invites, sign-in, tips, lockout, auto-tips, scoring, bonus, margin, ladder, model as a tipper | 1, 5 | All the rule tests in §3.5 pass; a mock round is played through from tips to ladder |
-| 9 | **Team lists** in the pipeline and team-list features in the model | 4, PLAN.md milestone 3 | Late changes trigger a re-prediction and an "Updated" badge |
-| 10 | **Swap in the ML model** (PLAN.md milestones 3–5) | 3 | It beats Elo-only in walk-forward testing; new model version tagged |
+| 9 | **Team-list changes** in the refresh job | 4 | Late changes trigger a re-prediction and an "Updated" badge (team-list features and Tuesday-list fetching already exist) |
+| 10 | **Pre-season model freeze** (`train.py --freeze`, version `2027.1`) | — | ✅ Code done; rerun once the 2027 draw and any late 2026 data are in |
 | 11 | **Dry run on 2027 pre-season trials** (February) | 4–8 | A week of trials runs end to end with friends tipping |
 | 12 | **Launch for Round 1, 2027** (early March) | 11 | — |
 
@@ -387,3 +411,6 @@ The core model (PLAN.md §9) doesn't exist yet, so the site shouldn't wait for i
 | Name | **rugbyleague-tipper** for now, at `rugbyleague-tipper.vercel.app` |
 | How public | A personal project, said plainly on every page, and kept out of search engines (§3.7) |
 | Tipping rules | The official NRL Tipping rules (§3.5) |
+| Which model | With-odds ensemble for predictions and the "Model" tipper; no-odds ensemble for model vs market and as the fallback without odds |
+| Refitting | Frozen once before the season; features update weekly (weekly refitting tested worse) |
+| Team lists | Predict from Tuesday's list, re-predict on changes (item 40 showed Tuesday lists lose almost no accuracy) |
