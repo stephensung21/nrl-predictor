@@ -1,13 +1,13 @@
 # NRL Predictor: Weekly Automation and Website Plan
 
-This plan extends [PLAN.md](PLAN.md). It covers two things:
+This plan extends [PLAN.md](PLAN.md). The website's working name is **rugbyleague-tipper**. It covers two things:
 
 1. **Weekly automation:** run the model on a fixed schedule each week. Fetch team lists, stats, results and odds, rebuild the features, and publish new predicted scores, winners and margins.
-2. **A public website** with five sections:
+2. **A personal website** with five sections:
    - **Predictions:** model scores, predicted winner and margin for each game
    - **Model vs market:** model probabilities and margins compared with betting odds
    - **Elo:** current ratings and how they change over a season
-   - **Tipping comp:** people sign in and tip each week, with a ladder
+   - **Tipping comp:** a few friends sign in and tip each week, with a ladder
    - **News:** a feed from Reddit's r/nrl
 
 ---
@@ -16,6 +16,7 @@ This plan extends [PLAN.md](PLAN.md). It covers two things:
 
 - **The model stays in Python.** The weekly pipeline is plain, deterministic code (see PLAN.md §7.5). It writes its results to a database and never talks to the website directly.
 - **The database is the contract between the model and the website.** The pipeline writes matches, Elo, predictions and odds. The website reads them, and writes only tipping data.
+- **A personal project for a few friends.** The site says so plainly on every page (see §3.7). That keeps everything small: one invite-only tipping comp, no public sign-up, no moderation, and everything on free plans.
 - **The tipping comp is the only part that needs accounts.** Everything else is read-only and can be heavily cached.
 - **Timing:** the 2026 season has just finished, so the off-season is the build window. Aim to have everything live for **pre-season trials in February 2027**, which gives a few weeks of real runs before Round 1.
 
@@ -31,7 +32,7 @@ This plan extends [PLAN.md](PLAN.md). It covers two things:
                                                              ▼
                                                    Supabase (Postgres + auth)
                                                      ▲                 │
-                                tips, comps, users   │                 │  matches, predictions,
+                                tips, invites, users │                 │  matches, predictions,
                                                      │                 ▼  Elo history, odds
                                                  Next.js website (Vercel)
                                                      ▲
@@ -44,7 +45,7 @@ This plan extends [PLAN.md](PLAN.md). It covers two things:
 |---|---|---|
 | Scheduler | **GitHub Actions** cron workflows | Free, already in the repo, secrets management built in, manual re-runs with `workflow_dispatch` |
 | Database and auth | **Supabase** (Postgres) | One service gives the database, user sign-in (email magic link, Google) and row-level security, which is what makes tip lockout safe. Free tier is enough. |
-| Website | **Next.js** (App Router, TypeScript) on **Vercel** | Server rendering with caching suits pages that change a few times a week. Free tier is enough. |
+| Website | **Next.js** (App Router, TypeScript) on **Vercel** | Server rendering with caching suits pages that change a few times a week. Free tier is enough, and the free `rugbyleague-tipper.vercel.app` address means no domain needs buying. |
 | Charts | Recharts | Elo lines, model vs market charts |
 | Styling | Tailwind CSS | Fast to build, works well on phones, which is where most tipping happens |
 
@@ -78,7 +79,7 @@ Freezing the prediction of record doesn't need a job at kickoff. It is a databas
 1. **Fetch the draw:** fixtures, kickoff times, venues and match status for the season. NRL.com's draw page is backed by a JSON endpoint, which is far more stable than scraping HTML.
 2. **Fetch results and match stats** for completed games (the same scraper as the core model).
 3. **Fetch team lists:** the 17 named players plus reserves for each team, with an `announced_at` timestamp. Keep every version, so changes between Tuesday and kickoff are visible and features can be rebuilt as they were at any point.
-4. **Fetch odds:** head-to-head, line and total from [The Odds API](https://the-odds-api.com) (NRL is `rugbyleague_nrl`). Store each fetch as a timestamped snapshot. The free tier (500 requests a month) covers about 10 fetches a week.
+4. **Fetch odds:** head-to-head, line and total from [The Odds API](https://the-odds-api.com) (NRL is `rugbyleague_nrl`). Store each fetch as a timestamped snapshot. The free plan is enough (see §1.6).
 5. **Update Elo** from all completed results, and write each team's pre-match and post-match rating per game.
 6. **Build features** for the upcoming round. Use the same leakage-safe code as training (PLAN.md §2), including team-list features such as key players out and number of changes.
 7. **Refit and predict.** Refit the model on all completed games with fixed settings (tuning stays a manual, pre-season job), then predict win probability, margin and total points.
@@ -118,6 +119,28 @@ Stored as GitHub Actions secrets and Vercel environment variables, never in the 
 | `REVALIDATE_SECRET` | Pipeline calls the website's revalidation hook with it |
 | `ANTHROPIC_API_KEY` (optional) | Match previews |
 
+### 1.6 Staying on free plans
+
+Every service fits in its free plan at this size:
+
+| Service | Free allowance | This project's use |
+|---|---|---|
+| GitHub Actions | Unlimited for public repos; 2,000 minutes a month for private ones | About 12 short runs a week, a few minutes each, so under 200 minutes a month |
+| Supabase | 500 MB database, 50,000 monthly active users | A few MB of data and a handful of users. Free projects pause after a week with no activity, and the pipeline's weekly writes keep it awake in season. Check it in the off-season. |
+| Vercel (Hobby) | Free for personal, non-commercial sites | Exactly this case |
+| The Odds API | 500 credits a month | See below |
+| Reddit API | Free for low-volume, non-commercial use | A few requests an hour, thanks to caching |
+
+**The Odds API doesn't need a paid plan.** Credits aren't the same as requests: each call costs *markets × regions* credits. One call for head-to-head, line and total in the Australian region costs 3 credits and returns every game in the round. About 10 fetches a week is about 30 credits a week, or about 130 a month, well inside 500. Calls that return no games cost nothing, and there are no games in the off-season.
+
+A paid plan would only be needed to:
+
+- fetch odds much more often (for example hourly, about 1,500 credits a month)
+- add more regions or markets
+- download **historical** odds through the API, which costs 10 times as much per call. This isn't needed, because historical closing odds for backtesting come free from aussportsbetting.com (PLAN.md §1).
+
+To stay safe, the pipeline reads the remaining credits from the response headers (`x-requests-remaining`) after each call, logs them, and skips the odds step with a warning if fewer than 50 are left.
+
 ---
 
 ## 2. Database
@@ -146,12 +169,14 @@ Views:
 
 | Table | Key columns |
 |---|---|
-| `profiles` | user id (from Supabase auth), display name, favourite team |
-| `comps` | id, name, season, owner, join code, scoring rules |
-| `comp_members` | comp, user, joined |
-| `tips` | user, match, team picked, margin (only used for the tiebreak game), updated |
+| `profiles` | user id (from Supabase auth), display name, favourite team, auto-tip choice (home team / crowd / ladder), admin flag |
+| `invites` | code, created by, used by, expires |
+| `rounds` | season, round, featured match (for the margin) |
+| `tips` | user, match, team picked, margin (featured game only), `is_auto` (filled in by an auto-tip, not by the user), updated |
 
-Views: `tip_results` (each tip marked correct or not once the game is final) and `comp_ladder` (points per user per comp, per round and season total).
+There is **one comp** for the whole group, so no comp or membership tables are needed. Adding them later is easy if a second group ever wants in.
+
+Views: `tip_results` (each tip marked correct or not once the game is final), `round_scores` (points, bonus point and margin score per user per round) and `ladder` (season totals, ranked by the rules in §3.5).
 
 ### Row-level security
 
@@ -160,7 +185,7 @@ This is where the rules are enforced, not just in the website code:
 - Anyone can read model data. Only the pipeline's service key can write it.
 - A user can insert or change their **own** tips only while `now() < kickoff` for that match. A tip can't be sneaked in after kickoff, even by calling the API directly.
 - A user can see **other people's tips** for a game only after it kicks off. Before then, tips stay hidden so nobody copies.
-- Only comp members can see a comp's ladder; only the owner can rename it or remove members.
+- Only signed-in users can see the ladder and tips. Only an admin can create invites, set the featured game or remove a user.
 
 ---
 
@@ -175,8 +200,9 @@ This is where the rules are enforced, not just in the website code:
 | `/match/[id]` | One game in detail: prediction, team lists (with changes since Tuesday), odds history, Elo for both teams, head to head, the LLM preview, and what drove the prediction (SHAP, later) |
 | `/odds` | Model vs market for the round, and the season-long comparison |
 | `/elo` | Elo ratings and history |
-| `/tipping` | My tips for this round, my comps, ladders |
-| `/tipping/comp/[id]` | One comp's ladder and round-by-round results |
+| `/tipping` | My tips for this round |
+| `/tipping/ladder` | The ladder and round-by-round results |
+| `/tipping/admin` | Invites, featured game, user list (admin only) |
 | `/news` | r/nrl feed |
 | `/about` | How the model works, in plain words, and its limits |
 
@@ -210,7 +236,7 @@ A season tab shows how the model and the market have done over time: cumulative 
 
 Notes:
 
-- Present it as analysis, not betting advice. No bookmaker affiliate links, a responsible gambling message with the national helpline, and a note that odds are delayed. Check Australian gambling advertising rules before adding anything that looks like a promotion.
+- Present it as analysis for a few friends, not betting advice. No bookmaker logos, links or affiliate deals, a responsible gambling message with the national helpline, and a note that odds may be out of date. Keeping it non-promotional and personal keeps it clear of gambling advertising rules.
 - Odds data has terms of use. The Odds API allows display, but check the plan's terms, and credit the source.
 
 ### 3.4 Elo
@@ -225,33 +251,54 @@ The data comes straight from `elo_ratings`; no calculation happens in the websit
 
 ### 3.5 Tipping comp
 
-**How it works:**
+A single invite-only comp for a few friends, following the **official NRL Tipping rules** (tipping.nrl.com, 2026 rules).
 
-1. Sign in with an email magic link or Google. Choose a display name and favourite team.
-2. Create a comp (you get a join code or link to share) or join one. A user can be in several comps; one set of tips counts for all of them.
-3. Each round, pick a winner for every game. For the tiebreak game (the first game of the round), also pick a margin.
-4. Each tip locks **at that game's kickoff**, not at the start of the round, so a Sunday game can be tipped on Sunday morning after late team changes.
-5. After each game, tips are scored and ladders update (the Monday results job does the final scoring; a live update can come later).
+**Joining:**
 
-**Scoring rules** (the comp owner can choose, with these defaults):
+1. The admin (you) creates an invite link from `/tipping/admin` and sends it to a friend.
+2. The friend signs in with an email magic link or Google through the invite link. There is no public sign-up page.
+3. They choose a display name, favourite team and **auto-tip option** (see below).
 
-| Rule | Default |
+**Rules (as NRL Tipping):**
+
+| Rule | How it works |
 |---|---|
-| Correct tip | 1 point |
-| Draw | Everyone who tipped the game gets 1 point |
-| Missed tip | Automatically given the away team (a common comp rule; the alternative is zero) |
-| Tiebreak | Closest margin on the first game of the round, then total margin error over the season |
-| Finals | Included, same scoring (owner can switch to double points) |
+| **Points** | 1 point for each correct tip |
+| **Lockout** | Each game locks at its own scheduled kickoff, so later games in a round stay open. Tips can be changed any number of times until then. |
+| **Draws** | A drawn game counts as **a win for both teams**, so everyone who tipped it gets the point. The same applies to a game that is cancelled, abandoned, not completed, or without an official result within 3 days of its scheduled date. |
+| **Auto-tips** | A game you didn't tip is filled in at lockout with your auto-tip choice: **Home team** (the home team in the official draw, even at a neutral venue), **The crowd** (the team most of the other tippers picked) or **Ladder** (the team higher on the NRL ladder). If the crowd or ladder option is tied, it falls back to the home team. You choose when you join and can change it until the first game of the season locks. |
+| **Bonus point** | 1 bonus point for tipping **every** winner in a round with **8 or more games**. No bonus if any of your tips in that round were auto-tips, or in shorter rounds (for example Origin-period rounds). |
+| **Margin** | Each round has a **featured game** (default: the first game of the round; the admin can change it before it locks). Enter a predicted winning margin for it. Your margin score for the round is the gap between your predicted margin and the real one, and it adds up over the season. If you don't enter one, a default margin applies. |
+| **Ladder ties** | Most points first, then the **lowest accumulated margin score**. |
+| **Finals** | Same rules as the regular season. |
 
-**Extras that make it more fun:**
+Rule details to settle while building:
 
-- **The model is a tipper.** A "Model" user enters every comp automatically and tips its prediction of record. Everyone can see whether they're beating it.
-- **Tip page shows the model's pick and probability** as a hint. Make this switchable per comp, for comps that want to tip blind.
-- After lockout, show how the comp tipped each game (e.g. "80% tipped Storm").
-- **Reminder emails** before the first game of the round to anyone with missing tips (Supabase can send them through a scheduled function).
+- **Margin when you tipped the wrong team:** treat your margin as negative for the team that won, so tipping Storm by 6 when the Broncos win by 4 gives a margin score of 10.
+- **Default margin** when none is entered: NRL Tipping applies one but its current rules don't say how much. Use 12 (about an average NRL margin) and show it on the tip page.
+- **"The crowd" with only a few tippers** can easily be tied or empty. In that case the home-team fallback applies, as above.
+- Older NRL.com help pages mention a 2-point bonus and a cap on points for rounds left completely untipped. The current rules say 1 bonus point and no cap, so the plan follows the current rules. Re-check them before the 2027 season, since NRL Tipping updates its rules each year.
+
+**Scoring:** a database function scores tips once a game is final. It runs from the Monday results job, and also from the refresh jobs so the ladder moves during the weekend. Auto-tips are filled in by the same jobs for any game that has locked.
+
+**Extras:**
+
+- **The model is a tipper.** A "Model" user tips its prediction of record (and margin, for the featured game) every round. Everyone can see whether they're beating it. It never uses an auto-tip.
+- **The tip page shows the model's pick and probability** as a hint, with a toggle to hide it for anyone who wants to tip blind.
+- After lockout, show how the group tipped each game (e.g. "4 of 5 tipped Storm").
+- **Reminder emails** before the first game of the round to anyone with missing tips, so fewer games go to auto-tips.
 - Round winner and season stats: perfect rounds, longest streak, biggest upset tipped.
 
-**Testing:** tipping is where bugs upset people. Write tests for lockout (tip before kickoff succeeds, after fails, at the database level), hidden tips, scoring of draws and missed tips, postponed games (tips stay open until the new kickoff) and the ladder totals.
+**Testing:** tipping is where bugs upset people, even among friends. Write tests for:
+
+- lockout: a tip before kickoff succeeds and after kickoff fails, at the database level
+- hidden tips before kickoff
+- draws and cancelled games
+- each auto-tip option, including ties
+- the bonus point, including the 8-game minimum and auto-tips
+- margin scores, including a wrong-team tip
+- postponed games (tips stay open until the new kickoff)
+- ladder order, including the margin tiebreak
 
 ### 3.6 News feed (r/nrl)
 
@@ -265,12 +312,13 @@ The data comes straight from `elo_ratings`; no calculation happens in the websit
 
 ### 3.7 General
 
+- **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** and a "personal project" tag, and every page has a footer saying: personal project for a few friends, not affiliated with or endorsed by the NRL or any club, not betting advice. Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
+- **Kept out of search engines:** `noindex` on every page and a `robots.txt` that blocks crawlers. Friends get the link directly.
 - **Phone first:** most tipping happens on a phone. Design every page for a narrow screen first.
 - **Dark mode** and team colours, with enough contrast to read.
 - **Caching:** prediction, odds and Elo pages are cached and refreshed when the pipeline calls the revalidation hook. Tipping pages are rendered per user and never cached.
 - **Times:** store everything in UTC; show times in the viewer's time zone.
-- **Analytics:** a privacy-friendly option such as Vercel Analytics or Plausible.
-- **Privacy:** a short privacy page, since the site stores emails. Let users delete their account and tips.
+- **Privacy:** a short note on the about page saying the site stores only email addresses, display names and tips, for running the comp. Let users delete their account and tips.
 
 ---
 
@@ -320,22 +368,22 @@ The core model (PLAN.md §9) doesn't exist yet, so the site shouldn't wait for i
 | 5 | **Website, read-only:** predictions, round and match pages, Elo tab | 3 | Deployed on Vercel; pages refresh after a pipeline run |
 | 6 | **News feed** | — (independent) | r/nrl posts show with filters and caching |
 | 7 | **Odds:** odds fetching plus the model vs market page | 4, 5 | Round and season comparisons show, with odds history |
-| 8 | **Tipping comp:** sign-in, comps, tips, lockout, scoring, ladder, model as a tipper | 1, 5 | Lockout and scoring tests pass; a test comp runs through a mock round |
+| 8 | **Tipping comp:** invites, sign-in, tips, lockout, auto-tips, scoring, bonus, margin, ladder, model as a tipper | 1, 5 | All the rule tests in §3.5 pass; a mock round is played through from tips to ladder |
 | 9 | **Team lists** in the pipeline and team-list features in the model | 4, PLAN.md milestone 3 | Late changes trigger a re-prediction and an "Updated" badge |
 | 10 | **Swap in the ML model** (PLAN.md milestones 3–5) | 3 | It beats Elo-only in walk-forward testing; new model version tagged |
 | 11 | **Dry run on 2027 pre-season trials** (February) | 4–8 | A week of trials runs end to end with friends tipping |
 | 12 | **Launch for Round 1, 2027** (early March) | 11 | — |
 
-**Later:** live score updates during games, tip reminders by push notification, SHAP explanations on match pages, LLM previews, the MCP chat interface (PLAN.md §7.2) as a "Ask the model" box on the site, and the monitoring agent's weekly report (PLAN.md §7.7) as a public page.
+**Later:** live score updates during games, tip reminders by push notification, SHAP explanations on match pages, LLM previews, the MCP chat interface (PLAN.md §7.2) as an "Ask the model" box on the site, and the monitoring agent's weekly report (PLAN.md §7.7) as a page on the site.
 
 ---
 
-## 6. Decisions to confirm
+## 6. Decisions made
 
-These have sensible defaults above, but are worth a quick check:
-
-1. **Who is the tipping comp for:** friends and family only, or open to the public? Public means more work on moderation, abuse limits and privacy.
-2. **Budget:** the plan fits inside free tiers (GitHub Actions, Supabase, Vercel, The Odds API, Reddit). A paid odds plan is the first thing likely to be needed, for more frequent snapshots or more bookmakers.
-3. **Domain name** for the site.
-4. **How prominent the odds page should be,** given the gambling-advertising points in §3.3.
-5. **Missed-tip rule:** away team (default) or zero.
+| Question | Decision |
+|---|---|
+| Who is the tipping comp for? | A few friends only: one invite-only comp, no public sign-up |
+| Budget | Free plans only (§1.6). No paid odds plan is needed. |
+| Name | **rugbyleague-tipper** for now, at `rugbyleague-tipper.vercel.app` |
+| How public | A personal project, said plainly on every page, and kept out of search engines (§3.7) |
+| Tipping rules | The official NRL Tipping rules (§3.5) |
