@@ -161,6 +161,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Margin and total models trained on capped targets (margin ±40, total ±25) | margin MAE −0.03, win −0.0005: real but too small to adopt |
 | Huber regression for margin and total | mixed (A −0.03, B +0.03 margin MAE), no gain |
 | Median (quantile) regression for margin and total | no gain; the no-odds model's totals clearly worse (+0.11) |
+| GAM (splines) or Explainable Boosting Machine, alone or in the ensemble | no clear gain; relationships are essentially linear (item 20) |
 
 ---
 
@@ -220,9 +221,15 @@ Each team's recent stats relative to what its opponents usually allow (and conce
 
 Ratings built from the stats that matter for each position (run metres for forwards, kicking and try involvement for halves), as a steadier signal than RAPM for players with few games. Fantasy points were a poor proxy.
 
-### 20. Other model types ⬜
+### 20. Other model types (GAM, Explainable Boosting Machine) ❌
 
-A GAM or Explainable Boosting Machine: smooth non-linear effects with strong regularisation, sitting between the linear models and LightGBM in flexibility, which suits small data.
+Tested with `python src/experiments.py --only gam` (`reports/experiments_gam.md`): a GAM (cubic splines per feature, then penalised logistic / ridge, penalty tuned by CV) on the linear features and on the compact features, and InterpretML's Explainable Boosting Machine (settings fixed in advance; additive only, or up to 5 interactions) on the compact features. Each was compared alone, replacing LightGBM in the ensemble, and as a third ensemble member.
+- **No combination was clearly better** than the current ensemble on win, margin or total.
+- The GAM on the linear features scores almost exactly like the linear model (0.6253 vs 0.6243 with odds): **the relationships are essentially linear**, so there's no curvature to exploit. The compact-feature GAM was clearly worse alone.
+- The EBM with interactions was the best non-linear model alone (0.628, better than LightGBM), but in the ensemble it moved win log loss by only 0.001–0.003 (best: no-odds 0.6279 → 0.6246 replacing LightGBM, interval −0.010 to +0.004).
+- Conclusion: the models are at a ceiling set by the information in the features, not the algorithm. Gains are more likely from better inputs (e.g. item 28) or calibration (item 23).
+
+Needs `interpret-core` (0.7.7, installed in the virtual environment, imported only by this experiment).
 
 ### 21. Nested tuning in the backtest ⬜
 

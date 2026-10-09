@@ -20,6 +20,8 @@ Usage:
                                                   training against the current pipeline)
     python src/experiments.py --only lightgbm ->  reports/experiments_lightgbm.md (LightGBM accuracy
                                                   and stability, and the main ensembles)
+    python src/experiments.py --only gam      ->  reports/experiments_gam.md (GAM and Explainable
+                                                  Boosting Machine, alone and in the ensemble)
 """
 
 import argparse
@@ -36,7 +38,7 @@ from scipy.stats import norm, t as student_t
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import HuberRegressor, LogisticRegression, QuantileRegressor, Ridge
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import SplineTransformer, StandardScaler
 
 import train
 from elo import run_elo, tune as tune_elo
@@ -567,6 +569,113 @@ def lightgbm_experiments():
     print("wrote reports/experiments_lightgbm.md")
 
 
+# ---------------------------------------------------------------- 9. GAM and Explainable Boosting Machine
+
+GAM_KNOTS = 5
+EBM_SETTINGS = {"outer_bags": 8, "random_state": 0}  # fixed in advance, not tuned on the backtest
+
+
+def make_gam(kind, reg):
+    """Additive model: a cubic spline basis per feature, then the same penalised logistic / ridge."""
+    est = LogisticRegression(C=reg, max_iter=5000) if kind == "clf" else Ridge(alpha=reg)
+    return make_pipeline(SimpleImputer(strategy="median"), StandardScaler(),
+                         SplineTransformer(n_knots=GAM_KNOTS, degree=3, extrapolation="linear"),
+                         StandardScaler(), est)
+
+
+def make_ebm(kind, interactions):
+    from interpret.glassbox import ExplainableBoostingClassifier, ExplainableBoostingRegressor
+    cls = ExplainableBoostingClassifier if kind == "clf" else ExplainableBoostingRegressor
+    return cls(interactions=interactions, **EBM_SETTINGS)
+
+
+def model_backtest(df, target, feats, make, grid=None):
+    """Backtest any model as train.py does: penalty (if any) tuned by walk-forward CV on earlier
+    seasons, fitted, and for the win model Platt-calibrated on out-of-fold predictions."""
+    kind = TARGETS[target]
+
+    def predict(model, X):
+        return model.predict_proba(X)[:, 1] if kind == "clf" else model.predict(X)
+
+    def oof(tr, reg, cv):
+        out = pd.Series(np.nan, index=tr.index)
+        for s in cv:
+            a, b = tr[tr["season"] < s], tr[tr["season"] == s]
+            out[b.index] = predict(make(kind, reg).fit(a[feats], a[target]), b[feats])
+        return out
+
+    preds = []
+    for season in BACKTEST_SEASONS:
+        tr, te = df[df["season"] < season], df[df["season"] == season]
+        cv = list(range(FIRST_SEASON + 1, season))
+        reg = None if grid is None else min(grid, key=lambda g: oof_score(tr, oof(tr, g, cv), target))
+        pred = predict(make(kind, reg).fit(tr[feats], tr[target]), te[feats])
+        if kind == "clf":
+            o = oof(tr, reg, cv)
+            done = o.notna()
+            pred = platt(o[done], tr.loc[done, target])(pred)
+        preds.append(pd.Series(pred, index=te["match_id"].to_numpy()))
+    return pd.concat(preds)
+
+
+def gam_experiments():
+    """GAM and EBM, alone and in the ensemble (replacing LightGBM, or as a third member), against the
+    current models."""
+    warnings.filterwarnings("ignore")
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    candidates = {
+        # name: (feature choice, model maker, penalty grid or None)
+        "GAM, linear features": ("linear", make_gam, "grid"),
+        "GAM, compact features": ("compact", make_gam, "grid"),
+        "EBM additive (no interactions), compact features": ("compact", lambda k, r: make_ebm(k, 0), None),
+        "EBM with 5 interactions, compact features": ("compact", lambda k, r: make_ebm(k, 5), None),
+    }
+    rows = []
+
+    def score(target, p):
+        y, p = test.loc[p.index, target].to_numpy(), np.asarray(p, float)
+        if TARGETS[target] == "clf":
+            p = np.clip(p, 1e-6, 1 - 1e-6)
+            return float(np.mean(-(y * np.log(p) + (1 - y) * np.log(1 - p))))
+        return float(np.mean(np.abs(y - p)))
+
+    for v in VARIANTS:
+        for name, (which, make, grid) in candidates.items():
+            print(f"{VARIANT_LABEL[v]}: {name}...")
+            for t in TARGETS:
+                feats = (LINEAR_FEATURES[t] if which == "linear" else train.lgb_features(True)) \
+                    + (ODDS if v == "with_odds" else [])
+                g = None if grid is None else (C_GRID if TARGETS[t] == "clf" else ALPHA_GRID)
+                new = model_backtest(df, t, feats, make, g)
+                lin, gbm = bt.loc[new.index, f"{v}|linear|{t}"], bt.loc[new.index, f"{v}|lightgbm|{t}"]
+                current = bt.loc[new.index, f"{v}|ensemble|{t}"]
+                replace, third = (lin + new) / 2, (lin + gbm + new) / 3
+                record(f"9 {name}: alone", v, t, test.loc[new.index], new, current)
+                record(f"9 {name}: linear + it (replaces LightGBM)", v, t, test.loc[new.index], replace, current)
+                record(f"9 {name}: linear + LightGBM + it", v, t, test.loc[new.index], third, current)
+                rows.append({"model": VARIANT_LABEL[v], "candidate": name, "target": t, "alone": score(t, new),
+                             "linear + it": score(t, replace), "linear + LightGBM + it": score(t, third),
+                             "current ensemble": score(t, current), "linear": score(t, lin), "LightGBM": score(t, gbm)})
+    table, res = pd.DataFrame(rows), pd.DataFrame(RESULTS)
+    report = ["# GAM and Explainable Boosting Machine (2023–2025 backtest)", "",
+              "Each candidate is backtested as `train.py` does it (tuned on earlier seasons only; win model "
+              "Platt-calibrated) and compared with the current main model (the ensemble of linear and LightGBM), "
+              "alone, replacing LightGBM in the ensemble, and as a third ensemble member. GAM: a cubic spline basis "
+              f"per feature ({GAM_KNOTS} knots) followed by penalised logistic / ridge, penalty tuned by CV. EBM: "
+              "InterpretML's Explainable Boosting Machine with settings fixed in advance (8 outer bags; no "
+              "interactions, or up to 5). Compact features = LightGBM's 16 (+ opening odds for the with-odds "
+              "model).", "",
+              "## Scores (log loss for `home_win`, MAE for margin and total)", "",
+              md_table(table.set_index("model")), "",
+              "## Against the current ensemble (paired bootstrap; negative = better)", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_gam.md").write_text("\n".join(report), encoding="utf-8")
+    print(md_table(table.set_index("model")))
+    print("wrote reports/experiments_gam.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -690,6 +799,6 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["robust", "lightgbm"], help="run just one experiment group")
+    parser.add_argument("--only", choices=["robust", "lightgbm", "gam"], help="run just one experiment group")
     args = parser.parse_args()
-    {"robust": robust_targets, "lightgbm": lightgbm_experiments}.get(args.only, main)()
+    {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments}.get(args.only, main)()
