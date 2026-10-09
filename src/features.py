@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from scipy.sparse.linalg import spsolve
+from scipy.linalg import cho_factor, cho_solve
 
 from elo import load_params, run_elo
 from ingest import CITY_STATE, PROCESSED, TEAM_STATE, join_odds_to_matches, load_odds
@@ -46,7 +46,7 @@ PLAYER_TEAM_FEATURES = [
     "spine_vs_usual", "spine_changes", "halfback_changed", "rookies",
     "missing_usual", "missing_usual_rating", "ins_forwards", "ins_backs", "ins_bench",
     "returning", "kicker_changed", "rapm_total", "rapm_vs_usual", "rapm_missing",
-    "origin_backup", "origin_out",
+    "origin_backup", "origin_out", "rapm_attack", "rapm_defence",
 ]
 
 SHORT_TURNAROUND_DAYS = 6   # under 6 days since the last game (e.g. Sunday -> Friday)
@@ -56,13 +56,16 @@ ORIGIN_WINDOW_DAYS = 7      # an Origin game within this many days of the match
 RAPM_ALPHA = 300.0          # ridge penalty on player plus-minus ratings (chosen on 2022-24 CV)
 RAPM_HALF_LIFE_DAYS = 90    # a game 90 days old counts half as much
 MARGIN_CAP = 40             # cap blowouts so one game can't dominate a rating
+RAPM_BENCH_WEIGHT = True    # weight players by minutes (past games) / typical role minutes (prediction)
+RAPM_STATS_PRIOR = False    # deviations from a fantasy-points estimate: worse on 2022-24 CV, so off
+RAPM_PRIOR_PENALTY = 1.0    # light penalty on the stats-prior coefficient
 
 FEATURE_GROUPS = {
     "elo": ["elo_logit"],
     "form": [f"diff_form_{s}" for s in FORM_STATS],
     "context": ["diff_rest_days", "home_travel", "away_travel", "neutral", "away_at_ground", "is_final",
                 "diff_short_turnaround", "diff_after_bye", "origin_period"],
-    "player": [f"diff_{f}" for f in PLAYER_TEAM_FEATURES],
+    "player": [f"diff_{f}" for f in PLAYER_TEAM_FEATURES] + ["rapm_points"],
     "odds": ["open_logit", "open_line", "open_total"],
 }
 
@@ -146,7 +149,8 @@ def rate_players(query, history, group_avgs):
     n, prior, k = q["n_played"].fillna(0), q["group_avg"].fillna(40.0), PLAYER_PRIOR_GAMES
     q["rating"] = np.where(n > 0, (n * q["ewm"] + k * prior) / (n + k), prior)
     q["n_prior"] = n
-    return q.set_index("_row")[["rating", "n_prior"]].reindex(query.index)
+    q["rating_vs_group"] = q["rating"] - prior  # 0 for a new player
+    return q.set_index("_row")[["rating", "n_prior", "rating_vs_group"]].reindex(query.index)
 
 
 def origin_squads(origin):
@@ -205,61 +209,122 @@ def lineup_changes(named, history, group_avgs, origin_by_player):
     return out
 
 
-def weighted_ridge(X, y, w, alpha):
-    """Exact ridge solution (X'WX + alpha I) b = X'Wy, so players with no games get exactly 0."""
-    XtW = X.T.multiply(w)
-    A = (XtW @ X + alpha * sparse.identity(X.shape[1])).tocsc()
-    return spsolve(A, XtW @ y)
+def weighted_ridge(X, y, w, penalty):
+    """Exact ridge solution (X'WX + diag(penalty)) b = X'Wy, so columns with no data get exactly 0."""
+    XtW = X.T.multiply(w).tocsr()
+    A = (XtW @ X).toarray() + np.diag(penalty)  # small (players x players) and fairly dense
+    return cho_solve(cho_factor(A), XtW @ y)
 
 
-def rapm_features(matches, named, alpha=None, half_life=None):
-    """Regularised plus-minus ratings from the named 17s, refitted before each round on earlier games.
+def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=None, stats_prior=None):
+    """Regularised plus-minus ratings, refitted before each round on earlier games only.
 
-    Each game is one row: +1 for every named home player, -1 for every named away player, plus a
-    home-advantage column, with the capped margin as the target. Ridge shrinks every player towards
-    zero (average), so new or rarely seen players stay near average; older games are down-weighted.
-    Returns, per team and match: the named 17's total rating, that total minus the team's usual
-    total (mean of its previous USUAL_WINDOW line-ups, valued with the same ratings), and the
-    total rating of usual players missing from the line-up.
+    Two ridge regressions over earlier games, one row per game, older games down-weighted:
+    - margin: +share for each home player, -share for each away player, a home-advantage
+      column, and the capped margin as the target;
+    - total: +share for every player on either team, and the match total as the target.
+    A player's attack rating is (margin + total) / 2 and defence rating (total - margin) / 2.
+    That is the same as one regression on points scored by each team with separate attack and
+    defence columns (rotating each game's two rows into their sum and difference), but solves
+    two small systems instead of one twice the size.
+    With bench_weight, `share` is a player's minutes / 80 in past games, and for the match being
+    predicted it is the typical share for his named role (starter or interchange) in earlier
+    games, so nothing from the match itself is used. Otherwise every named player counts 1.
+    With stats_prior, each player's pre-match fantasy-point rating (relative to his position
+    group's average) enters as a lightly penalised column, so a player's rating is a deviation
+    from what his stats suggest rather than from zero.
+
+    Returns per team and match: rapm_total (margin rating of the named 17), rapm_vs_usual (versus
+    the team's previous USUAL_WINDOW line-ups, valued with the same ratings), rapm_missing (usual
+    players not named), rapm_attack and rapm_defence (expected points scored / conceded relative
+    to average; lower defence is better).
     """
     alpha = RAPM_ALPHA if alpha is None else alpha
     half_life = RAPM_HALF_LIFE_DAYS if half_life is None else half_life
+    bench_weight = RAPM_BENCH_WEIGHT if bench_weight is None else bench_weight
+    stats_prior = RAPM_STATS_PRIOR if stats_prior is None else stats_prior
+
     games = matches.sort_values("start_time_utc").reset_index(drop=True)
-    lineups = named.groupby(["match_id", "team"])["player_id"].agg(list).to_dict()
-    index = {pid: i for i, pid in enumerate(named["player_id"].unique())}
-    n_players = len(index)
+    n_games = len(games)
+    game_row = pd.Series(games.index, index=games["match_id"])
+    home_team = dict(zip(games["match_id"], games["home_team"]))
+    pids = pd.Index(players["player_id"].unique())
+    n = len(pids)
+    minutes_share = players["minutesPlayed"].fillna(0).clip(upper=80) / 80
+    is_named = ~players["position"].isin(NOT_NAMED)
 
-    rows, cols, vals = [], [], []
-    for r, g in enumerate(games.itertuples()):
-        for team, sign in ((g.home_team, 1.0), (g.away_team, -1.0)):
-            for pid in lineups.get((g.match_id, team), []):
-                rows.append(r), cols.append(index[pid]), vals.append(sign)
-        rows.append(r), cols.append(n_players), vals.append(1.0)  # home advantage
-    X = sparse.csr_matrix((vals, (rows, cols)), shape=(len(games), n_players + 1))
-    y = (games["home_score"] - games["away_score"]).clip(-MARGIN_CAP, MARGIN_CAP).to_numpy(dtype=float)
+    # Who counts in past games: everyone on the field (by minutes), or the named 17 equally.
+    src = players[minutes_share > 0] if bench_weight else players[is_named]
+    r = game_row.loc[src["match_id"]].to_numpy()
+    c = pids.get_indexer(src["player_id"])
+    share = minutes_share[src.index].to_numpy() if bench_weight else np.ones(len(src))
+    rating = src["rating_vs_group"].to_numpy() if stats_prior else np.zeros(len(src))
+    home = src["team"].to_numpy() == src["match_id"].map(home_team).to_numpy()
+    sign = np.where(home, 1.0, -1.0)
+    g_all = np.arange(n_games)
+
+    # Margin design: players | home advantage | stats prior.
+    zm = np.bincount(r, weights=sign * share * rating, minlength=n_games)
+    Xm = sparse.csr_matrix(
+        (np.r_[sign * share, np.ones(n_games), zm],
+         (np.r_[r, g_all, g_all], np.r_[c, np.full(n_games, n), np.full(n_games, n + 1)])),
+        shape=(n_games, n + 2))
+    ym = (games["home_score"] - games["away_score"]).clip(-MARGIN_CAP, MARGIN_CAP).to_numpy(dtype=float)
+    pen_m = np.r_[np.full(n + 1, alpha), RAPM_PRIOR_PENALTY]
+
+    # Total design: players | stats prior (intercept handled by centring the target).
+    zt = np.bincount(r, weights=share * rating, minlength=n_games)
+    Xt = sparse.csr_matrix((np.r_[share, zt], (np.r_[r, g_all], np.r_[c, np.full(n_games, n)])),
+                           shape=(n_games, n + 1))
+    yt = (games["home_score"] + games["away_score"]).to_numpy(dtype=float)
+    pen_t = np.r_[np.full(n, alpha), RAPM_PRIOR_PENALTY]
+
+    # Named 17s for prediction: (player column, is starter, pre-match rating).
+    named = players[is_named]
+    starter = (named["position"] != "Interchange").to_numpy()
+    named_game = game_row.loc[named["match_id"]].to_numpy()
+    named_share = minutes_share[named.index].to_numpy()
+    named_rating = named["rating_vs_group"].to_numpy() if stats_prior else np.zeros(len(named))
+    lineups = defaultdict(list)
+    for key, j, st, rt in zip(zip(named["match_id"], named["team"]), pids.get_indexer(named["player_id"]),
+                              starter, named_rating):
+        lineups[key].append((j, st, rt))
+
     kickoff = games["start_time_utc"]
-
-    coef, block, out = np.zeros(n_players + 1), None, []
+    fit, block, out = None, None, []
     recent = defaultdict(lambda: deque(maxlen=USUAL_WINDOW))
     for g in games.itertuples():
         if (g.season, g.round) != block:  # new round (or a postponed game): refit on earlier results
             block = (g.season, g.round)
-            train = ((kickoff < g.start_time_utc) & ~np.isnan(y)).to_numpy()
+            train = ((kickoff < g.start_time_utc) & ~np.isnan(ym)).to_numpy()
             if train.sum() >= 20:
-                age = (g.start_time_utc - kickoff[train]).dt.days.to_numpy()
-                coef = weighted_ridge(X[train], y[train], 0.5 ** (age / half_life), alpha)
+                w = 0.5 ** ((g.start_time_utc - kickoff[train]).dt.days.to_numpy() / half_life)
+                cm = weighted_ridge(Xm[train], ym[train], w, pen_m)
+                ct = weighted_ridge(Xt[train], yt[train] - np.average(yt[train], weights=w), w, pen_t)
+                (bm, gm), (bt, gt) = (cm[:n], cm[n + 1]), (ct[:n], ct[n])
+                in_train = train[named_game]
+                role_share = ((named_share[in_train & starter].mean(), named_share[in_train & ~starter].mean())
+                              if bench_weight else (1.0, 1.0))
+                fit = {"margin": (bm, gm), "attack": ((bt + bm) / 2, (gt + gm) / 2),
+                       "defence": ((bt - bm) / 2, (gt - gm) / 2), "share": role_share}
 
-        def value(ids):
-            return float(sum(coef[index[p]] for p in ids))
+        def value(entries, kind):
+            if fit is None:
+                return 0.0
+            coef, gamma = fit[kind]
+            s_start, s_bench = fit["share"]
+            return float(sum((s_start if st else s_bench) * (coef[j] + gamma * rt) for j, st, rt in entries))
 
         for team in (g.home_team, g.away_team):
-            ids, prev = lineups.get((g.match_id, team), []), recent[team]
-            total = value(ids)
-            counts = Counter(p for lineup in prev for p in lineup)
-            missing = {p for p, c in counts.items() if c >= USUAL_MIN} - set(ids)
+            lineup, prev = lineups.get((g.match_id, team), []), recent[team]
+            latest = {e[0]: e for lineup_prev in prev for e in lineup_prev}  # most recent entry per player
+            counts = Counter(e[0] for lineup_prev in prev for e in lineup_prev)
+            missing = [latest[j] for j, k in counts.items() if k >= USUAL_MIN and j not in {e[0] for e in lineup}]
+            total = value(lineup, "margin")
             out.append({"match_id": g.match_id, "team": team, "rapm_total": total,
-                        "rapm_vs_usual": total - (np.mean([value(l) for l in prev]) if prev else total),
-                        "rapm_missing": value(missing)})
+                        "rapm_vs_usual": total - (np.mean([value(l, "margin") for l in prev]) if prev else total),
+                        "rapm_missing": value(missing, "margin"),
+                        "rapm_attack": value(lineup, "attack"), "rapm_defence": value(lineup, "defence")})
         for team in (g.home_team, g.away_team):
             recent[team].append(lineups.get((g.match_id, team), []))
     return pd.DataFrame(out).set_index(["match_id", "team"])
@@ -272,9 +337,10 @@ def player_team_features(matches, players, origin):
     p["fantasy"] = p["fantasyPointsTotal"].astype(float)
     history, group_avgs = player_history(p)
 
+    p = p.join(rate_players(p[["player_id", "pos_group", "start_time_utc"]], history, group_avgs))
+
     # Line-up: the named 17 (known before kickoff), whether or not each player got minutes.
     named = p[~p["position"].isin(NOT_NAMED)].sort_values(["start_time_utc", "match_id", "player_id"])
-    named = named.join(rate_players(named[["player_id", "pos_group", "start_time_utc"]], history, group_avgs))
 
     team = named.pivot_table(index=["match_id", "team"], columns="pos_group", values="rating",
                              aggfunc="sum", fill_value=0)
@@ -284,7 +350,7 @@ def player_team_features(matches, players, origin):
     team["spine_ids"] = named[named["pos_group"] == "spine"].groupby(["match_id", "team"])["player_id"].agg(frozenset)
     team["halfback_id"] = named[named["position"] == "Halfback"].groupby(["match_id", "team"])["player_id"].first()
     team = team.join(lineup_changes(named, history, group_avgs, origin_squads(origin)))
-    team = team.join(rapm_features(matches, named))
+    team = team.join(rapm_features(matches, p))
     team = team.reset_index().merge(matches[["match_id", "start_time_utc"]], on="match_id")
     team = team.sort_values(["start_time_utc", "match_id"]).reset_index(drop=True)
 
@@ -334,6 +400,8 @@ def build_features(matches, team_stats, players, odds, origin, elo_params):
     origin_games = pd.to_datetime(origin["start_time_utc"], utc=True).drop_duplicates().tolist()
     window = pd.Timedelta(days=ORIGIN_WINDOW_DAYS)
     m["origin_period"] = [int(any(abs(t - g) <= window for g in origin_games)) for t in m["start_time_utc"]]
+    # Expected points of the match relative to average, from both teams' attack and defence ratings.
+    m["rapm_points"] = m[["home_rapm_attack", "away_rapm_attack", "home_rapm_defence", "away_rapm_defence"]].sum(axis=1)
     m["elo_logit"] = logit(m["elo_prob"])
     m["open_logit"] = logit(m["p_open"])
 

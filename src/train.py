@@ -6,9 +6,14 @@ tuning, Platt calibration, and an evaluation on the 2025 dev season against benc
 The 2026 season is only touched by --final, which refits on 2021-2025 using the settings
 chosen in the dev run and scores 2026 once against closing odds.
 
+--backtest repeats the whole development procedure (selection, tuning, calibration) for
+each of 2023-2025 using only earlier seasons, then predicts that season: about 630
+out-of-sample games instead of 212, and a check that feature selection is stable.
+
 Usage:
-    python src/train.py           # -> reports/dev_2025.md, reports/params.json, ...
-    python src/train.py --final   # ONE-TIME -> reports/final_2026.md
+    python src/train.py              # -> reports/dev_2025.md, reports/params.json, ...
+    python src/train.py --backtest   # -> reports/backtest.md
+    python src/train.py --final      # ONE-TIME -> reports/final_2026.md
 """
 
 import argparse
@@ -35,13 +40,15 @@ FINAL_LOCK = REPORTS / "final.lock"
 FIRST_SEASON = 2021
 CV_SEASONS = [2022, 2023, 2024]
 DEV_SEASON, TEST_SEASON = 2025, 2026
+BACKTEST_SEASONS = [2023, 2024, 2025]
+N_BOOTSTRAP = 10000
 
 TARGETS = {"home_win": "clf", "margin": "reg", "total": "reg"}
 C_GRID = np.logspace(-3, 1, 9)        # logistic regression
 ALPHA_GRID = np.logspace(-1, 4, 11)   # ridge
 N_TRIALS = 60                         # Optuna trials per LightGBM model
 SEED = 0
-MIN_GAIN = 0.001                      # forward selection: minimum pooled CV log-loss gain to add a feature
+MIN_GAIN = {"clf": 0.001, "reg": 0.01}  # forward selection: minimum pooled CV gain (log loss / MAE points)
 
 BASE = FEATURE_GROUPS["elo"] + FEATURE_GROUPS["form"] + FEATURE_GROUPS["context"]
 FEATURE_SETS = {
@@ -92,9 +99,9 @@ def cv_linear(df, feats, target, reg, seasons=CV_SEASONS):
     return score(df.loc[done, target], oof[done], kind), oof
 
 
-def tune_linear(df, feats, target):
+def tune_linear(df, feats, target, seasons=CV_SEASONS):
     grid = C_GRID if TARGETS[target] == "clf" else ALPHA_GRID
-    return float(min((cv_linear(df, feats, target, g)[0], g) for g in grid)[1])
+    return float(min((cv_linear(df, feats, target, g, seasons)[0], g) for g in grid)[1])
 
 
 def season_scores(df, oof, target):
@@ -111,15 +118,16 @@ def base_rate_oof(df, target, seasons=CV_SEASONS):
     return oof
 
 
-def forward_select(df, pool, target="home_win"):
+def forward_select(df, pool, target="home_win", seasons=CV_SEASONS):
     """Greedy forward selection for the linear model on walk-forward CV.
 
     A feature is only eligible if adding it (with C / alpha re-tuned) improves the score in
     every CV season, not just the pooled score; of those, the best pooled one is added if it
-    gains at least MIN_GAIN. This guards against features that fit one season's noise.
+    gains at least MIN_GAIN for the target's kind. This guards against features that fit one
+    season's noise.
     Returns the chosen features and a trace of each step.
     """
-    oof = base_rate_oof(df, target)
+    oof = base_rate_oof(df, target, seasons)
     done = oof.notna()
     best, best_seasons = score(df.loc[done, target], oof[done], TARGETS[target]), season_scores(df, oof, target)
     chosen, trace = [], []
@@ -128,19 +136,20 @@ def forward_select(df, pool, target="home_win"):
         for f in pool:
             if f in chosen:
                 continue
-            reg = tune_linear(df, chosen + [f], target)
-            pooled, oof = cv_linear(df, chosen + [f], target, reg)
-            seasons = season_scores(df, oof, target)
-            if (seasons < best_seasons).all():
-                cands.append((pooled, f, seasons))
-        if not cands or min(cands, key=lambda c: c[0])[0] > best - MIN_GAIN:
+            reg = tune_linear(df, chosen + [f], target, seasons)
+            pooled, oof = cv_linear(df, chosen + [f], target, reg, seasons)
+            by_season = season_scores(df, oof, target)
+            if (by_season < best_seasons).all():
+                cands.append((pooled, f, by_season))
+        if not cands or min(cands, key=lambda c: c[0])[0] > best - MIN_GAIN[TARGETS[target]]:
             break
         best, f, best_seasons = min(cands, key=lambda c: c[0])
         chosen.append(f)
-        trace.append({"step": len(chosen), "feature": f, "cv_log_loss": best,
+        trace.append({"target": target, "step": len(chosen), "feature": f, "cv_score": best,
                       **{f"cv_{s}": v for s, v in best_seasons.items()}})
         print(f"  + {f:32s} CV {best:.4f}")
-    return chosen, pd.DataFrame(trace).set_index("step")
+    return chosen, pd.DataFrame(trace, columns=["target", "step", "feature", "cv_score"] +
+                                [f"cv_{s}" for s in seasons]).set_index("step")
 
 
 # ---------------------------------------------------------------- LightGBM
@@ -171,7 +180,7 @@ def cv_lgb(df, feats, target, params, seasons=CV_SEASONS, n_rounds=None):
     return score(df.loc[done, target], oof[done], kind), oof, rounds
 
 
-def tune_lgb(df, feats, target):
+def tune_lgb(df, feats, target, seasons=CV_SEASONS):
     kind = TARGETS[target]
 
     def objective(trial):
@@ -185,7 +194,7 @@ def tune_lgb(df, feats, target):
             "feature_fraction": trial.suggest_float("feature_fraction", 0.4, 1.0),
             "bagging_fraction": trial.suggest_float("bagging_fraction", 0.5, 1.0),
         }
-        s, _, rounds = cv_lgb(df, feats, target, params)
+        s, _, rounds = cv_lgb(df, feats, target, params, seasons)
         trial.set_user_attr("rounds", rounds)
         return s
 
@@ -217,9 +226,9 @@ def fit_predict(df, last_train, test_season, cfg):
     preds, fitted = pd.DataFrame(index=test.index), {}
 
     for variant, fs in cfg["feature_sets"].items():
-        lin_feats, gbm_feats = fs["linear"], fs["lightgbm"]
+        gbm_feats = fs["lightgbm"]
         for target, kind in TARGETS.items():
-            mc = cfg["models"][variant][target]
+            lin_feats, mc = fs["linear"][target], cfg["models"][variant][target]
             lin = linear(kind, mc["linear"]).fit(train[lin_feats], train[target])
             gbm = lgb.train(mc["lgb"], lgb.Dataset(train[gbm_feats], train[target]), num_boost_round=mc["lgb_rounds"])
             p_lin = linear_predict(lin, test[lin_feats], kind)
@@ -259,7 +268,12 @@ def evaluate(test, p=None, margin=None, total=None):
     return row
 
 
-def results_table(train, test, preds, closing):
+def baseline_preds(train, test):
+    """'Always home' benchmark: the training seasons' home-win rate, mean margin and mean total."""
+    return pd.DataFrame({t: train[t].mean() for t in TARGETS}, index=test.index)
+
+
+def results_table(test, preds, baseline, closing):
     """Models and benchmarks scored on the same games. `closing` = (prob, line, total) columns."""
     rows = {}
     for col in preds.columns:
@@ -268,9 +282,7 @@ def results_table(train, test, preds, closing):
             key = f"Model {variant}: {model}"
             rows[key] = evaluate(test, preds[col], preds[f"{variant}|{model}|margin"],
                                  preds[f"{variant}|{model}|total"])
-    rows["Benchmark: home team"] = evaluate(
-        test, np.full(len(test), train["home_win"].mean()),
-        np.full(len(test), train["margin"].mean()), np.full(len(test), train["total"].mean()))
+    rows["Benchmark: home team"] = evaluate(test, baseline["home_win"], baseline["margin"], baseline["total"])
     rows["Benchmark: Elo only"] = evaluate(test, test["elo_prob"])
     rows["Benchmark: market opening"] = evaluate(test, test["p_open"], -test["open_line"], test["open_total"])
     prob, line, tot = closing
@@ -309,6 +321,51 @@ def md_table(df, floatfmt="{:.4f}"):
     return "\n".join([head, sep] + ["| " + " | ".join(r) + " |" for r in cells])
 
 
+def bootstrap_diff(y, p_model, p_bench, seed=SEED):
+    """Paired bootstrap of the per-game log-loss difference (model - benchmark; negative = model better)."""
+    y, pm, pb = np.asarray(y), np.clip(np.asarray(p_model), 1e-6, 1 - 1e-6), np.clip(np.asarray(p_bench), 1e-6, 1 - 1e-6)
+    diff = -(y * np.log(pm) + (1 - y) * np.log(1 - pm)) + (y * np.log(pb) + (1 - y) * np.log(1 - pb))
+    idx = np.random.default_rng(seed).integers(0, len(diff), size=(N_BOOTSTRAP, len(diff)))
+    boot = diff[idx].mean(axis=1)
+    return {"games": len(diff), "mean_diff": diff.mean(), "ci_low": np.percentile(boot, 2.5),
+            "ci_high": np.percentile(boot, 97.5), "p_model_better": (boot < 0).mean()}
+
+
+# ---------------------------------------------------------------- development procedure
+
+def develop(cv_df, cv_seasons):
+    """Forward selection and tuning on walk-forward CV over cv_seasons. Returns cfg, trace, CV table.
+
+    The linear models get two selected feature sets: one chosen on win log loss (used for the
+    win and margin models) and one chosen on total-points MAE (used for the total model).
+    """
+    full, odds = FEATURE_SETS["+player"], FEATURE_GROUPS["odds"]
+    selected, traces = {}, []
+    for target in ("home_win", "total"):
+        print(f"forward selection (linear, {target}), CV {cv_seasons}...")
+        selected[target], trace = forward_select(cv_df, full, target, seasons=cv_seasons)
+        traces.append(trace)
+    trace = pd.concat(traces)
+    linear_b = {"home_win": selected["home_win"], "margin": selected["home_win"], "total": selected["total"]}
+    cfg = {"feature_sets": {"B": {"linear": linear_b, "lightgbm": full},
+                            "A": {"linear": {t: f + odds for t, f in linear_b.items()}, "lightgbm": full + odds}},
+           "models": {}}
+    cv_rows = {}
+    for variant, fs in cfg["feature_sets"].items():
+        cfg["models"][variant] = {}
+        for target in TARGETS:
+            print(f"tuning model {variant} / {target}...")
+            reg = tune_linear(cv_df, fs["linear"][target], target, cv_seasons)
+            lgb_params, rounds = tune_lgb(cv_df, fs["lightgbm"], target, cv_seasons)
+            cfg["models"][variant][target] = {"linear": reg, "lgb": lgb_params, "lgb_rounds": rounds}
+            cv_rows[(variant, target, "linear")] = cv_linear(cv_df, fs["linear"][target], target, reg, cv_seasons)[0]
+            cv_rows[(variant, target, "lightgbm")] = cv_lgb(cv_df, fs["lightgbm"], target, lgb_params,
+                                                            cv_seasons, n_rounds=rounds)[0]
+    cv_table = pd.Series(cv_rows).unstack([1])
+    cv_table.index = pd.Index([f"Model {v}: {m}" for v, m in cv_table.index], name="model")
+    return cfg, trace, cv_table
+
+
 # ---------------------------------------------------------------- dev run
 
 def run_dev():
@@ -332,34 +389,17 @@ def run_dev():
     report += ["## Feature sets (walk-forward CV 2022–2024, logistic / ridge)", "",
                md_table(comparison), ""]
 
-    # 2. Forward selection for the linear models; LightGBM keeps the full set.
-    print("forward selection (linear, home_win)...")
-    selected, trace = forward_select(cv_df, FEATURE_SETS["+player"])
-    full, odds = FEATURE_SETS["+player"], FEATURE_GROUPS["odds"]
-    cfg = {"feature_sets": {"B": {"linear": selected, "lightgbm": full},
-                            "A": {"linear": selected + odds, "lightgbm": full + odds}},
-           "models": {}}
+    # 2-3. Forward selection for the linear models (LightGBM keeps the full set), then tuning.
+    cfg, trace, cv_table = develop(cv_df, CV_SEASONS)
+    full = FEATURE_SETS["+player"]
     report += ["## Forward feature selection (linear models)", "",
-               f"Greedy selection from the {len(full)} base + player features on walk-forward CV log loss, "
-               f"adding a feature only if it improves log loss in every CV season and the pooled score by at least "
-               f"{MIN_GAIN}. Model B's linear models use these "
-               f"{len(selected)} features and Model A adds the opening odds. LightGBM uses the full set.", "",
+               f"Greedy selection from the {len(full)} base + player features on walk-forward CV, adding a "
+               f"feature only if it improves the score in every CV season and the pooled score by at least "
+               f"{MIN_GAIN['clf']} (log loss, `home_win`) or {MIN_GAIN['reg']} points (MAE, `total`). The win and "
+               f"margin models use the `home_win` selection, the total model the `total` one; Model A adds the "
+               f"opening odds. LightGBM uses the full set.", "",
                md_table(trace), ""]
 
-    # 3. Tuning per variant and target.
-    cv_rows = {}
-    for variant, fs in cfg["feature_sets"].items():
-        cfg["models"][variant] = {}
-        for target in TARGETS:
-            print(f"tuning model {variant} / {target}...")
-            reg = tune_linear(cv_df, fs["linear"], target)
-            lgb_params, rounds = tune_lgb(cv_df, fs["lightgbm"], target)
-            cfg["models"][variant][target] = {"linear": reg, "lgb": lgb_params, "lgb_rounds": rounds}
-            cv_rows[(variant, target, "linear")] = cv_linear(cv_df, fs["linear"], target, reg)[0]
-            cv_rows[(variant, target, "lightgbm")] = cv_lgb(cv_df, fs["lightgbm"], target, lgb_params,
-                                                            n_rounds=rounds)[0]
-    cv_table = pd.Series(cv_rows).unstack([1])
-    cv_table.index = pd.Index([f"Model {v}: {m}" for v, m in cv_table.index], name="model")
     report += ["## Tuned models, walk-forward CV 2022–2024", "",
                "Log loss for `home_win`, MAE for `margin` and `total`. LightGBM uses its fixed tuned "
                "number of trees here, so these scores are not inflated by early stopping.", "",
@@ -369,7 +409,7 @@ def run_dev():
     print(f"fitting on {FIRST_SEASON}-{max(CV_SEASONS)}, evaluating {DEV_SEASON}...")
     preds, fitted = fit_predict(df, max(CV_SEASONS), DEV_SEASON, cfg)
     train, test = df[df["season"] <= max(CV_SEASONS)], df.loc[preds.index]
-    results = results_table(train, test, preds, closing=("p_avg", None, "close_total"))
+    results = results_table(test, preds, baseline_preds(train, test), closing=("p_avg", None, "close_total"))
     report += [f"## {DEV_SEASON} results", "",
                "Win probabilities are Platt-calibrated. Margin and total for the market are the "
                "line (sign flipped) and the total. Closing lines are missing for 2025, so the "
@@ -393,6 +433,79 @@ def run_dev():
     print(f"wrote reports/dev_{DEV_SEASON}.md")
 
 
+# ---------------------------------------------------------------- backtest
+
+def run_backtest():
+    """Repeat the development procedure for each backtest season using only earlier seasons."""
+    df = load_data()
+    df = df[df["season"] <= max(BACKTEST_SEASONS)]  # never touches the 2026 test season
+    all_preds, baselines, selections, per_season = [], [], {}, {}
+
+    for season in BACKTEST_SEASONS:
+        print(f"\n=== {season}: develop on {FIRST_SEASON}-{season - 1}, predict {season} ===")
+        cv_seasons = list(range(FIRST_SEASON + 1, season))
+        cfg, trace, _ = develop(df[df["season"] < season], cv_seasons)
+        preds, _ = fit_predict(df, season - 1, season, cfg)
+        test = df.loc[preds.index]
+        baseline = baseline_preds(df[df["season"] < season], test)
+        per_season[season] = results_table(test, preds, baseline, ("p_avg", None, None))
+        selections[season] = {t: trace.loc[trace["target"] == t, "feature"].tolist() for t in ("home_win", "total")}
+        all_preds.append(preds)
+        baselines.append(baseline)
+
+    preds, baseline = pd.concat(all_preds), pd.concat(baselines)
+    test = df.loc[preds.index]
+    pooled = results_table(test, preds, baseline, ("p_avg", None, "close_total"))
+
+    # Paired bootstrap against the market (Odds Portal average) and Elo, pooled over all seasons.
+    boots = {}
+    for col in ["B|linear|home_win", "B|ensemble|home_win", "A|linear|home_win", "A|ensemble|home_win"]:
+        variant, model, _ = col.split("|")
+        for bench, name in (("p_avg", "market average"), ("p_open", "market opening"), ("elo_prob", "Elo")):
+            boots[(f"Model {variant}: {model}", name)] = bootstrap_diff(test["home_win"], preds[col], test[bench])
+    boots = pd.DataFrame(boots).T.rename_axis(["model", "vs"])
+    boots.index = [f"{m} vs {b}" for m, b in boots.index]
+    boots = boots.rename_axis("comparison")
+
+    # Real closing odds where they exist and are reliable (mostly 2023).
+    ok = test["close_ok"].astype(bool)
+    closing = results_table(test[ok], preds[ok], baseline[ok], ("p_close", "close_line", "close_total"))
+    closing_boot = pd.DataFrame({"Model B: linear vs market closing": bootstrap_diff(
+        test.loc[ok, "home_win"], preds.loc[ok, "B|linear|home_win"], test.loc[ok, "p_close"])}).T.rename_axis("comparison")
+
+    pool = FEATURE_SETS["+player"]
+    stability = pd.DataFrame({s: [f in sel["home_win"] for f in pool] for s, sel in selections.items()}, index=pool)
+    stability = stability[stability.any(axis=1)].astype(int).rename_axis("feature")
+    order = pd.DataFrame({t: {s: ", ".join(f"{i + 1}. {f}" for i, f in enumerate(sel[t])) or "(none)"
+                              for s, sel in selections.items()} for t in ("home_win", "total")}).rename_axis("season")
+
+    seasons_txt = f"{BACKTEST_SEASONS[0]}–{BACKTEST_SEASONS[-1]}"
+    report = [f"# Backtest {seasons_txt}", "",
+              "For each season, the whole development procedure (forward selection, tuning of the linear "
+              "models and LightGBM, Platt calibration) is rerun on earlier seasons only, then the season is "
+              "predicted. Win-probability metrics are log loss (lower is better); the market benchmark is the "
+              "Odds Portal average price, since closing odds are missing for most of 2024 and all of 2025.", "",
+              "Caveat: the RAPM settings (penalty 300, 90-day half-life) were chosen on 2022–2024 CV, so the "
+              "2023 and 2024 results are slightly optimistic for the RAPM features. The grid was flat, so the "
+              "effect should be small.", "",
+              f"## Pooled over {seasons_txt} ({len(test)} games)", "", md_table(pooled), "",
+              "## Paired bootstrap, pooled (log-loss difference; negative = model better)", "", md_table(boots), ""]
+    for season, table in per_season.items():
+        report += [f"## {season} ({int(table['games'].iloc[0])} games)", "", md_table(table), ""]
+    report += [f"## Real closing odds, where reliable ({ok.sum()} games, mostly 2023)", "", md_table(closing), "",
+               md_table(closing_boot), "",
+               "## Feature selection stability, `home_win` (1 = selected for that season)", "", md_table(stability), "",
+               md_table(order), ""]
+
+    REPORTS.mkdir(exist_ok=True)
+    (REPORTS / "backtest.md").write_text("\n".join(report), encoding="utf-8")
+    save_predictions(test, preds, REPORTS / "backtest_predictions.csv")
+    print(md_table(pooled))
+    print(md_table(boots))
+    print(md_table(order))
+    print("wrote reports/backtest.md")
+
+
 # ---------------------------------------------------------------- final run
 
 def run_final(force):
@@ -409,8 +522,9 @@ def run_final(force):
     train, test = df[df["season"] <= DEV_SEASON], df.loc[preds.index]
     ok = test["close_ok"].astype(bool)
     closing = ("p_close", "close_line", "close_total")
-    reliable = results_table(train, test[ok], preds[ok], closing)
-    everything = results_table(train, test, preds, ("p_avg", None, None))
+    baseline = baseline_preds(train, test)
+    reliable = results_table(test[ok], preds[ok], baseline[ok], closing)
+    everything = results_table(test, preds, baseline, ("p_avg", None, None))
 
     report = [f"# Final test ({TEST_SEASON})", "",
               f"Settings and feature sets come from the dev run; models refit on {FIRST_SEASON}–{DEV_SEASON}.", "",
@@ -433,7 +547,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--final", action="store_true", help=f"one-time evaluation on {TEST_SEASON}")
     parser.add_argument("--force", action="store_true", help="allow --final to run again")
+    parser.add_argument("--backtest", action="store_true",
+                        help=f"rerun development for each of {BACKTEST_SEASONS} and predict it")
     args = parser.parse_args()
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
-    run_final(args.force) if args.final else run_dev()
+    if args.final:
+        run_final(args.force)
+    elif args.backtest:
+        run_backtest()
+    else:
+        run_dev()

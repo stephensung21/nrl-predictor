@@ -1,65 +1,25 @@
 {
   "feature_sets": {
     "B": {
-      "linear": [
-        "diff_rapm_total",
-        "elo_logit",
-        "diff_rookies"
-      ],
-      "lightgbm": [
-        "elo_logit",
-        "diff_form_points_for",
-        "diff_form_points_against",
-        "diff_form_completion_rate",
-        "diff_form_possession_pct",
-        "diff_form_all_run_metres",
-        "diff_form_post_contact_metres",
-        "diff_form_line_breaks",
-        "diff_form_tackle_breaks",
-        "diff_form_errors",
-        "diff_form_penalties_conceded",
-        "diff_form_missed_tackles",
-        "diff_rest_days",
-        "home_travel",
-        "away_travel",
-        "neutral",
-        "away_at_ground",
-        "is_final",
-        "diff_short_turnaround",
-        "diff_after_bye",
-        "origin_period",
-        "diff_rating_total",
-        "diff_rating_spine",
-        "diff_rating_forwards",
-        "diff_rating_backs",
-        "diff_rating_bench",
-        "diff_spine_vs_usual",
-        "diff_spine_changes",
-        "diff_halfback_changed",
-        "diff_rookies",
-        "diff_missing_usual",
-        "diff_missing_usual_rating",
-        "diff_ins_forwards",
-        "diff_ins_backs",
-        "diff_ins_bench",
-        "diff_returning",
-        "diff_kicker_changed",
-        "diff_rapm_total",
-        "diff_rapm_vs_usual",
-        "diff_rapm_missing",
-        "diff_origin_backup",
-        "diff_origin_out"
-      ]
-    },
-    "A": {
-      "linear": [
-        "diff_rapm_total",
-        "elo_logit",
-        "diff_rookies",
-        "open_logit",
-        "open_line",
-        "open_total"
-      ],
+      "linear": {
+        "home_win": [
+          "diff_rapm_total",
+          "elo_logit",
+          "diff_rapm_vs_usual",
+          "diff_rapm_defence",
+          "diff_rookies"
+        ],
+        "margin": [
+          "diff_rapm_total",
+          "elo_logit",
+          "diff_rapm_vs_usual",
+          "diff_rapm_defence",
+          "diff_rookies"
+        ],
+        "total": [
+          "origin_period"
+        ]
+      },
       "lightgbm": [
         "elo_logit",
         "diff_form_points_for",
@@ -103,6 +63,86 @@
         "diff_rapm_missing",
         "diff_origin_backup",
         "diff_origin_out",
+        "diff_rapm_attack",
+        "diff_rapm_defence",
+        "rapm_points"
+      ]
+    },
+    "A": {
+      "linear": {
+        "home_win": [
+          "diff_rapm_total",
+          "elo_logit",
+          "diff_rapm_vs_usual",
+          "diff_rapm_defence",
+          "diff_rookies",
+          "open_logit",
+          "open_line",
+          "open_total"
+        ],
+        "margin": [
+          "diff_rapm_total",
+          "elo_logit",
+          "diff_rapm_vs_usual",
+          "diff_rapm_defence",
+          "diff_rookies",
+          "open_logit",
+          "open_line",
+          "open_total"
+        ],
+        "total": [
+          "origin_period",
+          "open_logit",
+          "open_line",
+          "open_total"
+        ]
+      },
+      "lightgbm": [
+        "elo_logit",
+        "diff_form_points_for",
+        "diff_form_points_against",
+        "diff_form_completion_rate",
+        "diff_form_possession_pct",
+        "diff_form_all_run_metres",
+        "diff_form_post_contact_metres",
+        "diff_form_line_breaks",
+        "diff_form_tackle_breaks",
+        "diff_form_errors",
+        "diff_form_penalties_conceded",
+        "diff_form_missed_tackles",
+        "diff_rest_days",
+        "home_travel",
+        "away_travel",
+        "neutral",
+        "away_at_ground",
+        "is_final",
+        "diff_short_turnaround",
+        "diff_after_bye",
+        "origin_period",
+        "diff_rating_total",
+        "diff_rating_spine",
+        "diff_rating_forwards",
+        "diff_rating_backs",
+        "diff_rating_bench",
+        "diff_spine_vs_usual",
+        "diff_spine_changes",
+        "diff_halfback_changed",
+        "diff_rookies",
+        "diff_missing_usual",
+        "diff_missing_usual_rating",
+        "diff_ins_forwards",
+        "diff_ins_backs",
+        "diff_ins_bench",
+        "diff_returning",
+        "diff_kicker_changed",
+        "diff_rapm_total",
+        "diff_rapm_vs_usual",
+        "diff_rapm_missing",
+        "diff_origin_backup",
+        "diff_origin_out",
+        "diff_rapm_attack",
+        "diff_rapm_defence",
+        "rapm_points",
         "open_logit",
         "open_line",
         "open_total"
@@ -121,15 +161,15 @@
           "deterministic": true,
           "seed": 0,
           "verbosity": -1,
-          "max_depth": 2,
-          "num_leaves": 8,
-          "min_child_samples": 35,
-          "learning_rate": 0.08848110501391847,
-          "lambda_l2": 0.00855316631743377,
-          "feature_fraction": 0.5229842348942733,
-          "bagging_fraction": 0.5734927896263379
+          "max_depth": 3,
+          "num_leaves": 9,
+          "min_child_samples": 47,
+          "learning_rate": 0.091151469380858,
+          "lambda_l2": 0.7887505051271487,
+          "feature_fraction": 0.7175174221983454,
+          "bagging_fraction": 0.6715192527496661
         },
-        "lgb_rounds": 32
+        "lgb_rounds": 23
       },
       "margin": {
         "linear": 31.622776601683793,
@@ -142,17 +182,17 @@
           "seed": 0,
           "verbosity": -1,
           "max_depth": 2,
-          "num_leaves": 10,
-          "min_child_samples": 43,
-          "learning_rate": 0.07604741408093688,
-          "lambda_l2": 0.0013665826659149621,
-          "feature_fraction": 0.651994415127198,
-          "bagging_fraction": 0.7321901183933993
+          "num_leaves": 8,
+          "min_child_samples": 25,
+          "learning_rate": 0.07308513392424493,
+          "lambda_l2": 0.08368841077702263,
+          "feature_fraction": 0.9259895110705838,
+          "bagging_fraction": 0.6750043245834304
         },
-        "lgb_rounds": 32
+        "lgb_rounds": 20
       },
       "total": {
-        "linear": 10000.0,
+        "linear": 31.622776601683793,
         "lgb": {
           "objective": "regression",
           "metric": "l1",
@@ -162,14 +202,14 @@
           "seed": 0,
           "verbosity": -1,
           "max_depth": 3,
-          "num_leaves": 13,
-          "min_child_samples": 20,
-          "learning_rate": 0.07727621829471785,
-          "lambda_l2": 0.2189160177891891,
-          "feature_fraction": 0.5544760288700299,
-          "bagging_fraction": 0.5881642161886383
+          "num_leaves": 10,
+          "min_child_samples": 26,
+          "learning_rate": 0.0817875360670659,
+          "lambda_l2": 0.004120523914186181,
+          "feature_fraction": 0.4572633641141794,
+          "bagging_fraction": 0.5496452050885844
         },
-        "lgb_rounds": 8
+        "lgb_rounds": 5
       }
     },
     "A": {
@@ -183,13 +223,13 @@
           "deterministic": true,
           "seed": 0,
           "verbosity": -1,
-          "max_depth": 3,
-          "num_leaves": 10,
-          "min_child_samples": 41,
-          "learning_rate": 0.09657706758589703,
-          "lambda_l2": 0.003016515108086358,
-          "feature_fraction": 0.5253260536569009,
-          "bagging_fraction": 0.5806547589424982
+          "max_depth": 2,
+          "num_leaves": 11,
+          "min_child_samples": 61,
+          "learning_rate": 0.07978529051275736,
+          "lambda_l2": 0.011359307510360458,
+          "feature_fraction": 0.6404037422117795,
+          "bagging_fraction": 0.8178587953319184
         },
         "lgb_rounds": 27
       },
@@ -203,18 +243,18 @@
           "deterministic": true,
           "seed": 0,
           "verbosity": -1,
-          "max_depth": 2,
-          "num_leaves": 4,
-          "min_child_samples": 24,
-          "learning_rate": 0.08543276693653279,
-          "lambda_l2": 0.0015693536590262638,
-          "feature_fraction": 0.5147566383265683,
-          "bagging_fraction": 0.5472766852588167
+          "max_depth": 3,
+          "num_leaves": 5,
+          "min_child_samples": 26,
+          "learning_rate": 0.07757098703615734,
+          "lambda_l2": 0.13400835172041445,
+          "feature_fraction": 0.7288767277642276,
+          "bagging_fraction": 0.5670413147767016
         },
-        "lgb_rounds": 25
+        "lgb_rounds": 20
       },
       "total": {
-        "linear": 31.622776601683793,
+        "linear": 10.0,
         "lgb": {
           "objective": "regression",
           "metric": "l1",
@@ -223,15 +263,15 @@
           "deterministic": true,
           "seed": 0,
           "verbosity": -1,
-          "max_depth": 3,
-          "num_leaves": 5,
-          "min_child_samples": 19,
-          "learning_rate": 0.06315405985820992,
-          "lambda_l2": 0.012927285927937683,
-          "feature_fraction": 0.9019508270629016,
-          "bagging_fraction": 0.5355104309667564
+          "max_depth": 2,
+          "num_leaves": 12,
+          "min_child_samples": 34,
+          "learning_rate": 0.07910439789570292,
+          "lambda_l2": 0.05960506600476309,
+          "feature_fraction": 0.46191335713740855,
+          "bagging_fraction": 0.5232925715254397
         },
-        "lgb_rounds": 41
+        "lgb_rounds": 25
       }
     }
   }
