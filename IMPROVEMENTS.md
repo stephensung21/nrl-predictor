@@ -25,9 +25,28 @@ Pooled backtest results for the current setup:
 - **Margin:** the models beat the opening line on average error, but not on line-cover probability (item 14).
 - **Totals:** with-odds linear is level with the closing total and beats the opening total.
 - **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +9–13% ROI (with-odds ensemble +12.6%, interval +3.0% to +22%), but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
-- **Caveat:** the backtest has now informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 `--final` run is the honest verdict.
+- **Caveat:** the backtest has informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 final test below is the honest verdict.
 
-2026 stays untouched until `python src/train.py --final`. Settings for that run come from the dev run (`reports/params.json`).
+### Final test: 2026 (run once, 9 October 2026, commit `c43c38e`)
+
+The backtest procedure was run once on the unseen 2026 season (`reports/final_2026.md`): developed on 2021–2025, all 213 games predicted, no refitting during the season. Real closing odds are available and reliable for 197 games.
+
+| 197 games with reliable closing odds | Win log loss | Accuracy | Margin MAE | Total MAE |
+|---|---|---|---|---|
+| **With-odds ensemble** (main model) | 0.648 | **67.5%** | 15.27 | **10.90** |
+| With-odds linear | 0.654 | 65.5% | **15.19** | 10.93 |
+| With-odds LightGBM | **0.646** | 65.0% | 15.44 | 10.92 |
+| **No-odds ensemble** (main model) | 0.651 | 62.9% | 15.50 | 11.07 |
+| Market closing | 0.647 | 61.9% | 15.20 | 11.06 |
+| Market opening | 0.658 | 62.4% | 15.26 | 11.13 |
+| Elo only | 0.658 | 62.4% | – | – |
+| Always home team | 0.694 | 53.3% | 16.01 | 11.23 |
+
+- **2026 was a harder season to predict:** the closing market scored 0.647, against 0.620 over the backtest. Every model is worse in absolute terms, so compare models with the market rather than with the backtest numbers.
+- **Relative to the market, the result held up as the backtest said:** the with-odds ensemble is level with the closing price (+0.001, 95% interval −0.021 to +0.021) and the market average (−0.001). It beats the opening price by 0.012 (backtest: 0.011; 90% chance it is better) and Elo by 0.008. The no-odds ensemble is 0.005 behind closing and 0.008 ahead of opening. None of these differences is statistically clear on 213 games.
+- **Totals:** both ensembles beat the closing total (10.90 vs 11.06 MAE). **Margin:** level with the closing line (15.27 vs 15.20).
+- **Calibration** is reasonable where most games are (0.5–0.65: predicted 57%, actual 59%; above 0.65: 73% vs 71%). The two lower bands are noisy (26 and 35 games).
+- Caveat: before this run, summary margin figures for 2026 were seen once by accident (noted at the time); nothing was changed because of them.
 
 **Status:** ✅ done · 🔶 partly done · ⬜ not started · ❌ tried, didn't help
 
@@ -393,12 +412,12 @@ Results (full pipeline backtest, `python src/experiments.py --only calibration`)
 - With-odds ensemble win 0.6230 → **0.6220** (2025 alone −0.003, not clear); with-odds linear 0.6223 → 0.6209 (2025 −0.004); margins −0.01 to 0; totals unchanged. No-odds models unaffected.
 - The gain isn't statistically clear in the backtest, but it corrects a measured problem and should matter more for 2026, whose model trains on about 1.7 seasons of BlueBet prices instead of 0.7.
 
-### 36. Third review: make the final run auditable ⬜
+### 36. Third review: make the final run auditable ✅
 
-`--final` uses `reports/params.json` from the latest dev run (currently up to date) and refits on 2021–2025, but nothing records which code produced it.
-- Tag the commit (e.g. `final-2026`) before running.
-- Write the git commit hash and a hash of `features.csv` into `final_2026.md`.
-- Refuse to run with uncommitted changes.
+- `--final` now runs exactly the backtest procedure for 2026 (`models.backtest`: develop on 2021–2025, predict 2026) instead of the dev run's settings, which were tuned on 2022–2024 only.
+- It refuses to run with uncommitted changes.
+- It writes the commit, the `features.csv` SHA-256, every setting and the developed configuration to `reports/final_2026_run.json`, and the commit into `final_2026.md` and `final.lock`.
+- Run once at commit `c43c38e` (results under "Where things stand").
 
 ### 37. Third review: code structure ✅
 
