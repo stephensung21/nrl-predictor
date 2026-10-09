@@ -24,6 +24,8 @@ Usage:
                                                   Boosting Machine, alone and in the ensemble)
     python src/experiments.py --only reserve  ->  reports/experiments_reserve.md (reserve-grade
                                                   newcomer ratings in the full pipeline backtest)
+    python src/experiments.py --only team_total -> reports/experiments_team_total.md (team total
+                                                  rating for the totals models)
 """
 
 import argparse
@@ -760,6 +762,47 @@ def reserve_experiments():
     print("wrote reports/experiments_reserve.md")
 
 
+# ---------------------------------------------------------------- 12. team total rating
+
+def team_total_experiments():
+    """Team total rating (team_total) in the linear totals model (and so LightGBM's compact set), or in
+    LightGBM only, in the full pipeline backtest."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        variants = {
+            "12 team total in linear totals (and LightGBM)": pipeline_backtest(
+                df, LINEAR_FEATURES={**LINEAR_FEATURES, "total": LINEAR_FEATURES["total"] + ["team_total"]}),
+            "12 team total in LightGBM only": pipeline_backtest(
+                df, LGB_COMPACT_EXTRA=LGB_COMPACT_EXTRA + ["team_total"]),
+        }
+    finally:
+        builtins.print = quiet
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    for name, preds in variants.items():
+        compare_pipelines(name, test, preds, base)
+    t = test.loc[base.index]
+    corr = np.corrcoef(t["team_total"], t["total"])[0, 1]
+    res = pd.DataFrame(RESULTS)
+    report = ["# Team total rating (2023–2025 backtest)", "",
+              "`team_total`: a ridge regression of each match's total since 2009 on a total tendency per team "
+              "(attack plus defence), refitted weekly on earlier games with the team margin rating's settings "
+              "(two-year half-life). Added to the linear totals model (which also puts it in LightGBM's compact "
+              "set) or to LightGBM only, and run through the full pipeline backtest. `diff` is new minus current "
+              f"(negative = better), with a paired bootstrap 95% interval. Correlation of `team_total` with the "
+              f"actual total over the backtest games: {corr:.3f}.", "",
+              md_table(res.set_index("experiment")), ""]
+    (REPORTS / "experiments_team_total.md").write_text("\n".join(report), encoding="utf-8")
+    print(f"  corr(team_total, total) = {corr:.3f}")
+    print("wrote reports/experiments_team_total.md")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -883,8 +926,8 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve"],
+    parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
-     "reserve": reserve_experiments}.get(args.only, main)()
+     "reserve": reserve_experiments, "team_total": team_total_experiments}.get(args.only, main)()

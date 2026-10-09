@@ -163,6 +163,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Median (quantile) regression for margin and total | no gain; the no-odds model's totals clearly worse (+0.11) |
 | GAM (splines) or Explainable Boosting Machine, alone or in the ensemble | no clear gain; relationships are essentially linear (item 20) |
 | Reserve-grade (NSW Cup / QLD Cup) ratings of newcomers, fantasy or plus-minus | margin −0.01 to −0.04, win ±0.001: too small to adopt (item 28) |
+| Team total rating for the totals model | total MAE −0.02 to +0.04, not clear (item 27) |
 
 ---
 
@@ -266,9 +267,18 @@ From a second pass over the pipeline (October 2026):
 
 The opening and closing probabilities split the bookmaker's margin proportionally. The **Shin** or **power** methods correct for favourite–longshot bias. This affects the with-odds model's input, every market benchmark and the betting edges.
 
-### 27. Team-level total rating ⬜
+### 27. Team-level total rating ❌
 
-Like `team_margin`, but fitted to match totals: each team's tendency to produce high or low scores. `team_margin` helped the win model, and the totals model has the weakest features.
+`team_total_ratings` in `features.py` (`team_total` in `features.csv`): the totals counterpart of `team_margin`, a ridge regression of each match total since 2009 on a "total tendency" per team (attack plus defence, which is all a total depends on), refitted weekly on earlier games with the team margin rating's settings (two-year half-life).
+
+Tested with `python src/experiments.py --only team_total` (`reports/experiments_team_total.md`) in the full pipeline backtest. Total MAE, change against current:
+
+| Added to | Linear totals (with odds / no odds) | Main ensemble totals (with odds / no odds) |
+|---|---|---|
+| Linear totals model (and so LightGBM) | +0.016 / +0.036 | +0.000 / +0.009 |
+| LightGBM only | unchanged | −0.018 / −0.017 |
+
+None is statistically clear; win and margin barely move. **Not adopted.** Its correlation with actual totals is only 0.17, about the same as RAPM expected points (0.15), and the two overlap. Team scoring tendencies are weak and shift with opponents, weather and referees, and the with-odds model already has the opening total. The feature stays computed but isn't used by any model.
 
 ### 28. Reserve-grade data for new players ❌
 

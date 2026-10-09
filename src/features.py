@@ -72,7 +72,7 @@ TEAM_HFA_PENALTY = 30.0           # shrinkage of each team's own home advantage 
 TEAM_STRENGTH_PENALTY = 1.0       # light ridge penalty on team strengths
 
 FEATURE_GROUPS = {
-    "elo": ["elo_logit", "team_margin"],
+    "elo": ["elo_logit", "team_margin", "team_total"],
     "form": [f"diff_form_{s}" for s in FORM_STATS],
     "context": ["diff_rest_days", "home_travel", "away_travel", "neutral", "away_at_ground", "is_final",
                 "diff_short_turnaround", "diff_after_bye", "origin_period", "wet_conditions"],
@@ -472,6 +472,39 @@ def reserve_rapm_newcomers(matches, named, reserve):
     return out
 
 
+def team_total_ratings(odds, half_life=None, penalty=None):
+    """Team total rating from results since 2009, refitted weekly on earlier games only.
+
+    The totals counterpart of team_ratings: a ridge regression of each match's total (centred) on a
+    "total tendency" per team (+1 for both teams), with older games down-weighted. A team's tendency
+    is its attack plus its defence (how many points its games produce relative to average), which is
+    all a total depends on. Same settings as the team margin rating. Returns the expected total relative
+    to average per odds game.
+    """
+    half_life = TEAM_RATING_HALF_LIFE_DAYS if half_life is None else half_life
+    penalty = TEAM_STRENGTH_PENALTY if penalty is None else penalty
+    g = odds.sort_values("odds_id").reset_index(drop=True)
+    teams = sorted(set(g["home_team"]) | set(g["away_team"]))
+    ix = {t: i for i, t in enumerate(teams)}
+    n, T = len(g), len(teams)
+    h, a = g["home_team"].map(ix).to_numpy(), g["away_team"].map(ix).to_numpy()
+    r = np.arange(n)
+    X = sparse.csr_matrix((np.ones(2 * n), (np.r_[r, r], np.r_[h, a])), shape=(n, T))
+    y = (g["home_score"] + g["away_score"]).to_numpy(dtype=float)
+    week = g["date"].dt.to_period("W").to_numpy()
+    pred = np.full(n, np.nan)
+    for wk in pd.unique(week):
+        idx = np.flatnonzero(week == wk)
+        start = g.loc[idx[0], "date"]
+        train = ((g["date"] < start) & ~np.isnan(y)).to_numpy()
+        if train.sum() < 50:
+            continue
+        w = 0.5 ** ((start - g.loc[train, "date"]).dt.days.to_numpy() / half_life)
+        b = weighted_ridge(X[train], y[train] - np.average(y[train], weights=w), w, np.full(T, penalty))
+        pred[idx] = b[h[idx]] + b[a[idx]]
+    return pd.DataFrame({"odds_id": g["odds_id"], "team_total": pred})
+
+
 def player_team_features(matches, players, origin, reserve=None):
     """Rate every named player before each match, then aggregate the named 17 to team level."""
     p = players.merge(matches[["match_id", "start_time_utc"]], on="match_id", how="left")
@@ -524,6 +557,7 @@ def build_features(matches, team_stats, players, odds, origin, elo_params, reser
                  "p_avg", "data_issue"]
     m = m.merge(odds[odds_cols], on="odds_id", how="left")
     m = m.merge(team_ratings(odds)[["odds_id", "team_margin"]], on="odds_id", how="left")
+    m = m.merge(team_total_ratings(odds), on="odds_id", how="left")
 
     long = add_team_form(team_long(m, team_stats))
     side_cols = ["n_hist", "rest_days", "short_turnaround", "after_bye", "travel"] + [f"form_{s}" for s in FORM_STATS]
