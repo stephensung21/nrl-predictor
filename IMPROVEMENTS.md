@@ -1,83 +1,106 @@
 # NRL Predictor: Improvement Plan
 
-The goal is to beat the bookmakers' closing odds. On the 2025 dev season the current models are close but behind:
+The goal is to beat the bookmakers' closing odds. Current standing on the 2025 dev season:
 
-| | 2025 log loss |
-|---|---|
-| Market closing (Odds Portal average) | 0.648 |
-| Model A, linear (with opening odds) | 0.650 |
-| Model B, linear (no odds) | 0.652 |
-| Elo only | 0.653 |
-| Market opening | 0.660 |
+| | 2025 log loss | Before improvements |
+|---|---|---|
+| **Model B, linear (no odds)** | **0.643** | 0.652 |
+| Market closing (Odds Portal average) | 0.648 | |
+| Model B, ensemble | 0.648 | 0.660 |
+| Model A, linear (with opening odds) | 0.651 | 0.650 |
+| Elo only | 0.653 | |
+| Market opening | 0.660 | |
 
-A quick experiment showed that a **small feature set chosen by cross-validation** (Elo, spine strength vs the team's usual spine, rookies, outside backs' rating, penalties conceded, home travel, points conceded) scores **0.645** on 2025 with no odds. The edge comes mainly from **team-news features**. The gap is within noise over 212 games, so only the 2026 test against real closing odds will settle it.
+Model B's linear model now uses three features chosen by cross-validation: the **RAPM line-up rating**, **Elo** and **rookies**. A paired bootstrap against the market gives a difference of −0.006 (95% interval −0.032 to +0.019; the model is better in 67% of resamples). That's promising but not conclusive over 212 games. The 2026 test against real closing odds will settle it.
 
-All work below is chosen and checked on 2025 or earlier. 2026 stays untouched until `python src/train.py --final`.
+All work is chosen and checked on 2025 or earlier. 2026 stays untouched until `python src/train.py --final`. 2025 has now been looked at many times, so it's a less independent check than it was.
+
+**Status:** ✅ done · 🔶 partly done · ⬜ not started
 
 ---
 
-## 1. Build feature selection into `train.py`
+## 1. Build feature selection into `train.py` ✅
 
-Do greedy forward selection inside walk-forward cross-validation (2022–2024): add one feature at a time, keep it only if CV log loss improves by at least 0.0005, and stop when nothing does. Model B gets the selected set; Model A adds the opening odds to it.
+Greedy forward selection for the linear models inside walk-forward CV (2022–2024). A feature is added only if it improves log loss in **every** CV season and the pooled score by at least **0.001**. LightGBM keeps the full feature set.
 
-- **Why:** 27 features is too many for about 780 training games. The extra form features add noise. On the 125 games where the full Model B differs from the market by more than 5 points, the market wins (0.645 vs 0.654).
-- **Care:** choose the stopping point by CV only, never by the 2025 score.
+- The first version (pooled gain of 0.0005 or more) picked 10 features and overfit: CV improved but 2025 got worse (0.657). The every-season rule fixed this, and now picks 3.
+- The selection steps are in `reports/cv_forward_selection.csv` and the dev report.
 
-## 2. Expand the team-news features
+## 2. Expand the team-news features ✅
 
-This is where the edge comes from: `diff_spine_vs_usual` and `diff_rookies` were the first features chosen after Elo.
+- **Named 17 instead of "players with minutes > 0".** The old definition leaked post-match information: part of the early 0.645 result came from it, and the leak-free equivalent scored 0.648. The leakage test now scrambles minutes played and goal-kicking, and the old code fails it.
+- Added: usual players missing (count and combined rating), new players by position group, experienced players returning, goal-kicker missing.
+- **Captain changes: not possible.** The scraped data has no captain field.
+- None of these were selected for the linear model once RAPM existed. LightGBM uses them.
 
-- Use the **named team list (jerseys 1–17)** instead of "players with minutes > 0". An unused bench player can't be known before kickoff, so the current line-up is slightly after-the-fact.
-- The combined rating of the **usual starters who are missing**.
-- **Changes by position group** (forwards, outside backs, bench), not just the spine.
-- **Goal-kicker** and **captain** changes.
-- The number of players **returning from injury or long absence**.
-- Add the leakage test's checks for each new feature.
+## 3. Better player ratings ✅
 
-## 3. Better player ratings
+**Regularised plus-minus (RAPM):** each player is rated by how the team's margin changes with them in the named 17. It's a ridge regression over earlier games, refitted before every round with an exact solve. Settings (penalty 300, 90-day half-life) were chosen on 2022–24 CV.
 
-Ratings are currently an exponentially weighted average of fantasy points, which is a rough measure of a player's value.
+- Three features: the named 17's total RAPM, that total compared with the team's usual line-ups, and the RAPM of usual players who are missing.
+- `diff_rapm_total` is the strongest single feature, chosen even before Elo.
+- The fantasy-points ratings are kept alongside it.
 
-- Build ratings from the underlying player stats (run metres, tackle breaks, line-break involvements, errors, missed tackles) with **position-specific weights**, fitted on earlier seasons only.
-- Or estimate each player's effect on team margin when they're on the field (a regularised plus-minus).
-- Compare against the fantasy-points version in CV before switching.
+## 4. Drop or heavily constrain LightGBM ⬜ (on hold)
 
-## 4. Drop or heavily constrain LightGBM
+Left unchanged at your request. LightGBM is still the weakest model (Model B 0.660 on 2025) and drags the ensembles down. Item 12 is a way to deal with that without changing LightGBM itself.
 
-LightGBM was best in CV but worst on 2025 (0.676). It overfits through 60 Optuna trials that early-stop on the same seasons they're scored on.
+## 5. Get more seasons of stats ⬜
 
-- Either drop it from the ensemble, or
-- limit it to depth 2, cut the number of trials, and early-stop on a validation season separate from the test season.
-- Return to it if more seasons of data become available (item 5).
+Training starts in 2021. If nrl.com has match and player stats for earlier seasons, extend `src/scrape.py` back as far as the data allows (avoiding 2020). More history would help RAPM in particular, since player ratings in 2021 start from nothing. This remains the fundamental fix for noisy results.
 
-## 5. Get more seasons of stats
+## 6. Think about when the bets would be placed ⬜
 
-Training currently starts in 2021. If nrl.com has match and player stats for earlier seasons, extend `src/scrape.py` back as far as the data allows (avoiding 2020 as planned). Doubling the training data would help the player features and make LightGBM viable.
+Team lists are named on Tuesday, but the market keeps adjusting until kickoff. If the edge comes from team news, it should be largest straight after the lists are named.
 
-## 6. Think about when the bets would be placed
-
-Team lists are named on Tuesday, but the market keeps adjusting until kickoff. If the edge comes from team news, it should be largest straight after the lists are named and shrink as prices move.
-
-- Measuring this needs **mid-week odds** (after team lists, before kickoff), which the current odds sheet doesn't have. Find a source or start recording them.
+- Needs **mid-week odds** (after team lists, before kickoff), which the current odds sheet doesn't have.
 - Compare the model against the price you could actually bet at, not only the closing price.
 
-## 7. Test whether the edge is real
+## 7. Test whether the edge is real 🔶
 
-- **Bootstrap** the per-game log-loss difference between the model and the market to get a confidence interval, not just a point estimate.
-- Run the **betting simulation** (already listed as a future step): bet when the model's edge over the price exceeds a threshold, and track profit and ROI.
+- ✅ A one-off **bootstrap** of model vs market log loss on 2025 (results above). Not yet built into the pipeline.
+- ⬜ The **betting simulation**: bet when the model's edge over the price exceeds a threshold, and track profit and ROI.
+
+## 8. Context features ✅
+
+Added `short_turnaround`, `after_bye`, `origin_period`, `origin_backup` (players backing up from Origin) and `origin_out` (usual players missing for Origin). `scrape.py` now also fetches State of Origin games into `data/processed/origin_players.csv`.
+
+- None help the linear model: each makes CV log loss worse when added to the selected three. Origin absences are likely already captured by RAPM and the missing-player features.
+- LightGBM uses them; Model B LightGBM improved from 0.669 to 0.660 on 2025, though part of that may be tuning variation.
+
+## 9. Evaluate over more seasons ⬜ (recommended next)
+
+Run the **whole procedure** (selection and tuning on earlier seasons, then predict) for 2023, 2024 and 2025 in turn. That's about 630 evaluation games instead of 212, giving a much tighter confidence interval. It also shows whether feature selection is stable from season to season.
+
+## 10. Improve RAPM ⬜
+
+- **Weight bench players lower:** interchange players play about half the minutes of starters, and their role is known before kickoff.
+- **Shrink towards a stats-based estimate** (fantasy points or player stats) instead of zero, so new players start at a sensible rating.
+- **Separate attack and defence ratings** (points scored and conceded), to help the total-points model.
+
+## 11. Use the unused match data and other markets ⬜
+
+- `matches.csv` has **weather, ground conditions and referee**. These should mainly help the total-points model. Weather before kickoff is only a forecast, so it needs care.
+- **Line and total markets:** Model B's margin error on 2025 (13.64) is below the opening line's (13.97), so line betting may offer more edge than head-to-head. 2025 closing lines are missing, so this needs the 2026 data or another odds source.
+
+## 12. Fix the ensemble ⬜
+
+Weight the linear and LightGBM models by their CV performance (or stack them) instead of a plain average, or use the linear model alone. This doesn't change LightGBM itself.
 
 ---
 
-## Already tried on 2025, didn't help
+## Already tried, didn't help
 
-| Idea | 2025 log loss |
+| Idea | Result |
 |---|---|
-| Win probability from the predicted margin (`Φ(margin / σ)`) | 0.653 at best |
-| Market price as a fixed starting point, learning adjustments on top | 0.658 at best |
-| Weighting recent seasons more heavily | 0.655–0.657 |
-| Elo plus opening odds model trained on the full 2013–2024 history | 0.654 |
-| Retuning Elo on 2013–2024 instead of 2013–2020 | 0.655 (vs 0.653) |
+| Win probability from the predicted margin (`Φ(margin / σ)`) | 0.653 at best on 2025 |
+| Market price as a fixed starting point, learning adjustments on top | 0.658 at best on 2025 |
+| Weighting recent seasons more heavily | 0.655–0.657 on 2025 |
+| Elo plus opening odds model trained on the full 2013–2024 history | 0.654 on 2025 |
+| Retuning Elo on 2013–2024 instead of 2013–2020 | 0.655 (vs 0.653) on 2025 |
+| Looser feature selection (pooled gain of 0.0005 or more, 10 features) | CV better, 2025 worse (0.657) |
+| Context and Origin features in the linear model | each made CV log loss worse |
 
 ## Suggested order
 
-Items 1, 2 and 4 are the quickest wins and work with the data already scraped. Items 3 and 5 take more effort. Items 6 and 7 are needed before betting real money.
+9 first, since it makes every later decision more reliable. Then 10, which is cheap and builds on the strongest feature. Then 5, which takes the most effort but helps most. 6 and 7 are needed before betting real money.
