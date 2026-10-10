@@ -65,33 +65,64 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | GitHub Actions workflows on the weekly schedule | ❌ | §1.1, §4 |
 | Run log, alerts on failure | 🔶 | Each `predict.py` run writes a JSON record (commit, model version, errors); no alerts yet |
 | Supabase schema, row-level security, publishing | ❌ | §2, milestone 1 |
-| Website and tipping comp | 🔶 | Nine pages designed and built on sample data (see Website status below); not yet connected to Supabase or deployed |
+| Website and tipping comp | 🔶 | Every planned page designed and built, on sample data and browser stand-ins (see Website status below); not connected to the pipeline, Supabase or live sources, not deployed |
 
 ### Website status (October 2026)
 
-The pages are designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and built in `web/` on the `web-design` branch, each finished with an independent design review. **They run on sample data** until the database exists: real 2026 games, results, Model predictions, odds and Elo, with the friends' tips invented and labelled as sample on every page. Nothing is connected to Supabase or deployed yet.
+Every planned page is designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and built in `web/` on the `web-design` branch, and each passed an independent design review. **None of it is wired to live data yet.** Each page reads from a sample module or a browser-storage stand-in, behind an interface that the real source replaces in one place. Every sample page carries a dashed "Sample data" note saying what is real and what is made up.
 
-| Page | Built | Data now | Data when live |
+#### Pages and how each is wired
+
+"Real data, frozen" means real project data generated into a TypeScript file by a script in `web/scripts/`, not read live. "Stand-in" means it works end to end in the browser but stores nothing on a server.
+
+| Page | Built | Data today | Wired to live? | What replaces it |
+|---|---|---|---|---|
+| `/` home (round, tipping strip, recap) | ✅ | Real 2026 Round 10 replay predictions and results (frozen); invented tippers and tips | ❌ | `prediction_of_record`, `matches`, the viewer's `tips`, `ladder` |
+| `/round/[season]/[round]` | ✅ | Real replays of rounds 3, 5, 10 (frozen); invented tips | ❌ | Same views, any round |
+| `/match/[id]` | ✅ | Real replay data: no-odds model, opening price, Elo, Tuesday and final team lists, head to head (frozen; rounds 3, 5, 10 only) | ❌ | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
+| `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | ❌ Stand-in | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
+| `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ❌ | `round_scores`, `ladder` views (scoring ported from `lib/ladder.ts`) |
+| `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ❌ Frozen | `latest_odds`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
+| `/elo` | ✅ | Real ratings 2009–2026 from `src/elo.py` (asserted equal); 2026 to Round 9 | ❌ Frozen | `elo_ratings` |
+| `/model` | ✅ | Real 2026 test-season tips to Round 9; invented tippers for the comp comparison | ❌ Frozen | `prediction_of_record`, `model_accuracy`, `ladder` |
+| `/about` | ✅ | Figures from `reports/final_2026.md` and `reports/backtest.md` | n/a | Update by hand after each season's test |
+| `/join/[code]`, `/sign-in`, `/auth/callback`, `/account` | ✅ | Browser stand-in (`BrowserAuthStore`): fake Google and email sign-in, profile in the browser; sample invites | ❌ Stand-in | Supabase auth (Google, email link), `profiles`, `invites` via `createAuthStore()` |
+| `/tipping/admin` | ✅ | Browser stand-in (`BrowserAdminStore`): invites, tippers and pipeline runs invented; real Round 10–11 fixtures | ❌ Stand-in | `invites`, `profiles` (admin flag), `rounds` (stored draw), `pipeline_runs` via `createAdminStore()` |
+| `/news` | ✅ | One saved snapshot of r/nrl's RSS feed (10 Oct 2026): real titles, links, times and linked sites; flairs guessed from titles | ❌ Frozen | Reddit API (OAuth app, cached) via `createNewsSource()`, with real flair |
+| Not-found page | ✅ | n/a | n/a | n/a |
+
+#### The swap points
+
+Each one is a single function that returns the real implementation once the backend exists. The pages don't change.
+
+| Interface | File | Sample implementation | Live implementation needs |
 |---|---|---|---|
-| `/` home (the round, tipping strip, recap) | ✅ | Round 10 replay (`lib/sample.ts`), states switchable for review | `prediction_of_record`, `matches`, the viewer's `tips`, `ladder` |
-| `/round/[season]/[round]` | ✅ | Replays of rounds 3, 5, 10 | the same views for any round |
-| `/match/[id]` | ✅ | Replay rounds: no-odds model, opening price, Elo, Tuesday and final lists, head to head | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
-| `/tipping` | ✅ | Browser storage behind `TipStore` (`lib/tip-store.ts`) | `tips` with row-level security; swap `createTipStore()` |
-| `/tipping/ladder` | ✅ | A generated 2026 season (real games and Model tips, invented friends) | `round_scores`, `ladder` views |
-| `/odds` | ✅ | Real 2026 prices and test-season predictions | `latest_odds`, `predictions`, `model_accuracy` |
-| `/elo` | ✅ | Real ratings 2009–2026 from `src/elo.py` | `elo_ratings` |
-| `/model` | ✅ | Real 2026 test-season tips through Round 9 | `prediction_of_record`, `model_accuracy`, `ladder` |
-| `/about` | ✅ | Figures from `reports/final_2026.md` and `reports/backtest.md` | unchanged (update after each season's test) |
-| Join, sign-in, account | ❌ | | Supabase auth, `invites`, `profiles` |
-| `/tipping/admin` | ❌ | | `invites`, `rounds`, `profiles` |
-| `/news` | ❌ | | Reddit API with caching (§3.6) |
-| Not-found page | ❌ | | |
+| Row shapes | `web/lib/types.ts` | `lib/sample*.ts` modules, generated by `web/scripts/build_sample.py`, `build_odds_sample.py`, `build_elo_sample.py`, `build_news_sample.py` | Server-side Supabase queries returning the same types |
+| `TipStore` | `web/lib/tip-store.ts` | Browser storage | Supabase `tips`, with lockout and hidden tips in row-level security |
+| `AuthStore` | `web/lib/auth.ts` | Browser storage, mock redirect through `/auth/callback` | Supabase auth. Its header lists the work: `shouldCreateUser: false` and a before-user-created hook so signing in never creates an account, a security-definer invite check, redeeming an invite in the same transaction, a service-key route for account deletion, and stripping Google's name and avatar |
+| `AdminStore` | `web/lib/admin.ts`, `web/lib/invites.ts` | Browser storage and a fixed sample clock | Supabase tables, the database clock, the `profiles` admin flag, and the stored margin-game draw |
+| `NewsSource` | `web/lib/news.ts` | Saved RSS snapshot | Reddit API: real flair, NSFW and removed posts hidden, cached about 10 minutes |
+| Tipping rules | `web/lib/ladder.ts`, `web/lib/rules.ts` | Computed in the browser | SQL scoring functions and views ported from these, sharing their test cases |
 
-How the sample swaps for real data:
+#### Not connected yet
 
-- **Row shapes** in `web/lib/types.ts` follow the tables and views in §2, so each `lib/sample*.ts` module can be replaced by a server-side query returning the same types without touching the pages.
-- **The sample data is generated** from the repo, never typed in: `web/scripts/build_sample.py` (rounds, matches, tips), `build_odds_sample.py` (its recomputed bets reproduce `reports/betting_2026.md`) and `build_elo_sample.py` (it asserts every rating equals `src/elo.run_elo`).
-- **Tipping rules** are implemented in `web/lib/ladder.ts` and `web/lib/rules.ts` (points, draws, auto-tips home/crowd/ladder, bonus from 8 games with no auto-tips, margin score with the default 12, tiebreaks). They are the reference for the SQL scoring functions: port them, and give both the same test cases.
+- **The model pipeline:** nothing publishes predictions. Every Model number on the site is from the 2026 replays or the test season, generated into files.
+- **The database:** no Supabase project, tables, row-level security or migrations exist yet.
+- **Live sources:** no Odds API fetcher, no automatic odds-sheet download, no Reddit API, no live scores.
+- **Accounts:** sign-in is simulated, and nobody is really signed in. Tips, profiles and invites live only in the visitor's browser.
+- **Admin:** the page is open to anyone in the sample, and the admin flag always says yes.
+- **The margin-game draw** (random, excluding last round's teams; §3.5) is implemented as a function (`drawFeatured`), but nothing stores a draw. The sample's Round 10 game is simply the round's first game.
+- **Deployment:** the site isn't on Vercel. `noindex` and `robots.txt` are in place.
+
+#### Still to add to the website
+
+- **Live states the sample can't show:** live scores during games (§3.2 "Later") and the "Updated: Hughes out" refresh badge driven by real team-list changes (milestone 9).
+- **Odds history** on match pages (a chart of the market since opening, §3.3). It needs `odds_snapshots`.
+- **Elo for both teams on match pages** (§3.1). The `/elo` team view exists; the match page doesn't use it yet.
+- **The r/nrl match thread link** on each match page (§3.6).
+- **Match previews** (LLM) and **what drove the prediction** (SHAP) on match pages (§3.1, "Later").
+- **Tip reminders** before each round's first game (email, §3.5 extras).
+- **Notifications and push** (§5 "Later").
 
 ### Next steps
 
@@ -117,11 +148,11 @@ In order. Each step can be tested before the next one starts, and steps 1–3 ca
 
 8. **GitHub Actions** `results.yml`, `predict.yml`, `refresh.yml` and `ci.yml` on the UTC schedule in §1.1, with `actions/cache` for the season's raw pages, the secrets in §1.5, a failure alert and the keep-alive commit. *Done when:* a full week runs unattended, including a deliberately broken run that alerts and doesn't publish (milestone 4).
 
-**E. Connect the website**
+**E. Connect the website** (every page is built; see Website status)
 
-9. **Swap the sample modules for queries** (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`), keeping the types; remove the sample notes and state chips.
-10. **Accounts and tipping:** Supabase auth (email link or Google) through invite links, the join flow (display name, favourite team, auto-tip choice), an account page that can delete the account and tips, a `SupabaseTipStore` returned from `createTipStore()`, and `/tipping/admin`.
-11. **The remaining pages:** `/news` (§3.6) and a not-found page.
+9. **Swap the sample modules for queries** (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
+10. **Implement the live stores:** `SupabaseTipStore`, a Supabase `AuthStore` (with the `/auth/callback` code exchange) and a Supabase `AdminStore`, each returned from its `create…()` function. Their interfaces and the work each needs are documented in their files.
+11. **The pipeline draws each round's margin game** with `drawFeatured`'s rule (fresh randomness) and stores it in `rounds`. **The Reddit API** goes behind `NewsSource`.
 12. **Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5).
 
 **F. The 2027 season**

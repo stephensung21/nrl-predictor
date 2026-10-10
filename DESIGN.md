@@ -240,6 +240,59 @@ components:
     typography: "{typography.caption}"
     rounded: "{rounded.wash}"
     padding: "8px 12px"
+  button-google:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.ground}"
+    rounded: "{rounded.pill}"
+    height: "48px"
+  button-ghost:
+    textColor: "{colors.ink-2}"
+    typography: "{typography.meta}"
+    rounded: "{rounded.pill}"
+    padding: "0 14px"
+    height: "44px"
+  button-danger:
+    backgroundColor: "{colors.miss}"
+    textColor: "{colors.ground}"
+    rounded: "{rounded.pill}"
+    padding: "10px 16px"
+  text-action:
+    textColor: "{colors.ink-2}"
+    typography: "{typography.meta}"
+    padding: "0 8px"
+    height: "44px"
+  text-field:
+    backgroundColor: "{colors.raised}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.row}"
+    padding: "0 12px"
+    height: "48px"
+  team-pick:
+    textColor: "{colors.ink-3}"
+    rounded: "{rounded.row}"
+    padding: "8px 4px"
+  team-pick-selected:
+    backgroundColor: "{colors.lime-wash}"
+    textColor: "{colors.ink}"
+  auto-tip-option-selected:
+    backgroundColor: "{colors.lime-wash}"
+    textColor: "{colors.ink}"
+  confirm-panel:
+    backgroundColor: "{colors.miss-wash}"
+    rounded: "{rounded.row}"
+    padding: "12px 16px"
+  invite-panel:
+    backgroundColor: "{colors.lime-wash}"
+    rounded: "{rounded.row}"
+    padding: "12px 16px"
+  note-panel:
+    backgroundColor: "{colors.raised}"
+    rounded: "{rounded.row}"
+    padding: "16px"
+  news-row:
+    textColor: "{colors.ink}"
+    typography: "{typography.body-lg}"
+    padding: "12px 0"
 ---
 
 # Design System: rugbyleague-tipper
@@ -269,20 +322,20 @@ A cool green-black ground lit by near-white ink, with a single acid-lime lamp an
 
 ### Primary
 - **Floodlight Lime** (`lime`): the only accent. Your tips ("Your tip" labels, the "You" tag), primary actions (the loud tipping strip, "Try again", the active tab mark and icon, focus rings, text selection), and right calls (correct-tip ticks, perfect-round lamps, a perfect-round recap line). Hover lifts it to **Lamp Glare** (`lime-hover`). Text on lime is always **Lime Ink** (`lime-ink`), a near-black olive.
-- **Lime Wash** (`lime-wash`, 12% lime): the tint behind your correct tip in a row, your selected tip button, and your own row in the recap table, the ladder and the round-by-round grid.
+- **Lime Wash** (`lime-wash`, 12% lime): the tint behind your correct tip in a row, your selected tip button, your own row in the recap table, the ladder and the round-by-round grid, your chosen favourite team and auto-tip option in the profile fields, and the panel holding a new invite you just made.
 
 ### Secondary
-- **Miss Coral** (`miss`): wrong tips and failed saves only. Strikes through your wrong pick and colours its cross; colours the save note when a tip doesn't save ("Couldn't save. Tap again.") or hits lockout. Its 12% wash (`miss-wash`) tints the wrong team line and the wrong tip button.
-- **Siren Amber** (`live`): live state and team changes only. The pulsing live dot and "LIVE" label, the "Updated: Hughes out" prediction-change note, and the "In" marker on a player who came into a team list.
+- **Miss Coral** (`miss`): wrong, failed and destructive only. Strikes through your wrong pick and colours its cross; colours the save note when a tip doesn't save ("Couldn't save. Tap again.") or hits lockout; colours form errors (a field's help line when it becomes the error, sign-in and save failures), a FAILED pipeline run, and the destructive pill in a two-step confirm ("Yes, delete it all", `ground` text on coral). Its 12% wash (`miss-wash`) tints the wrong team line, the wrong tip button and the confirm panel.
+- **Siren Amber** (`live`): live and in-progress state, and team changes only. The pulsing live dot and "LIVE" label, a RUNNING pipeline run, the "Updated: Hughes out" prediction-change note, and the "In" marker on a player who came into a team list.
 
 ### Neutral
 - **Pitch Night** (`ground`): page background, the html colour, the ring around the halfway line, the switch knob and the margin number field.
-- **Stand Shadow** (`raised`): the lit board, the tipping strip's lower band, the phone tab bar, the margin stepper panel, and row and tip-button hover.
+- **Stand Shadow** (`raised`): the lit board, the tipping strip's lower band, the phone tab bar, the margin stepper panel, text fields, the unbordered note panels on the sign-in pages ("Check your email", "No account for that one."), and row and tip-button hover.
 - **Box Seat** (`raised-2`): menus, the Model's row in tables (recap, ladder, round-by-round grid), the off switch track, unlit lamps, board hover (at 50%).
 - **Hairline** (`line`): borders on the board and strip, menu border, chip rings, link underlines.
 - **Soft Hairline** (`line-soft`): dividers between game rows, inside strips, the footer rule.
 - **Turf** (`pitch`) and **Line Paint** (`pitch-line`): the empty pitch-bar field and its markings.
-- **Floodlight** (`ink`): primary text, the winning or called team, final scores, current tab.
+- **Floodlight** (`ink`): primary text, the winning or called team, final scores, current tab, and the fill of the Google sign-in pill.
 - **Grandstand** (`ink-2`): secondary text, team names under badges and on open tip buttons, predicted scores, ladder positions, supporting copy, and the on switch track.
 - **Back Row** (`ink-3`): meta lines, captions, losing scores, the "–" placeholder, inactive tabs, the dissent half of a verdict, recap placings, struck-through "Out:" players, locked unchosen tip buttons, the Model hint and tip tally, ladder tags, movement and margin scores, and every round-by-round figure but the round's best.
 
@@ -322,19 +375,19 @@ The `/elo` charts plot teams, not forecasters, so they leave the fixed palette a
 
 ### Hierarchy
 - **Display hero** (800, 56px, 0.86): the "N of M tipped" line. The largest type on the home page.
-- **Display** (700, 40 to 52px, 0.9): page titles that stand alone: the recap ("Round 10 wrap") and empty/error titles (40px for the round page's missing-round state).
+- **Display** (700, 36 to 52px, 0.9 to 0.92): page titles that stand alone: the recap ("Round 10 wrap"); empty, error and not-found titles at 52px ("Nothing doing.", "Reddit's gone quiet.", "Knocked on."); 40px for the round page's missing-round state, a bad invite and the account's "Gone."; 36px for the invite and sign-in headlines ("Sully's invited you to the comp.", "Sign in").
 - **Match verdict** (800, 34px before kickoff / 40px at full time, 0.92 to 0.94): the match page's headline. Before kickoff it is the verdict sentence itself ("The Model and Elo back the Sea Eagles."), with any dissent dimmed to `ink-3` in the same line; at full time it is the result ("Sea Eagles won 32–4") and the verdict drops to 16px semibold body below it.
 - **Score board** (600 predicted / 700 final, 48px, 1): the featured board's score. Second only to the tipping strip.
 - **Headline** (700, 30px, 1): the board's call ("Roosters by 14"), the live strip ("This round: 4/6 correct so far"); recap line at 28px.
-- **Title** (700, 26px, 1): page heading such as "Round 10", "Round 10 tips", "Ladder".
-- **Section** (700, 24px, 1): in-page section headings such as "Results", "Round by round", "Bragging rights", and the section heads of `/model` and `/about` ("Best calls", "What goes in", "Where it falls down"). The margin number field uses the score face at the same 24px, bold.
+- **Title** (700, 26px, 1): page heading such as "Round 10", "Round 10 tips", "Ladder", "News", "Admin", and "Your account" (led by your favourite team's sm badge).
+- **Section** (700, 24px, 1): in-page section headings such as "Results", "Round by round", "Bragging rights", the section heads of `/model` and `/about` ("Best calls", "What goes in", "Where it falls down"), and the admin page's four sections. The margin number field uses the score face at the same 24px, bold.
 - **Score row** (700 final / 500 predicted, 21px): scores in game rows and ladder points (bold `ink`); record figures at 22px, recap-table scores at 19px; ladder positions and margin scores at 17px semibold, final scores on tip buttons at 17px `ink-3`, round-by-round figures at 16px.
-- **Body** (400 to 600, 15px): team names in rows, menu items, the Model's record heading; 16px with relaxed leading for empty-state and recap prose, capped at 34ch. Read-mode prose (`/about`, and `/model`'s "How it was tested" at 15px) is relaxed at a 60ch measure.
+- **Body** (400 to 600, 15px): team names in rows, menu items, the Model's record heading, auto-tip option labels; 16px with relaxed leading for empty-state and recap prose, capped at 34ch. Read-mode prose (`/about`, and `/model`'s "How it was tested" at 15px) is relaxed at a 60ch measure. News headlines are 16px semibold `ink` at snug leading. Form labels and fieldset legends are 13px semibold `ink-2`, help lines 13px `ink-3`; text fields are 16px so phones never zoom.
 - **Meta** (500, 13px): date ranges, board meta line, kickoff times, standing line.
 - **Caption** (500, 12px): "Model's score", "win chance", record labels, row footnotes.
 - **Data page figures:** the stat row's figures at 30px bold display (the "/213" at 16px semibold `ink-3`); the hero money figure ("+$240.50") at 40px bold display; the figures row at 22px bold `ink` for the highlighted Opening and 19px semibold `ink-2` for the rest, each after a 12px semibold `ink-3` team code.
 - **Chart text:** chart titles 16px semibold `ink` in sentence case with a 13px `ink-3` note below; y-axis ticks 12px score face `ink-3`; x labels 11px `ink-3`; end values 13px semibold score face `ink-2`; legends 12px `ink-2`; tooltip values 15px semibold score face `ink`. On Elo, end labels carry the team code with the rating ("PEN 1650") and the team view's swing numbers are 12px semibold score face `ink-2`.
-- **Label** (700, 11px, 0.06em, uppercase): status words and tags only: "Your tip", the lime "You" beside your ladder name, "LIVE", "FT", "Full time", "Postponed", the amber "In" team-list marker, the tab-bar labels (600, no uppercase), the "personal project" wordmark tag (10px).
+- **Label** (700, 11px, 0.06em, uppercase): status words and tags only: "Your tip", the lime "You" beside your name on the ladder and the admin tipper list, "LIVE", "FT", "Full time", "Postponed", the amber "In" team-list marker, pipeline run status (OK, FAILED, RUNNING, at 12px), the tab-bar labels (600, no uppercase), the "personal project" wordmark tag (10px).
 
 ### Named Rules
 **The Scoreboard Figures Rule.** Every number is tabular. Scores, percentages, positions and counts use the score face (`font-score`: display family with `tnum` and `lnum`); body text inherits `tabular-nums` from the page. A data page's hero figure ("+$240.50") is in the display face too, not a sans hero.
@@ -361,11 +414,13 @@ One centred column, `max-width: 34rem` (544px), 16px side padding, on every page
 
 Phones get a fixed bottom tab bar (64px plus safe-area inset), so content carries 112px bottom padding (48px from 768px up, where the tab bar is replaced by the top bar). The sticky top header is 56px.
 
-Vertical rhythm on the 4px scale: page heading 16px top / 12px bottom; 12px between strip and board; game rows 12px vertical padding with 4px between team lines; 32px before the Model's record strip; 48px before the footer. Rows bleed 12px into the gutter (`-mx-3 px-3`) so hover tints reach past the text edge while text stays aligned to the column.
+Vertical rhythm on the 4px scale: page heading 16px top / 12px bottom; 12px between strip and board; game rows 12px vertical padding with 4px between team lines; 32px before the Model's record strip; 48px before the footer. Rows bleed 12px into the gutter (`-mx-3 px-3`) so hover tints reach past the text edge while text stays aligned to the column. Text actions inside a row ("Cancel", "Remove", a disclosure summary) bleed the same way: a 44px hit area from negative margins (`-my-2 -mr-2 px-2`, `min-height: 44px`), so the target is thumb-sized while the row keeps its height and its right edge.
 
 Game rows are a two-column grid: content left (two team lines, then the pitch bar with its label), a fixed 64px status column right, top-aligned.
 
 Paired columns (team lists, head to head, tip buttons) put home on the left and away on the right, mirrored: away names right-aligned with jersey numbers or badges on the outer edge.
+
+Forms (join, account) run in the same column with 28px between field groups and full-width 48px fields and submit pills. The favourite-team picker is a grid of 4 per row on phones and 6 from 640px, on a 6px gap.
 
 Tip rows are two equal half-width buttons on an 8px gap. Tables (ladder, round-by-round grid) run the full column with 8px inner padding at the edges; a grid wider than the column scrolls sideways under a sticky name column.
 
@@ -379,7 +434,7 @@ Flat and tonal. Depth comes from stepping the ground: `ground` to `raised` to `r
 - **Lamp glow** (`box-shadow: 0 0 10px 1px` lime at 55%, transient): the perfect-round lamp chase; never at rest.
 
 ### Named Rules
-**The One Board Rule.** Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. The Elo, Model and How the Model works pages have no board. Never build a grid or stack of cards.
+**The One Board Rule.** Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. The Elo, Model and How the Model works pages have no board, and nor do join, sign-in, account, admin, news or not-found: their note, confirm and invite panels are unbordered 8px-rounded tints, never boards. Never build a grid or stack of cards.
 
 ## Shapes
 
@@ -393,11 +448,16 @@ Pill-shaped, bold, short labels with an arrow or icon.
 - **Primary:** `lime` with `lime-ink` text, 15px bold, 12px by 20px, optional 16px icon at stroke 2.5. Hover to `lime-hover`.
 - **On lime:** inside a lime surface the action inverts to `lime-ink` with `lime` text ("Tip 4 →"); the arrow nudges 2px right on hover.
 - **Quiet link:** sentence-case `ink-2` or `ink` text, semibold, underlined in `line`, trailing chevron; hover to `ink`.
+- **Google:** a full-width 48px `ink` pill with 15px semibold `ground` text, "Continue with Google", led by the 20px four-colour Google mark, following Google's own sign-in convention; it sits above an "or" rule and the email field. The Google mark's colours appear nowhere else.
+- **Ghost:** a pill with an inset 1px `line` ring, 13px semibold `ink-2` (hover `ink`), at least 44px tall, 14px side padding, optional 16px icon: "Copy link", "Share", "Keep my account".
+- **Danger:** a `miss` pill with 13 to 14px bold `ground` text, only as the destructive half of a two-step confirm.
+- **Text action:** 13 to 15px semibold, underlined in `line` ("Sign out", "Delete my account", "Cancel", "Remove"), `ink-2` (`ink-3` for Remove) with hover one step brighter; in rows it keeps a 44px hit area (see Layout).
 - **Round stepper:** a 40px circle with an inset `line` ring and a 20px chevron in `ink-2` (hover `ink` text, `ink-3` ring), prev and next side by side at the right of the round heading; at either end the missing step stays in place at `ink-3` 40% and is not a link.
 - **Focus:** 2px `lime` outline at 2px offset, 4px radius, on every focusable element.
+- **Never disabled:** a submit pill stays live; an incomplete form says what's missing when it is submitted ("Fill in all three to join: a name, a team and an auto-tip.").
 
 ### Chips
-- **Style:** pill, 13px semibold, 6px by 12px; unselected is `ink-2` text with an inset `line` ring (hover `ink` text, `ink-3` ring); selected is solid `ink` with `ground` text. Used for filters and state switches (the sample-data note).
+- **Style:** pill, 13px semibold, 6px by 12px; unselected is `ink-2` text with an inset `line` ring (hover `ink` text, `ink-3` ring); selected is solid `ink` with `ground` text. Used for filters and state switches (the sample-data note, the news flair row). In a filter row a chip may carry a count after its label in regular weight at 70% opacity ("All 24"); the row scrolls sideways past the column edge (`-mx-4 px-4`) rather than wrapping, and link chips mark the current one with `aria-current`.
 
 ### Sample-data note
 A dashed `line` border, 12px radius, 16px padding, 40px above it; 13px `ink-3` copy led by a semibold `ink-2` "Sample data." Optional state chips sit below it. It closes every page that runs on sample data and is never a board. The home, tips and ladder pages share one sample NRL week (tipping open, in progress, recap) through these chips and the home sample bar, so the same state shows the same numbers on every page.
@@ -407,12 +467,19 @@ A dashed `line` border, 12px radius, 16px padding, 40px above it; 13px `ink-3` c
 - **Tipping strip:** in the build, a bordered `raised` container with two bands: the loud top band (lime fill while tips are missing, plain once all are in with a lime check) and a `line-soft`-divided standing line.
 - **Record strip:** no fill; `line-soft` hairlines top and bottom, 16px vertical padding, three-up stat grid, closed by a quiet link ("The Model's season so far") to `/model`.
 - **Recap table rows:** `line-soft` dividers; your row `lime-wash`, the Model's row `raised-2` (the full ladder is under Ladder Table). The first column is this round's placing among the human tippers in the score face (`ink-3`, "=" prefix for a tie, e.g. "=2nd"); the Model is not ranked and shows the sm MDL badge instead. On the round page the panel drops its own heading (the round heading with steppers sits above it); the next-round line under it is optional.
+- **Featured game:** the board, the "Margin game" meta label and the margin stepper follow the round's featured game. It is drawn at random when the round's predictions publish, from the games that involve neither team in the previous round's featured game (from all the round's games if none qualify), stored with the round and never changed (PLAN_WEB.md §3.5). Copy says it was drawn, never chosen or picked.
+- **Note panel:** an unbordered `raised` tint, 8px radius, 16px padding: a 16px semibold `ink` line over 14px relaxed `ink-2` copy. Used for "Check your email" (led by a mail icon, with a dashed `line` "Sample only: open the link" button inside while on sample data) and "No account for that one."
+
+### Inputs / Fields
+- **Text field:** 48px tall, `raised` fill, 8px radius, inset 1px `line` ring, 16px `ink` text, `ink-3` placeholder, 12px side padding; focus swaps the ring for a 2px inset `lime` ring. A 13px semibold `ink-2` label sits 6px above.
+- **Help that becomes the error:** a field has one 13px line under it, `ink-3` help ("What everyone sees on the ladder and in the recap.") that turns `miss` and states the problem in its place, tied by `aria-describedby`. Form-level errors are 14px `miss` with `role="alert"`; the email form is `noValidate`, so the page, not the browser's bubble, says what's wrong.
+- **Choices:** one-of-many choices are native radios inside their labels, so arrow keys and screen readers work as usual (Team Picker, Auto-tip Options).
 
 ### Navigation
 - **Phone:** fixed bottom tab bar (Round, Tips, Ladder, Elo, More), `raised` at 95% with blur and a `line` top border. 22px Lucide icons over 11px semibold labels; inactive `ink-3`, active `ink` with a lime icon and a 3px by 32px lime mark at the top edge.
 - **Desktop (768px+):** the same items in the sticky top bar, 14px semibold, active marked by a 2px lime underline on the header's bottom edge.
 - **In-page tabs:** link tabs (they work without JavaScript) on a `line` bottom rule, 14px semibold; active `ink` with a 2px lime underline, inactive `ink-3` (hover `ink-2`). Used on the match page for "Team lists" and "Head to head", and on Model vs market for "This round" and "Season".
-- **More:** opens a `raised-2` menu with the menu drop shadow listing Model vs market, News, The Model (`/model`) and How the Model works (`/about`); closes on outside click, Escape or navigation.
+- **More:** opens a `raised-2` menu with the menu drop shadow listing Model vs market, News, The Model (`/model`), How the Model works (`/about`), Your account and, only for whoever runs the comp, Admin; closes on outside click, Escape or navigation.
 - **Wordmark:** "rugbyleague-tipper" in the display face at 23px with the hyphen in lime, plus a bordered 10px "personal project" tag.
 
 ### Team Badge
@@ -457,14 +524,22 @@ Full-column table under a `line` header rule (12px semibold `ink-3` "Tipper", "P
 Rounds across, tippers down in ladder order, the same row tints as the ladder. Names in a sticky left column (14px medium; `ink` for you and the Model, `ink-2` otherwise); round figures in the score face at 16px, the round's best among the tippers bold `ink`, the rest `ink-3` (the Model never takes the bold). "+" marks a perfect-round bonus and "*" a game filled by an auto-tip, both 12px, explained in a 13px `ink-3` line under the heading. A sticky cell on a washed row paints `ground` with the same wash layered over it, so there is no seam when the grid scrolls.
 
 ### Trash-talk Tags
-Banter belongs on the ladder only. Each tipper gets at most one tag, in 12px `ink-3` under their name, never lime, never a chip. Walking the ladder from the top, each tipper takes the most specific tag that applies and hasn't been used higher up, in this order: Wooden spoon, Top dog, Won round N, Wooden spoon watch, Climbing, Sliding, Clear of the Model, Behind a spreadsheet. The Model gets none.
+Banter lives in four places only (DESIGN_BRIEF.md): the ladder, the round recap, the home tipping strip (a short jab when you're behind the Model), and empty and error states ("Nothing doing.", "Reddit's gone quiet.", "Knocked on."). Prediction, odds, Elo, Model, about, admin and account copy stays straight. On the ladder, each tipper gets at most one tag, in 12px `ink-3` under their name, never lime, never a chip. Walking the ladder from the top, each tipper takes the most specific tag that applies and hasn't been used higher up, in this order: Wooden spoon, Top dog, Won round N, Wooden spoon watch, Climbing, Sliding, Clear of the Model, Behind a spreadsheet. The Model gets none.
 
 ### Named Rules
 **The Unranked Model Rule.** The Model is the line everyone measures against, never a competitor. It takes no position ("–"), never wins a round's bold, gets no tag, and sits among the tippers sorted by points so you can see who is above and below it. "Off the lead" and "top of the ladder" are measured against the leading tipper, on the ladder and on the home strip alike.
 
 **The One Tag Rule.** At most one trash-talk tag per tipper and no tag twice on the same ladder; the more specific tag wins.
 
+**The Four Places Rule.** Banter appears only on the ladder, the round recap, the home tipping strip, and empty and error states. Everywhere else the voice is plain.
+
 **The Coin-Flip Rule.** An exact 50-50 is no tip. The tallies on `/odds` and `/model` count a 50% price or chance as not a right tip, as the project's reports count it, and a 50% bookies' price never makes a call "against the bookies".
+
+**The Focus Follows Rule.** When a panel swaps in place (email sent, signed in, a confirm opening or closing, a new invite, "Gone."), focus moves to the new heading or the safest new control, so nobody is dropped back at the top of the page.
+
+**The Explain on Submit Rule.** No disabled pills. A submit stays live, and an incomplete or wrong form says what's missing in plain words when it is submitted.
+
+**The Sydney Clock Rule.** The comp's times (invites, joined dates, the next draw, run logs, news) are read in Sydney through `sydney()` in `web/lib/time.ts`, in one of its formats: "Fri 8 May" (`day`), "Fri 6:00pm" (`dayTime`), "Tue 12 May 5:15pm" (`dayDateTime`); lower-case am/pm, no comma.
 
 **The Printed Figures Rule.** A figure derived from figures on screen is computed from them as printed: the Elo Week and Season columns are differences of the rounded ratings, so every column equals what the reader can check.
 
@@ -522,6 +597,37 @@ Full-width `line-soft`-ruled rows of 15px semibold `ink` text with a trailing `i
 ### Disclosure
 A native details/summary ruled with `line-soft` above and below: a 15px semibold `ink` summary row with the marker hidden and a 20px `ink-3` chevron that rotates 90° when open. Inside, 60ch 15px `ink-2` prose and a metrics table (12px `ink-3` header on a `line` rule, `line-soft` rows, figures in the 15px score face `ink-2`, the main row's name semibold `ink`), scrolling sideways below 22rem.
 
+### Join, Sign-in and Account
+- **Join:** the invite headline in 36px display ("Sully's invited you to the comp."), a 15px `ink-2` line, then the Google pill, an "or" rule (12px `ink-3` between `line-soft` hairlines), the email field and a full-width lime "Email me a link"; a 13px `ink-3` privacy line closes it. Once signed in, a lime check and "Signed in as …. Three quick things:" lead the profile fields and a lime "Join the comp →". A bad invite (used, expired, unknown) is a 40px display title over one 16px line with a "Sign in" link.
+- **Sign-in:** the 36px "Sign in" title over the same panel; "No account for that one." appears as a note panel above it.
+- **Account:** the 26px title led by your favourite team's sm badge, a 13px `ink-3` "Signed in with … as …" line, the profile fields, and a lime "Save changes" pill with an `aria-live` "Saved" (check, 14px semibold `ink-3`) or a coral failure beside it. Then, each under a `line-soft` rule, a "Sign out" text action and "Delete your account" (16px semibold heading, 14px `ink-3` consequence line, a "Delete my account" text action opening the two-step confirm). After deletion, a 40px "Gone." with one line and a link back to the round.
+- **Sign-in plumbing:** an `AuthStore` (`web/lib/auth.ts`) with `startSignIn` (Google or email link) and `completeSignIn` on `/auth/callback`, which shows "Signing you in…" and replaces itself with the return page.
+
+### Team Picker
+The favourite-team fieldset: 17 teams in alphabetical order, a grid of 4 per row on phones and 6 from 640px, 6px gaps. Each is a label wrapping a visually hidden native radio: an md badge over an 11px semibold name (truncated), 8px radius, 8px by 4px padding. Unchosen: `ink-3` text with an inset 1px `line-soft` ring (hover `ink-2`). Chosen: `lime-wash` fill, `ink` text and a 2px inset `lime` ring, as your selected tip is. Keyboard focus draws the lime focus outline on the label.
+
+### Auto-tip Options
+"If you forget to tip a game": a 13px `ink-3` note on when it can change (open; joining mid-season, when it is picked once for the season; locked), then native radios in rows between `line-soft` rules, each a 15px semibold label (`ink` when chosen, `ink-2` otherwise) over a 13px `ink-3` explanation, 12px vertical padding, 6px radius. The chosen row is `lime-wash`. Locked, the fieldset is disabled, unchosen rows drop to 60% and the chosen row carries a 16px `ink-3` lock icon at its right.
+
+### Two-step Confirm
+Anything that deletes starts as a quiet text action and opens an inline panel in its place: `miss-wash` fill, 1px inset `miss` ring at 50%, 8px radius, a 14 to 15px semibold `ink` question naming what goes ("Delete everything for Sully?", "Remove Dazza and all their tips from the comp?"), then the coral danger pill and a ghost pill that keeps it. Focus lands on the keep button when the panel opens and returns to the text action if kept; after a removal it moves to the section's summary line, with a polite announcement.
+
+### Admin Sections
+`/tipping/admin`, behind an admin gate (anyone else sees a 36px "This page is for whoever runs the comp." and a link back). Under the 26px title and a meta line ("Round 10 · tipping open · times in Sydney"), four sections 36px apart, each a 24px section head on a `line` bottom rule with an optional 13px `ink-3` meta at its right ("Round 10", "Last 4 runs"). Invites, Tippers and Pipeline then open with a one-sentence plain summary worked out from the data (14px `ink-2`, or 13px `ink-3` beside the Create invite pill): who still has to tip, how many invites are waiting, which runs failed and whether a later run covered them. Rows are `line-soft`-divided between `line-soft` rules, 10px vertical padding, 14px text.
+- **Invites:** a lime "+ Create invite" pill; rows of the code in the 16px score face `ink`, an `ink-3` status ("Waiting · expires Sun 10 May", "Used by Tom", "Expired Fri 24 Oct") and a Cancel text action on waiting invites. A new invite opens a `lime-wash` panel (8px radius, 12px by 16px) with a 13px semibold line, the full link in the 17px score face, and Copy link and Share ghost pills; focus lands on Copy, which turns to "Copied" with a check.
+- **Tippers:** sm favourite badge, 14px semibold `ink` name (with the lime "You" label on yours) over a 12px `ink-3` "Joined Tue 24 Feb", then "n to tip" in 13px semibold `ink` or "All tipped" in `ink-3`, and a Remove text action with the two-step confirm. Your own row has no Remove.
+- **Margin game:** two rows, each led by a 15px semibold score-face round label in `ink-3` (R10, R11). This round's featured game as sm badges either side of the fixture, with a 13px `ink-3` line on how it was drawn; next round's either drawn or "Drawn at random when its predictions publish, Tue 12 May 5:15pm", the count in the draw, the games left out and why, and a disclosure ("Show the 6 games in the draw") listing the eligible games.
+- **Pipeline:** one row per run: job and round (semibold `ink` "Predictions", `ink-3` "· Round 10"), the status at the right as a 12px bold uppercase label (OK `ink-3`, FAILED `miss`, RUNNING `live`), a 13px `ink-2` note, and a 12px `ink-3` line of Sydney time · model version · commit.
+
+### News List
+`/news`, read-mode in the column: the 26px title over a 13px `ink-3` meta line ("From r/nrl · fetched Tue 12 May 5:15pm", plus "· flairs guessed" on the sample), the flair chip row, then `line-soft`-divided rows. Each row is one link opening Reddit in a new tab (a screen-reader note says so): a 16px semibold `ink` headline that underlines on hover, a 12px `ink-3` meta line (flair · Sydney time · linked site), and a 16px `ink-3` external-link icon at the right. An unknown flair gets a ruled 15px `ink-2` line ("No “Trades” posts in this feed.") with a "Show all" link. The sample-data note appears only when the source is the sample.
+
+### Empty and Error States
+A 52px display title, one 16px relaxed `ink-2` line capped at 34ch, then one way on: a lime pill ("Try again" with a retry icon) or, on not-found, link rows. These are one of the four places banter is allowed ("Nothing doing.", "Reddit's gone quiet.", "Knocked on.").
+
+### Not Found
+"Knocked on." at 52px, one line on why, then three link rows capped at 24rem (This round, Your tips, The ladder) between `line-soft` rules: 15px semibold `ink` with an `ink-3` chevron that nudges 2px right on hover.
+
 ### Odds copy
 No disclaimer or gambling message. The bookmaker is named in plain text and the source credited once at the page foot (12px `ink-3`: aussportsbetting.com historical odds, BlueBet prices, margin removed). The no-odds Model is explained once, in a single line under the page heading.
 
@@ -552,6 +658,11 @@ Quiet on prediction surfaces (a small `ink-2` or `ink-3` tick or cross beside "M
 - **Do** count an exact 50-50 as no tip in every tally, and derive shown differences from the rounded figures shown.
 - **Do** write minus as U+2212 and show cents only when there are cents.
 - **Do** widen data pages on desktop to the wide container, keeping prose at 60ch and single charts and stat rows at 40rem.
+- **Do** give every text action in a row a 44px hit area with negative margins (`-my-2 -mr-2 px-2`), so the row keeps its look.
+- **Do** move focus to the new heading or control whenever a panel swaps in place.
+- **Do** make deletion two steps: a quiet text action, then a coral confirm panel with focus on the keep button.
+- **Do** show the comp's times in Sydney through `sydney()`.
+- **Do** describe the featured game as drawn at random, leaving out the previous round's featured teams.
 
 ### Don't:
 - **Don't** use lime for labels, categories, headings or decoration; it is only for you, actions and right calls.
@@ -565,4 +676,6 @@ Quiet on prediction surfaces (a small `ink-2` or `ink-3` tick or cross beside "M
 - **Don't** set text in a series colour, or use lime, amber or coral as a series colour.
 - **Don't** add a disclaimer, gambling message or bookmaker branding to odds pages; name the bookmaker in plain text and credit the source.
 - **Don't** give the Model a ladder position, a round's bold, or a trash-talk tag.
-- **Don't** give a tipper more than one tag, repeat a tag on one ladder, or put banter anywhere but the ladder.
+- **Don't** give a tipper more than one tag or repeat a tag on one ladder, and don't put banter anywhere but the ladder, the round recap, the home tipping strip, and empty and error states.
+- **Don't** disable a submit pill; explain what's missing on submit.
+- **Don't** use coral for anything but wrong, failed or destructive.

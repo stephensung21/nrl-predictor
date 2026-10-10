@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-10T21:00:00.000Z",
+  "generatedAt": "2026-10-10T23:30:00.000Z",
   "title": "Design System: rugbyleague-tipper",
   "extensions": {
     "colorMeta": {
@@ -434,7 +434,8 @@
         "crowd",
         "ladder"
       ],
-      "note": "Copy that states a rule ('Leave it and 12 applies.') reads DEFAULT_MARGIN; never hard-code the number."
+      "note": "Copy that states a rule ('Leave it and 12 applies.') reads DEFAULT_MARGIN; never hard-code the number.",
+      "featuredGame": "Drawn at random when the round's predictions publish, from games involving neither team in the previous round's featured game (all games if none qualify); stored with the round and never changed (PLAN_WEB.md 3.5, eligibleForDraw in web/lib/rules.ts). Copy says drawn, never chosen."
     },
     "chartSeries": {
       "source": "web/lib/odds.ts (SERIES)",
@@ -472,6 +473,28 @@
     "dataTruth": {
       "coinFlip": "An exact 50-50 price or chance is no tip: the /odds and /model tallies count it as not right (as the reports count it), and a 50% bookies' price never marks a call against the bookies (web/lib/odds.ts, web/lib/model-record.ts).",
       "printedFigures": "Derived figures come from the rounded figures shown: Elo Week and Season changes are differences of rounded ratings (web/lib/elo.ts, web/app/elo/page.tsx)."
+    },
+    "timeZone": {
+      "source": "web/lib/time.ts sydney()",
+      "zone": "Australia/Sydney",
+      "formats": {
+        "day": "Fri 8 May",
+        "dayTime": "Fri 6:00pm",
+        "dayDateTime": "Tue 12 May 5:15pm"
+      },
+      "note": "Lower-case am/pm, no comma."
+    },
+    "hitArea": {
+      "textAction": "44px min-height; in rows via negative margins -my-2 -mr-2 px-2 so the row keeps its height and edge."
+    },
+    "voice": {
+      "banterPlaces": [
+        "ladder",
+        "round recap",
+        "home tipping strip",
+        "empty and error states"
+      ],
+      "source": "DESIGN_BRIEF.md Personality"
     }
   },
   "components": [
@@ -614,6 +637,54 @@
       "description": "Read-mode details/summary on line-soft rules; the ink-3 chevron rotates 90 degrees when open.",
       "html": "<details class=\"ds-dc\"><summary>The technical details<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></summary><p>Each version is an ensemble: the average of a regularised linear model and a LightGBM model.</p></details>",
       "css": ".ds-dc{width:360px;border-top:1px solid var(--color-line-soft);border-bottom:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-dc summary{display:flex;align-items:center;justify-content:space-between;padding:14px 0;list-style:none;cursor:pointer;font-size:15px;font-weight:600;color:var(--color-ink)}.ds-dc summary::-webkit-details-marker{display:none}.ds-dc summary:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}.ds-dc svg{color:var(--color-ink-3);transition:transform .15s}.ds-dc[open] svg{transform:rotate(90deg)}.ds-dc p{margin:0 0 20px;max-width:60ch;font-size:15px;line-height:1.625;color:var(--color-ink-2)}"
+    },
+    {
+      "name": "Google Button",
+      "kind": "button",
+      "refersTo": "button-google",
+      "description": "Full-width ink pill with the Google mark, above the email field on join and sign-in.",
+      "html": "<button class=\"ds-btn-google\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"#4285F4\" d=\"M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.5 5.5 0 0 1-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.7z\"/><path fill=\"#34A853\" d=\"M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z\"/><path fill=\"#FBBC05\" d=\"M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.3a12 12 0 0 0 0 10.8l4-3.1z\"/><path fill=\"#EA4335\" d=\"M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z\"/></svg>Continue with Google</button>",
+      "css": ".ds-btn-google{display:flex;width:100%;height:48px;align-items:center;justify-content:center;gap:10px;border:0;border-radius:9999px;background:var(--color-ink);color:var(--color-ground);font:600 15px/1 var(--font-sans);cursor:pointer}.ds-btn-google:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "48px raised field with a label above and one help line that becomes the error.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-name\">Your name on the ladder</label><input id=\"ds-name\" placeholder=\"e.g. Sully\" aria-describedby=\"ds-name-help\"><p id=\"ds-name-help\">What everyone sees on the ladder and in the recap.</p></div>",
+      "css": ".ds-field label{font:600 13px/1.25 var(--font-sans);color:var(--color-ink-2)}.ds-field input{display:block;margin-top:6px;width:100%;height:48px;padding:0 12px;border:0;border-radius:8px;background:var(--color-raised);color:var(--color-ink);font:400 16px/1 var(--font-sans);box-shadow:inset 0 0 0 1px var(--color-line);outline:none}.ds-field input::placeholder{color:var(--color-ink-3)}.ds-field input:focus{box-shadow:inset 0 0 0 2px var(--color-lime)}.ds-field p{margin:6px 0 0;font:400 13px/1.3 var(--font-sans);color:var(--color-ink-3)}.ds-field input[aria-invalid=true]+p{color:var(--color-miss)}"
+    },
+    {
+      "name": "Team Picker",
+      "kind": "custom",
+      "refersTo": "team-pick",
+      "description": "Native radios in labels, 4 per row on phones (6 from 640px); chosen is lime-wash with a 2px lime ring.",
+      "html": "<fieldset class=\"ds-teams\"><legend>Favourite team</legend><div><label><input type=\"radio\" name=\"t\"><span class=\"ds-b\" style=\"background:#7a1e3d;color:#f2c64a\">BRI</span>Broncos</label><label class=\"on\"><input type=\"radio\" name=\"t\" checked><span class=\"ds-b\" style=\"background:#6f163d;color:#fff\">MAN</span>Sea Eagles</label><label><input type=\"radio\" name=\"t\"><span class=\"ds-b\" style=\"background:#2a3f8f;color:#fff\">SYD</span>Roosters</label><label><input type=\"radio\" name=\"t\"><span class=\"ds-b\" style=\"background:#5a2d91;color:#f2c64a\">MEL</span>Storm</label></div></fieldset>",
+      "css": ".ds-teams{border:0;padding:0;margin:0}.ds-teams legend{font:600 13px/1.25 var(--font-sans);color:var(--color-ink-2)}.ds-teams div{margin-top:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.ds-teams label{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:8px;font:600 11px/1.2 var(--font-sans);color:var(--color-ink-3);box-shadow:inset 0 0 0 1px var(--color-line-soft);cursor:pointer}.ds-teams label:hover{color:var(--color-ink-2)}.ds-teams label.on{background:var(--color-lime-wash);color:var(--color-ink);box-shadow:inset 0 0 0 2px var(--color-lime)}.ds-teams label:has(:focus-visible){outline:2px solid var(--color-lime);outline-offset:2px}.ds-teams input{position:absolute;opacity:0;width:1px;height:1px}.ds-b{display:grid;place-items:center;width:44px;height:28px;border-radius:5px;font:700 15px/1 var(--font-display)}"
+    },
+    {
+      "name": "Two-step Confirm",
+      "kind": "custom",
+      "refersTo": "confirm-panel",
+      "description": "Coral-wash panel opened from a quiet text action: a danger pill and a ghost pill that keeps it.",
+      "html": "<div class=\"ds-confirm\"><p>Delete everything for Sully?</p><div><button class=\"ds-danger\">Yes, delete it all</button><button class=\"ds-ghost\">Keep my account</button></div></div>",
+      "css": ".ds-confirm{border-radius:8px;padding:12px 16px;background:var(--color-miss-wash);box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--color-miss) 50%,transparent)}.ds-confirm p{margin:0;font:600 15px/1.3 var(--font-sans);color:var(--color-ink)}.ds-confirm div{margin-top:12px;display:flex;flex-wrap:wrap;gap:12px}.ds-danger{border:0;border-radius:9999px;padding:10px 16px;background:var(--color-miss);color:var(--color-ground);font:700 14px/1 var(--font-sans);cursor:pointer}.ds-ghost{border:0;border-radius:9999px;padding:10px 16px;background:none;color:var(--color-ink-2);font:600 14px/1 var(--font-sans);box-shadow:inset 0 0 0 1px var(--color-line);cursor:pointer}.ds-ghost:hover{color:var(--color-ink)}.ds-danger:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}"
+    },
+    {
+      "name": "Admin Row with Text Action",
+      "kind": "custom",
+      "refersTo": "text-action",
+      "description": "Hairline row with a right-edge text action whose 44px hit area comes from negative margins.",
+      "html": "<ul class=\"ds-arows\"><li><span class=\"ds-code\">MATES26</span><span class=\"ds-st\">Waiting · expires Sun 10 May</span><button class=\"ds-act\">Cancel</button></li><li><span class=\"ds-code\">USED26</span><span class=\"ds-st\">Used by Tom</span></li></ul>",
+      "css": ".ds-arows{list-style:none;margin:0;padding:0;border-top:1px solid var(--color-line-soft);border-bottom:1px solid var(--color-line-soft)}.ds-arows li{display:flex;align-items:center;gap:12px;padding:10px 0;font:400 14px/1.3 var(--font-sans)}.ds-arows li+li{border-top:1px solid var(--color-line-soft)}.ds-code{width:80px;flex-shrink:0;font:400 16px/1 var(--font-display);font-variant-numeric:tabular-nums lining-nums;color:var(--color-ink)}.ds-st{flex:1;min-width:0;color:var(--color-ink-3)}.ds-act{margin:-8px -8px -8px 0;min-height:44px;padding:0 8px;border:0;background:none;color:var(--color-ink-2);font:600 13px/1 var(--font-sans);text-decoration:underline;text-decoration-color:var(--color-line);cursor:pointer}.ds-act:hover{color:var(--color-ink)}.ds-act:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}"
+    },
+    {
+      "name": "News Row",
+      "kind": "custom",
+      "refersTo": "news-row",
+      "description": "Whole-row link to Reddit: 16px semibold headline, 12px ink-3 meta, external-link icon.",
+      "html": "<a class=\"ds-news\" href=\"#\"><span><span class=\"ds-h\">Hughes ruled out for a month with a hamstring</span><span class=\"ds-m\">Team news · Tue 6:12pm · smh.com.au</span></span><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 3h6v6\"/><path d=\"M10 14 21 3\"/><path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/></svg></a>",
+      "css": ".ds-news{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--color-line-soft);text-decoration:none;color:var(--color-ink-3)}.ds-news>span{flex:1;min-width:0}.ds-h{display:block;font:600 16px/1.375 var(--font-sans);color:var(--color-ink)}.ds-news:hover .ds-h{text-decoration:underline}.ds-m{display:block;margin-top:4px;font:400 12px/1.3 var(--font-sans);color:var(--color-ink-3)}.ds-news svg{margin-top:4px;flex-shrink:0}.ds-news:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}"
     }
   ],
   "narrative": {
@@ -686,7 +757,7 @@
       },
       {
         "name": "The One Board Rule",
-        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. The Elo, Model and How the Model works pages have no board. Never build a grid or stack of cards.",
+        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. The Elo, Model and How the Model works pages have no board, and nor do join, sign-in, account, admin, news or not-found: their note, confirm and invite panels are unbordered 8px-rounded tints, never boards. Never build a grid or stack of cards.",
         "section": "elevation"
       },
       {
@@ -700,8 +771,28 @@
         "section": "components"
       },
       {
+        "name": "The Four Places Rule",
+        "body": "Banter appears only on the ladder, the round recap, the home tipping strip, and empty and error states. Everywhere else the voice is plain.",
+        "section": "components"
+      },
+      {
         "name": "The Coin-Flip Rule",
         "body": "An exact 50-50 is no tip. The tallies on `/odds` and `/model` count a 50% price or chance as not a right tip, as the project's reports count it, and a 50% bookies' price never makes a call \"against the bookies\".",
+        "section": "components"
+      },
+      {
+        "name": "The Focus Follows Rule",
+        "body": "When a panel swaps in place (email sent, signed in, a confirm opening or closing, a new invite, \"Gone.\"), focus moves to the new heading or the safest new control, so nobody is dropped back at the top of the page.",
+        "section": "components"
+      },
+      {
+        "name": "The Explain on Submit Rule",
+        "body": "No disabled pills. A submit stays live, and an incomplete or wrong form says what's missing in plain words when it is submitted.",
+        "section": "components"
+      },
+      {
+        "name": "The Sydney Clock Rule",
+        "body": "The comp's times (invites, joined dates, the next draw, run logs, news) are read in Sydney through `sydney()` in `web/lib/time.ts`, in one of its formats: \"Fri 8 May\" (`day`), \"Fri 6:00pm\" (`dayTime`), \"Tue 12 May 5:15pm\" (`dayDateTime`); lower-case am/pm, no comma.",
         "section": "components"
       },
       {
@@ -731,7 +822,12 @@
       "Do keep each entity's series colour on every chart (Model blue, bookies aqua, Elo orange), at most three series per all-pairs chart; on `/elo`, draw teams in their own clearance-checked colours, at most three lit.",
       "Do count an exact 50-50 as no tip in every tally, and derive shown differences from the rounded figures shown.",
       "Do write minus as U+2212 and show cents only when there are cents.",
-      "Do widen data pages on desktop to the wide container, keeping prose at 60ch and single charts and stat rows at 40rem."
+      "Do widen data pages on desktop to the wide container, keeping prose at 60ch and single charts and stat rows at 40rem.",
+      "Do give every text action in a row a 44px hit area with negative margins (`-my-2 -mr-2 px-2`), so the row keeps its look.",
+      "Do move focus to the new heading or control whenever a panel swaps in place.",
+      "Do make deletion two steps: a quiet text action, then a coral confirm panel with focus on the keep button.",
+      "Do show the comp's times in Sydney through `sydney()`.",
+      "Do describe the featured game as drawn at random, leaving out the previous round's featured teams."
     ],
     "donts": [
       "Don't use lime for labels, categories, headings or decoration; it is only for you, actions and right calls.",
@@ -745,7 +841,9 @@
       "Don't set text in a series colour, or use lime, amber or coral as a series colour.",
       "Don't add a disclaimer, gambling message or bookmaker branding to odds pages; name the bookmaker in plain text and credit the source.",
       "Don't give the Model a ladder position, a round's bold, or a trash-talk tag.",
-      "Don't give a tipper more than one tag, repeat a tag on one ladder, or put banter anywhere but the ladder."
+      "Don't give a tipper more than one tag or repeat a tag on one ladder, and don't put banter anywhere but the ladder, the round recap, the home tipping strip, and empty and error states.",
+      "Don't disable a submit pill; explain what's missing on submit.",
+      "Don't use coral for anything but wrong, failed or destructive."
     ]
   }
 }
