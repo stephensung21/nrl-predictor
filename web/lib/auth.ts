@@ -15,6 +15,7 @@
 // - Google writes name and avatar into auth metadata: strip them, since we keep only
 //   what PRODUCT.md lists.
 
+import { inviteStatus, readInvites, redeemInvite, SAMPLE_CLOCK } from "./invites";
 import type { AutoTip } from "./rules";
 import type { TeamName } from "./teams";
 
@@ -50,6 +51,8 @@ export interface AuthStore {
   saveProfile(p: Profile, inviteCode?: string): Promise<void>;
   /** Deletes the account and every tip (PRODUCT.md). */
   deleteAccount(): Promise<void>;
+  /** The admin flag on `profiles`: shows the admin page and its menu item. */
+  isAdmin(): Promise<boolean>;
 }
 
 /** Display names are what the ladder shows: short, and unique in the comp in production. */
@@ -64,12 +67,6 @@ export const emailProblem = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? null : "That doesn't look like an email address.";
 
 // ---------- Sample: everything lives in this browser ----------
-
-const SAMPLE_INVITES: Record<string, Invite> = {
-  MATES26: { status: "valid", code: "MATES26", invitedBy: "Sully" },
-  USED26: { status: "used", code: "USED26" },
-  OLD25: { status: "expired", code: "OLD25" },
-};
 
 const KEYS = { session: "rlt:session", profile: "rlt:profile" };
 
@@ -97,8 +94,17 @@ export function sampleEmailLink(email: string, intent: Intent, returnTo: string)
 }
 
 export class BrowserAuthStore implements AuthStore {
+  async isAdmin() {
+    return true; // the sample's viewer runs the comp
+  }
+
   async checkInvite(code: string): Promise<Invite> {
-    return SAMPLE_INVITES[code.toUpperCase()] ?? { status: "unknown", code };
+    // The same invites the admin page makes (one store, so a new link works straight away).
+    const invite = readInvites().find((i) => i.code === code.toUpperCase());
+    if (!invite) return { status: "unknown", code };
+    const status = inviteStatus(invite, new Date(SAMPLE_CLOCK)); // live: the database's clock
+    if (status === "pending") return { status: "valid", code: invite.code, invitedBy: invite.createdBy };
+    return { status: status === "cancelled" ? "unknown" : status, code: invite.code };
   }
 
   async session() {
@@ -143,6 +149,8 @@ export class BrowserAuthStore implements AuthStore {
     if (!existing) {
       const invite = inviteCode ? await this.checkInvite(inviteCode) : null;
       if (invite?.status !== "valid") throw new Error("Joining needs a valid invite link.");
+      // Joining uses the invite up (Supabase: check and redeem in one transaction).
+      redeemInvite(invite.code, p.name.trim());
     }
     write(KEYS.profile, { ...p, name: p.name.trim() });
   }

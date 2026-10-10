@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CalendarRange, ChartLine, Ellipsis, ListChecks, Trophy, type LucideIcon } from "lucide-react";
+import { createAuthStore } from "@/lib/auth";
 
 type Item = { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean };
 
@@ -20,6 +21,7 @@ const MORE = [
   { href: "/model", label: "The Model" },
   { href: "/about", label: "How the Model works" },
   { href: "/account", label: "Your account" },
+  { href: "/tipping/admin", label: "Admin", adminOnly: true },
 ];
 
 function MoreMenu({ placement }: { placement: "up" | "down" }) {
@@ -27,6 +29,12 @@ function MoreMenu({ placement }: { placement: "up" | "down" }) {
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const active = MORE.some((m) => pathname.startsWith(m.href));
+  // The admin item shows only for whoever runs the comp.
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    createAuthStore().isAdmin().then(setAdmin);
+  }, []);
+  const items = MORE.filter((m) => !("adminOnly" in m) || admin);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -66,7 +74,7 @@ function MoreMenu({ placement }: { placement: "up" | "down" }) {
             tab ? "right-2 bottom-[calc(100%+8px)]" : "top-[calc(100%+6px)] right-0"
           }`}
         >
-          {MORE.map((m) => (
+          {items.map((m) => (
             <Link
               key={m.href}
               href={m.href}
