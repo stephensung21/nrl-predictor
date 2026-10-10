@@ -1,6 +1,12 @@
 """
 The weekly pipeline (PLAN_WEB.md §1.1-1.2, Next steps A): three jobs, each safe to re-run.
 
+Every live job first fetches Betr's prices from The Odds API (fetch_odds.py), so the first price of
+each game is caught early in the week; a game's first snapshot is its opening price when the odds
+sheet doesn't have it. A failed fetch is a warning in the run record, not a failed job: games
+without a price get the no-odds prediction. `--job odds` runs the fetch on its own, on Sunday night
+(after the round's last game, when the next round's markets open) so opening prices are caught early.
+
 - results (Monday): scrape the current season's finished games into the processed tables, then grade
   every finished game that has a prediction of record and write the season report.
 - predict (Tuesday, after team lists): work out which games are next (`draw.games_to_predict`),
@@ -18,6 +24,7 @@ hidden, so the 2026 season can stand in for a live one.
 Usage:
     python pipeline/run.py --job predict                          # live, the current season
     python pipeline/run.py --job results
+    python pipeline/run.py --job odds                             # fetch Betr's prices only
     python pipeline/run.py --job predict --season 2026 --as-of "2026-05-05 17:15"   # replay (Sydney time)
 """
 
@@ -34,6 +41,7 @@ import pandas as pd
 from common import Records, load_matches
 import config
 import draw as drawlib
+import fetch_odds
 import grade as gradelib
 import predict
 from features import PRE_KICKOFF_FILE
@@ -64,15 +72,20 @@ def lists_for(games, season, rnd, replay):
     return predict.fetch_lists(season, list(games["url"]), snapshot=f"round-{rnd}")
 
 
-def fingerprints(fixtures, lists, neutral, odds):
+def fingerprints(fixtures, lists, neutral, odds, live_odds=None):
     """What a prediction depends on that can change during the week, per game: both named 17s (player
-    and jersey), the opening prices and the venue flag. A refresh re-predicts a game when this changes."""
+    and jersey), the opening prices (the sheet's, else the live ones, as predict.inputs_before) and the
+    venue flag. A refresh re-predicts a game when this changes, e.g. when its first live price arrives."""
     named = predict.named_17(lists).sort_values(["match_id", "team", "jersey_number", "player_id"])
     squads = named.groupby("match_id").apply(
         lambda d: ";".join(f"{t}:{j}:{p}" for t, j, p in zip(d["team"], d["jersey_number"], d["player_id"])))
     joined = join_odds_to_matches(fixtures[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
-    prices = joined.merge(odds[["odds_id", "p_open", "open_line", "open_total"]], on="odds_id", how="left")
-    prices = prices.set_index("match_id")[["p_open", "open_line", "open_total"]].round(6).astype(str).agg("|".join, axis=1)
+    prices = joined.merge(odds[["odds_id", *predict.LIVE_ODDS_COLS]], on="odds_id", how="left").set_index("match_id")
+    prices = prices[predict.LIVE_ODDS_COLS]
+    if live_odds is not None and len(live_odds):
+        unpriced = prices["p_open"].isna() & prices.index.isin(live_odds.index)
+        prices.loc[unpriced] = live_odds.loc[prices.index[unpriced], predict.LIVE_ODDS_COLS].to_numpy(float)
+    prices = prices.round(6).astype(str).agg("|".join, axis=1)
     out = {}
     for mid in fixtures["match_id"]:
         text = f"{squads.get(mid, '')}#{prices.get(mid, '')}#{int(mid in neutral)}"
@@ -84,6 +97,12 @@ def fingerprints(fixtures, lists, neutral, odds):
 
 def predict_job(season, now, replay, records, refresh, run, model_season):
     draw = drawlib.replay_draw(season, now) if replay else drawlib.live_draw(season)
+    if draw.empty:
+        # Before the season's year the draw may not be out yet; from January it should be there, so
+        # an empty one means nrl.com failed, and the run fails (and alerts) rather than skip a round.
+        if now.year < season:
+            raise NothingToDo(f"no {season} draw on nrl.com yet")
+        raise RuntimeError(f"no {season} draw from nrl.com (site down or changed?)")
     rnd, games = drawlib.games_to_predict(draw, now)
     if rnd is None:
         raise NothingToDo("no games left to predict this season")
@@ -94,7 +113,8 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
     neutral = drawlib.neutral_games(draw.assign(match_id=draw["match_id"].fillna(draw["url"].map(ids))))
     bundle = predict.load_bundle(model_season)
     run["model_version"] = bundle.get("version")
-    inputs = fingerprints(fixtures, lists, neutral, load_odds())
+    live_odds = None if replay else fetch_odds.for_fixtures(fixtures, fetch_odds.game_prices(records.odds_snapshots()))
+    inputs = fingerprints(fixtures, lists, neutral, load_odds(), live_odds)
 
     if refresh:
         last = records.predictions()
@@ -106,11 +126,11 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
 
     try:
         out, rows, errors, warns = predict.predict_fixtures(fixtures, lists, bundle, keep_weather=replay,
-                                                            neutral=neutral)
+                                                            neutral=neutral, live_odds=live_odds)
     except SystemExit as stop:  # no game has both team lists yet
         raise NothingToDo(f"round {rnd}: {stop}")
     run.update(games=int(len(out)), with_odds_games=int(rows["open_logit"].notna().sum()), errors=errors,
-               warnings=warns)
+               warnings=run.get("warnings", []) + warns)
     if errors:
         raise RuntimeError("validation failed; nothing recorded: " + "; ".join(errors))
     out["run_id"], out["created_at"], out["model_version"] = run["id"], now, bundle.get("version")
@@ -145,8 +165,21 @@ def results_job(season, now, replay, records, run):
     return graded
 
 
-def run_job(job, season, as_of=None, model_season=None, records=None):
-    """Run one job and record it. Returns the run record; raises if the job failed."""
+def odds_step(records, now, run):
+    """Fetch prices before a live job. A failure is recorded as a warning: the job still runs, and games
+    without a price get the no-odds prediction."""
+    try:
+        run["odds"] = fetch_odds.record_snapshot(records, now)
+    except Exception as ex:
+        run["odds"] = {"status": "failed", "error": str(ex) or type(ex).__name__}
+        run.setdefault("warnings", []).append(f"odds fetch failed: {run['odds']['error']}")
+    for issue in run["odds"].get("issues", []):
+        run.setdefault("warnings", []).append(f"impossible price dropped: {issue}")
+
+
+def run_job(job, season, as_of=None, model_season=None, records=None, fail=False):
+    """Run one job and record it. Returns the run record; raises if the job failed. `fail` makes it
+    fail on purpose, after starting, to test the workflows' alerts (PLAN_WEB.md step 8)."""
     warnings.filterwarnings("ignore")
     replay = as_of is not None
     now = utc(as_of) if replay else pd.Timestamp.now(tz="UTC")
@@ -156,6 +189,16 @@ def run_job(job, season, as_of=None, model_season=None, records=None):
            "as_of": now.isoformat(), "started": pd.Timestamp.now(tz="UTC").isoformat(), "commit": commit,
            "uncommitted_changes": dirty, "status": "ok"}
     try:
+        if fail:
+            raise RuntimeError("deliberate failure (--fail), to test alerts; nothing was predicted or published")
+        if job == "odds":
+            if replay:
+                raise ValueError("the odds job only runs live (past prices come from the odds sheet)")
+            run["odds"] = fetch_odds.record_snapshot(records, now)
+            print(f"odds: {run['odds']}")
+            return run
+        if not replay:
+            odds_step(records, now, run)
         if job == "results":
             results_job(season, now, replay, records, run)
         else:
@@ -175,13 +218,14 @@ def run_job(job, season, as_of=None, model_season=None, records=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--job", choices=["results", "predict", "refresh"], required=True)
+    parser.add_argument("--job", choices=["results", "predict", "refresh", "odds"], required=True)
     parser.add_argument("--season", type=int, default=config.PREDICT_SEASON)
     parser.add_argument("--as-of", help="replay the job at this time (Sydney time unless a zone is given)")
     parser.add_argument("--models", type=int, help="model season to load (default: the season)")
+    parser.add_argument("--fail", action="store_true", help="fail on purpose, to test alerts")
     args = parser.parse_args()
     try:
-        run_job(args.job, args.season, args.as_of, args.models)
+        run_job(args.job, args.season, args.as_of, args.models, fail=args.fail)
     except Exception as ex:
         print(f"{args.job} FAILED: {ex}", file=sys.stderr)
         sys.exit(1)

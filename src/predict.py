@@ -13,8 +13,9 @@ Two modes:
   the round's first kickoff on and using the archived pre-kickoff lists (teamlists.py). This tests
   the whole path on real data.
 
-Opening odds come from the odds sheet when it has the game (the with-odds models need them);
-games without odds get the no-odds models' prediction only. Ground conditions are unknown before
+Opening odds come from the odds sheet when it has the game (the with-odds models need them), and
+otherwise, in the weekly pipeline, from Betr's live prices (pipeline/fetch_odds.py); games without
+odds get the no-odds models' prediction only. Ground conditions are unknown before
 the day, so the wet-conditions flag is 0 in live mode (replays keep the recorded conditions so
 they can be checked against the backtest; pass --no-weather to blank them).
 
@@ -46,6 +47,7 @@ LIVE_LISTS = config.ROOT / "data" / "raw" / "teamlists_live"
 CLOSING_COLS = ["p_close", "close_line", "close_total", "p_avg", "p_close_shin", "p_avg_shin",
                 "home_odds_close", "away_odds_close", "home_line_odds_close", "away_line_odds_close",
                 "over_odds_close", "under_odds_close"]
+LIVE_ODDS_COLS = ["p_open", "open_line", "open_total"]
 RESULT_COLS = ["home_score", "away_score", "home_ht_score", "away_ht_score", "attendance", "game_seconds"]
 
 
@@ -109,10 +111,12 @@ def named_17(lists):
 
 # ---------------------------------------------------------------- inputs as of the round
 
-def inputs_before(fixtures, keep_weather, neutral=()):
+def inputs_before(fixtures, keep_weather, neutral=(), live_odds=None):
     """Every input as it stood before the round's first kickoff: later games are removed, and the
     round's own games keep only what is known in advance (draw, venue, opening odds). `neutral` is
-    the match ids the draw puts at a neutral venue, used for games the odds sheet doesn't have yet."""
+    the match ids the draw puts at a neutral venue, used for games the odds sheet doesn't have yet.
+    `live_odds` (p_open, open_line, open_total by match id; pipeline/fetch_odds.py) gives the opening
+    prices of games the sheet doesn't have or hasn't priced yet; the sheet's own prices come first."""
     matches, team_stats, players, odds, origin, reserve = load_inputs()
     fx = fixtures.copy()
     fx["start_time_utc"] = pd.to_datetime(fx["start_time_utc"], utc=True)
@@ -149,6 +153,12 @@ def inputs_before(fixtures, keep_weather, neutral=()):
     odds.loc[in_round, ["home_score", "away_score"]] = np.nan
     odds.loc[in_round, [c for c in CLOSING_COLS if c in odds.columns]] = np.nan
     odds.loc[in_round, "close_ok"] = False
+    live = live_odds if live_odds is not None else pd.DataFrame(columns=LIVE_ODDS_COLS)
+    by_odds_id = joined.dropna(subset=["odds_id"]).set_index("match_id")["odds_id"].astype(int)
+    for mid, oid in by_odds_id.items():  # in the sheet without opening prices yet
+        row = odds["odds_id"] == oid
+        if mid in live.index and odds.loc[row, "p_open"].isna().all():
+            odds.loc[row, LIVE_ODDS_COLS] = live.loc[mid, LIVE_ODDS_COLS].to_numpy(float)
     missing = fx[~fx["match_id"].isin(joined.loc[joined["odds_id"].notna(), "match_id"])]
     if len(missing):  # games the odds sheet doesn't have yet: no prices, venue flags from the draw
         local = missing["start_time_utc"].dt.tz_convert("Australia/Sydney").dt.tz_localize(None).dt.normalize()
@@ -159,9 +169,13 @@ def inputs_before(fixtures, keep_weather, neutral=()):
                               "away_at_ground": False, "neutral": missing["match_id"].isin(neutral).to_numpy(),
                               "bookmaker": "BlueBet", "close_ok": False, "data_issue": False,
                               "kickoff_local": ""})
+        for col in LIVE_ODDS_COLS:
+            extra[col] = missing["match_id"].map(live[col]).to_numpy(float)
         extra["odds_id"] = np.arange(len(extra)) + odds["odds_id"].max() + 1
         odds = pd.concat([odds, extra.reindex(columns=odds.columns)], ignore_index=True)
-        print(f"  no odds yet for {len(missing)} game(s): no-odds prediction only")
+        unpriced = int(extra["p_open"].isna().sum())
+        print(f"  {len(missing)} game(s) not in the odds sheet; {len(missing) - unpriced} priced from live odds"
+              + (f", {unpriced} without odds (no-odds prediction only)" if unpriced else ""))
     odds = odds.sort_values(["date", "kickoff_local"]).reset_index(drop=True)
     return matches, team_stats, players, odds, origin, reserve
 
@@ -236,7 +250,7 @@ def predict_round(season, rnd, replay=False, keep_weather=None, model_season=Non
     return out
 
 
-def predict_fixtures(fixtures, lists, bundle, keep_weather, neutral=()):
+def predict_fixtures(fixtures, lists, bundle, keep_weather, neutral=(), live_odds=None):
     """Predict the games in `fixtures` that have both team lists. Returns the predictions, the model
     rows they came from and the validation result (errors, warnings). The games can come from
     different rounds: a postponed game is predicted with the round it is now played in."""
@@ -249,7 +263,7 @@ def predict_fixtures(fixtures, lists, bundle, keep_weather, neutral=()):
     for r in fixtures[~fixtures["match_id"].isin(ready["match_id"])].itertuples():
         print(f"  skipped {r.home_team} v {r.away_team}: team lists not available")
 
-    matches, team_stats, players, odds, origin, reserve = inputs_before(ready, keep_weather, neutral)
+    matches, team_stats, players, odds, origin, reserve = inputs_before(ready, keep_weather, neutral, live_odds)
     feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds),
                            reserve=reserve, pre_kickoff=lists[lists["match_id"].isin(ready["match_id"])])
     rows = feats[feats["match_id"].isin(ready["match_id"])].set_index("match_id").loc[ready["match_id"]]

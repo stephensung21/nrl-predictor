@@ -19,7 +19,8 @@ COLUMNS = ["match_id", "season", "round", "round_title", "is_final", "start_time
 
 def live_draw(season):
     """Every game in the season's draw on nrl.com. Games not yet scraped have no match id; the
-    match centre gives it when the game's team lists are fetched."""
+    match centre gives it when the game's team lists are fetched. Empty if nrl.com has no draw for
+    the season (not published yet, or the site is down)."""
     import scrape
     rows = []
     for f in scrape.fetch_fixtures(season):
@@ -30,7 +31,7 @@ def live_draw(season):
                      "venue_city": f.get("venueCity"), "home_team": f["homeTeam"]["nickName"],
                      "away_team": f["awayTeam"]["nickName"],
                      "status": MODE_STATUS.get(f.get("matchMode"), "scheduled"), "url": f["matchCentreUrl"]})
-    draw = pd.DataFrame(rows)
+    draw = pd.DataFrame(rows, columns=[c for c in COLUMNS if c != "match_id"])
     draw["start_time_utc"] = pd.to_datetime(draw["start_time_utc"], utc=True)
     known = load_matches()
     known["path"] = known["url"].str.replace("https://www.nrl.com", "", regex=False)

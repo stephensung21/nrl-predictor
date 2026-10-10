@@ -1,0 +1,58 @@
+[
+  {
+    "id": "e1",
+    "sport_key": "rugbyleague_nrl",
+    "sport_title": "NRL",
+    "commence_time": "2027-03-05T09:00:00Z",
+    "home_team": "Melbourne Storm",
+    "away_team": "Brisbane Broncos",
+    "bookmakers": [
+      {
+        "key": "betr_au",
+        "title": "Betr",
+        "last_update": "2027-03-01T23:10:00Z",
+        "markets": [
+          {"key": "h2h", "last_update": "2027-03-01T23:10:00Z",
+           "outcomes": [{"name": "Brisbane Broncos", "price": 2.6}, {"name": "Melbourne Storm", "price": 1.5}]},
+          {"key": "spreads", "last_update": "2027-03-01T23:10:00Z",
+           "outcomes": [{"name": "Brisbane Broncos", "price": 1.9, "point": 6.5},
+                        {"name": "Melbourne Storm", "price": 1.9, "point": -6.5}]},
+          {"key": "totals", "last_update": "2027-03-01T23:10:00Z",
+           "outcomes": [{"name": "Over", "price": 1.9, "point": 44.5}, {"name": "Under", "price": 1.9, "point": 44.5}]}
+        ]
+      }
+    ]
+  },
+  {
+    "id": "e2",
+    "sport_key": "rugbyleague_nrl",
+    "sport_title": "NRL",
+    "commence_time": "2027-03-06T06:00:00Z",
+    "home_team": "Manly Warringah Sea Eagles",
+    "away_team": "St George Illawarra Dragons",
+    "bookmakers": [
+      {
+        "key": "betr_au",
+        "title": "Betr",
+        "last_update": "2027-03-01T23:10:00Z",
+        "markets": [
+          {"key": "h2h", "last_update": "2027-03-01T23:10:00Z",
+           "outcomes": [{"name": "Manly Warringah Sea Eagles", "price": 2.2},
+                        {"name": "St George Illawarra Dragons", "price": 2.1}]},
+          {"key": "spreads", "last_update": "2027-03-01T23:10:00Z",
+           "outcomes": [{"name": "Manly Warringah Sea Eagles", "price": 1.9, "point": -1.5},
+                        {"name": "St George Illawarra Dragons", "price": 1.9, "point": 1.5}]}
+        ]
+      }
+    ]
+  },
+  {
+    "id": "e3",
+    "sport_key": "rugbyleague_nrl",
+    "sport_title": "NRL",
+    "commence_time": "2027-03-06T08:30:00Z",
+    "home_team": "Penrith Panthers",
+    "away_team": "Wests Tigers",
+    "bookmakers": []
+  }
+]

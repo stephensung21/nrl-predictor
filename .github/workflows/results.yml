@@ -1,0 +1,24 @@
+# Monday: scrape the finished round, grade last round's predictions.
+# Times are UTC (GitHub cron has no time zones or daylight saving): see PLAN_WEB.md §1.1.
+# Run by hand from the Actions tab; tick "fail" to test the alert.
+name: results
+
+on:
+  schedule:
+    - cron: "15 0 * * 1"    # Monday 10:15am AEST / 11:15am AEDT
+  workflow_dispatch:
+    inputs:
+      fail:
+        description: Fail on purpose, to test the alert
+        type: boolean
+        default: false
+
+jobs:
+  results:
+    uses: ./.github/workflows/pipeline-job.yml
+    permissions:
+      contents: write
+    with:
+      job: results
+      fail: ${{ inputs.fail || false }}
+    secrets: inherit

@@ -1,0 +1,24 @@
+# Tuesday, after team lists (about 4pm Sydney): predict the coming round.
+# Times are UTC (GitHub cron has no time zones or daylight saving): see PLAN_WEB.md §1.1.
+# Run by hand from the Actions tab; tick "fail" to test the alert.
+name: predict
+
+on:
+  schedule:
+    - cron: "15 7 * * 2"    # Tuesday 5:15pm AEST / 6:15pm AEDT
+  workflow_dispatch:
+    inputs:
+      fail:
+        description: Fail on purpose, to test the alert
+        type: boolean
+        default: false
+
+jobs:
+  predict:
+    uses: ./.github/workflows/pipeline-job.yml
+    permissions:
+      contents: write
+    with:
+      job: predict
+      fail: ${{ inputs.fail || false }}
+    secrets: inherit
