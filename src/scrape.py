@@ -81,7 +81,7 @@ def fetch_fixtures(year, competition=COMPETITION_ID):
         # Past the last round the site returns the final round again, so stop on a repeat.
         if not matches or (fixtures and matches[0]["matchCentreUrl"] == fixtures[-1]["matchCentreUrl"]):
             break
-        fixtures.extend(matches)
+        fixtures.extend({**m, "roundNumber": rnd} for m in matches)
     return fixtures
 
 
@@ -133,8 +133,9 @@ def fetch_origin(year):
             print(f"  no match data: {fx['matchCentreUrl']}")
 
 
-def build_origin_table(years):
-    """One row per player per Origin game: who played, for which state, and when."""
+def build_origin_table(years, merge=False):
+    """One row per player per Origin game: who played, for which state, and when. With `merge`, only
+    these seasons' rows are replaced in the existing table (the weekly run fetches one season)."""
     rows = []
     for year in years:
         for path in sorted((ORIGIN_DIR / str(year)).glob("game-*.json")):
@@ -150,7 +151,10 @@ def build_origin_table(years):
                         "player_name": f"{info.get('firstName', '')} {info.get('lastName', '')}".strip(),
                         "position": info.get("position"), "minutesPlayed": ps.get("minutesPlayed"),
                     })
-    df = pd.DataFrame(rows).sort_values(["start_time_utc", "state", "player_id"])
+    df = pd.DataFrame(rows)
+    if merge:
+        df = merge_seasons(OUT_DIR / "origin_players.csv", df, years)
+    df = df.sort_values(["start_time_utc", "state", "player_id"])
     df.to_csv(OUT_DIR / "origin_players.csv", index=False)
     print(f"wrote origin_players.csv: {len(df)} rows")
 
@@ -211,7 +215,16 @@ def team_stats(match, side):
     return row
 
 
-def build_tables(years):
+def merge_seasons(path, new, years):
+    """The table at `path` with the rows for `years` replaced by `new`."""
+    old = pd.read_csv(path, low_memory=False)
+    return pd.concat([old[~old["season"].isin(years)], new], ignore_index=True)
+
+
+def build_tables(years, merge=False):
+    """Rebuild the match, team and player tables from the cached raw JSON. With `merge`, only these
+    seasons' rows are replaced and every other season is kept (the weekly run fetches one season;
+    a fresh checkout has no raw pages for the earlier ones)."""
     matches, team_rows, player_rows = [], [], []
     for year in years:
         for path in sorted((RAW_DIR / str(year)).glob("*_*.json")):
@@ -270,11 +283,14 @@ def build_tables(years):
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     tables = {
-        "matches": pd.DataFrame(matches).sort_values(["start_time_utc", "match_id"]),
-        "team_match_stats": pd.DataFrame(team_rows).sort_values(["season", "round", "match_id", "is_home"]),
-        "player_match_stats": pd.DataFrame(player_rows).sort_values(["season", "round", "match_id", "team"]),
+        "matches": (pd.DataFrame(matches), ["start_time_utc", "match_id"]),
+        "team_match_stats": (pd.DataFrame(team_rows), ["season", "round", "match_id", "is_home"]),
+        "player_match_stats": (pd.DataFrame(player_rows), ["season", "round", "match_id", "team"]),
     }
-    for name, df in tables.items():
+    for name, (df, order) in tables.items():
+        if merge:
+            df = merge_seasons(OUT_DIR / f"{name}.csv", df, years)
+        df = df.sort_values(order, kind="stable")
         df.to_csv(OUT_DIR / f"{name}.csv", index=False)
         print(f"wrote {name}.csv: {len(df)} rows, {df.shape[1]} columns")
 
