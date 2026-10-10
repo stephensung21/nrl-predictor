@@ -52,19 +52,19 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 | Step | Status | Where / notes |
 |---|---|---|
-| Grade last round's predictions (tips correct, margin error, log loss, Brier, vs the market) | ❌ | The metric code exists (`evaluate.py`, used for the backtest and the 2026 test) but no weekly step runs it. Can be built in Python now, writing a season record to a file, before Supabase exists. |
-| Prediction of record (last prediction before kickoff) and season record | 🔶 | Each run writes `reports/predictions/<season>_round<N>.*`; nothing yet picks the last one before kickoff or collects a season record. Later a database view (§2). |
+| Grade last round's predictions (tips correct, margin error, log loss, Brier, vs the market) | ✅ | `pipeline/grade.py`, run by the results job: each finished game's prediction of record joined to the result, opening and closing market and Elo; metrics per round and for the season so far, written to `data/pipeline/<live\|replay>/<season>/graded.csv` and `season.md`. Grading the final test's predictions reproduces `reports/final_2026.md` exactly (`tests/test_pipeline.py`). |
+| Prediction of record (last prediction before kickoff) and season record | ✅ | The pipeline keeps every prediction it makes, with when it was made (`predictions.csv` beside the run log), and `grade.prediction_of_record` picks the latest before kickoff. Becomes the `prediction_of_record` view once the database exists. |
 | Betting results and closing line value per round | 🔶 | `betting.py` does whole seasons, not week by week |
-| Tipping-comp scoring (points, auto-tips, bonus, margin, ladder) | ❌ | Needs the database (§2, §3.5) |
+| Tipping-comp scoring (points, auto-tips, bonus, margin, ladder) | ✅ | In SQL: `supabase/migrations/20261010000000_tipping.sql` (`effective_tips`, `tip_results`, `round_scores`, `ladder()`, lockout and hidden tips in row-level security). The website's copy is `web/lib/scoring.ts`. Both are checked against the same hand-worked cases (`tests/tipping/cases.json`) by `npm test` in `web/`, the SQL in PGlite (Postgres 17 in WebAssembly). Not yet applied to a Supabase project. |
 
 **Automation and publishing**
 
 | Step | Status | Where / notes |
 |---|---|---|
-| `pipeline/run.py --job results / predict / refresh` | ❌ | Chains the steps above (§1.2) |
+| `pipeline/run.py --job results / predict / refresh` | ✅ | Runs by hand; `--as-of` replays a past season, and `pipeline/replay.py` runs the whole weekly schedule over one. Not yet scheduled (step 8) or publishing (step 7). |
 | GitHub Actions workflows on the weekly schedule | ❌ | §1.1, §4 |
-| Run log, alerts on failure | 🔶 | Each `predict.py` run writes a JSON record (commit, model version, errors); no alerts yet |
-| Supabase schema, row-level security, publishing | ❌ | §2, milestone 1 |
+| Run log, alerts on failure | 🔶 | Every pipeline run is logged to `runs.jsonl` (job, clock, status, round, games, model version, commit, errors); a failed run exits non-zero. No alerts yet. |
+| Supabase schema, row-level security, publishing | 🔶 | The tipping tables, scoring and row-level security are written and tested locally (above). The model tables, the Supabase project and publishing are still to do (§2, milestone 1). |
 | Website and tipping comp | 🔶 | Every planned page designed and built, on sample data and browser stand-ins (see Website status below); not connected to the pipeline, Supabase or live sources, not deployed |
 
 ### Website status (October 2026)
@@ -130,9 +130,9 @@ In order. Each step can be tested before the next one starts, and steps 1–3 ca
 
 **A. The weekly pipeline (no database needed yet)**
 
-1. **`pipeline/run.py --job results|predict|refresh`**, chaining the steps in §1.2: an incremental scrape of the current season (note 1 above), detecting which round to predict (note 2), `predict.py`, and validation. *Done when:* running it by hand over 2026 rounds 1–10 gives the same predictions and run records as `predict.py --replay`.
-2. **Weekly grading** (note 6): pick each game's prediction of record and append it to a season record with the result, the opening and closing market and Elo; metrics per round and cumulative. *Done when:* grading 2026 round by round ends on the totals in `reports/final_2026.md`.
-3. **Tipping scoring outside the browser:** port `web/lib/ladder.ts` (auto-tips, bonus, margin score, ladder order) to the SQL functions planned in §2, and write the §3.5 rule tests once so both are checked against the same cases.
+1. ✅ **`pipeline/run.py --job results|predict|refresh`** (done October 2026): incremental scrape of the current season (`scrape.build_tables(..., merge=True)`; rebuilding 2026 alone reproduces the committed tables byte for byte), the round to predict from the draw including postponed games (`draw.games_to_predict`), neutral venues from the draw (`draw.neutral_games`, agrees with the odds sheet's flags), `predict.py`, validation, and every run and prediction recorded. *Checked:* `python pipeline/replay.py --season 2026 --rounds 1 10 --check` runs the whole weekly schedule (132 jobs) and every Tuesday run equals `predict.py --replay`. Only 64 of 2026's 213 games have an archived Tuesday list, so the replay predicts 45 of rounds 1–10's games; refreshes correctly find nothing changed.
+2. ✅ **Weekly grading** (done): `pipeline/grade.py`, run by the results job, writes `graded.csv` and `season.md`. *Checked:* grading the final test's predictions as predictions of record reproduces every number in `reports/final_2026.md`. (The plan's original check, grading the replayed season, can't reach those totals: the final test used final team lists for all 213 games, and the Tuesday archive covers only 64.)
+3. ✅ **Tipping scoring outside the browser** (done): `supabase/migrations/20261010000000_tipping.sql`, with the website's rules moved to `web/lib/scoring.ts`; both pass the shared cases in `tests/tipping/cases.json`, and the lockout, hidden-tips and permission rules pass in PGlite (`npm test` in `web/`, 24 tests).
 
 **B. Data sources**
 
@@ -372,11 +372,11 @@ Views:
 | `profiles` | user id (from Supabase auth), display name, favourite team, auto-tip choice (home team / crowd / ladder), admin flag |
 | `invites` | code, created by, used by, expires |
 | `rounds` | season, round, featured match (for the margin; drawn at random by the predict job, excluding last round's featured teams, §3.5), drawn at |
-| `tips` | user, match, team picked, margin (featured game only), `is_auto` (filled in by an auto-tip, not by the user), updated |
+| `tips` | user, match, team picked, margin (featured game only), updated. Only tippers' own tips: auto-tips aren't stored but filled in by the `effective_tips` view once a game locks, so a job that didn't run can't leave a gap |
 
 There is **one comp** for the whole group, so no comp or membership tables are needed. Adding them later is easy if a second group ever wants in.
 
-Views: `tip_results` (each tip marked correct or not once the game is final), `round_scores` (points, bonus point and margin score per user per round) and `ladder` (season totals, ranked by the rules in §3.5).
+Views: `effective_tips` (every tipper's tip for every locked game, own or auto), `tip_results` (each tip marked correct or not once the game is final or cancelled), `round_scores` (points, bonus point and margin score per user per round) and the `ladder(season)` function (season totals, ranked by the rules in §3.5, with movement). Written in `supabase/migrations/20261010000000_tipping.sql`.
 
 ### Row-level security
 
@@ -536,24 +536,26 @@ nrl-predictor/
     teamlists.py               # historical pre-kickoff lists from the Internet Archive (exists)
   models/<season>/             # frozen model bundles from `train.py --freeze` (exists)
   pipeline/
-    run.py                     # entry point: --job results|predict|refresh (wraps scrape.py, features.py, predict.py)
-    fetch_draw.py              # fixtures, kickoffs, match status
-    fetch_team_lists.py        # versioned team lists
-    fetch_odds.py              # Odds API snapshots
-    publish.py                 # upsert to Supabase, call revalidation hook
-    validate.py                # checks before publishing
+    run.py                     # entry point: --job results|predict|refresh, --as-of to replay (exists)
+    draw.py                    # the draw, which games to predict, neutral venues (exists)
+    grade.py                   # prediction of record, grading, season report (exists)
+    replay.py                  # runs the weekly schedule over a past season, as a test (exists)
+    common.py                  # paths and the run/prediction records (exists)
+    fetch_odds.py              # Odds API snapshots (to do, step 4)
+    publish.py                 # upsert to Supabase, call revalidation hook (to do, step 7)
   supabase/
-    migrations/                # tables, views, row-level security policies
+    migrations/                # tables, views, row-level security policies (tipping part exists)
     functions/tip-reminders/   # scheduled reminder emails
   web/                         # Next.js app (exists, on sample data)
     app/                       # pages: /, /round, /match, /odds, /elo, /model, /about, /tipping, /tipping/ladder (built); /news, /tipping/admin (to do)
     components/                # game rows, pitch bars, charts, market track, tip list, ladder
-    lib/                       # types.ts (row shapes), ladder.ts and rules.ts (tipping rules), tip-store.ts, sample*.ts (generated)
+    lib/                       # types.ts (row shapes), scoring.ts and rules.ts (tipping rules), tip-store.ts, sample*.ts (generated)
+    tests/tipping.test.ts      # the tipping rules in scoring.ts and in SQL (PGlite), and row-level security (npm test)
     scripts/                   # build_sample.py, build_odds_sample.py, build_elo_sample.py
     lib/supabase.ts, lib/reddit.ts  # to do
   tests/
-    test_pipeline.py
-    test_tipping_rules.sql     # lockout, hidden tips, scoring
+    test_pipeline.py           # round detection, neutral venues, grading (exists)
+    tipping/cases.json         # hand-worked tipping rule cases, shared by scoring.ts and the SQL (exists)
   .github/workflows/
     results.yml                # Monday
     predict.yml                # Tuesday after team lists

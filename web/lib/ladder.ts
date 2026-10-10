@@ -1,19 +1,19 @@
-// The tipping ladder under the official NRL Tipping rules (PLAN_WEB.md §3.5):
-// 1 point per correct tip (a draw counts for both teams); untipped games filled
-// at lockout by each tipper's auto-tip; 1 bonus point for tipping every winner in
-// a completed round of 8 or more games with no auto-tips; and a margin score on
-// each round's featured game that breaks ties on points (lowest wins).
-// In production the database scores tips; this mirrors it for the sample.
+// The tipping ladder for the sample comp. The rules themselves are in ./scoring
+// (shared with the database's scoring and checked against the same cases);
+// this file binds them to the sample tippers and season.
 
 import { gameStatus } from "./round";
-import { BONUS_MIN_GAMES, DEFAULT_MARGIN } from "./rules";
+import * as rules from "./scoring";
+import { winners, type LadderEntry, type RoundScore, type ScoredRound } from "./scoring";
 import { margins as margins10, round10, SAMPLE_NOW, tips as tips10, tippers } from "./sample";
 import { SEASON_ROUNDS } from "./sample-archive";
 import type { LadderRow, SeasonRound, Tipper } from "./types";
 import type { TeamName } from "./teams";
 
-/** A round as scored: possibly only its finished games while it's in progress. */
-export type ScoredRound = SeasonRound & { partial?: boolean };
+export type { LadderEntry, RoundScore, ScoredRound };
+
+/** The sample comp: its tippers, and the finished rounds the ladder auto-tip reads. */
+const comp: rules.Comp = { tippers, season: SEASON_ROUNDS };
 
 /** Round 10 in the same shape as the generated rounds. */
 const round10Season: SeasonRound = {
@@ -48,131 +48,11 @@ export function seasonAt(state: SampleState): ScoredRound[] {
 }
 
 type Game = SeasonRound["games"][number];
-const winners = (g: Game): TeamName[] =>
-  g.homeScore === g.awayScore ? [g.home, g.away] : [g.homeScore > g.awayScore ? g.home : g.away];
 
-/* ---------- Auto-tips ---------- */
-
-/** NRL ladder from the games before a round: 2 points a win, 1 a draw, then points difference. */
-function nrlLadderBefore(rounds: SeasonRound[], round: number) {
-  const table = new Map<TeamName, { pts: number; diff: number }>();
-  const row = (t: TeamName) => table.get(t) ?? (table.set(t, { pts: 0, diff: 0 }), table.get(t)!);
-  for (const g of rounds.filter((r) => r.round < round).flatMap((r) => r.games)) {
-    const [h, a] = [row(g.home), row(g.away)];
-    h.diff += g.homeScore - g.awayScore;
-    a.diff += g.awayScore - g.homeScore;
-    if (g.homeScore === g.awayScore) (h.pts += 1), (a.pts += 1);
-    else if (g.homeScore > g.awayScore) h.pts += 2;
-    else a.pts += 2;
-  }
-  return (t: TeamName) => table.get(t) ?? { pts: 0, diff: 0 };
-}
-
-/** The tipper's tip for a game: their own, or their auto-tip filled at lockout. */
-export function tipFor(r: SeasonRound, g: Game, tipper: Tipper): { team: TeamName; auto: boolean } {
-  const own = r.tips.find((t) => t.tipperId === tipper.id && t.matchId === g.matchId);
-  if (own) return { team: own.team, auto: false };
-  let team: TeamName = g.home; // "home", and the fallback for every tie
-  if (tipper.autoTip === "crowd") {
-    const others = r.tips.filter((t) => t.matchId === g.matchId && t.tipperId !== tipper.id && !tippers.find((x) => x.id === t.tipperId)?.isModel);
-    const [h, a] = [g.home, g.away].map((t) => others.filter((x) => x.team === t).length);
-    if (a > h) team = g.away;
-  } else if (tipper.autoTip === "ladder") {
-    const nrl = nrlLadderBefore(SEASON_ROUNDS, r.round);
-    const [h, a] = [nrl(g.home), nrl(g.away)];
-    if (a.pts > h.pts || (a.pts === h.pts && a.diff > h.diff)) team = g.away;
-  }
-  return { team, auto: true };
-}
-
-/* ---------- Scoring ---------- */
-
-export type RoundScore = {
-  round: number;
-  correct: number;
-  games: number;
-  bonus: number;
-  autoTips: number;
-  /** Gap between the predicted and real margin on the featured game (0 until it's played). */
-  marginScore: number;
-  partial: boolean;
-};
-
-export function scoreRound(r: ScoredRound, tipper: Tipper): RoundScore {
-  const tips = r.games.map((g) => ({ g, ...tipFor(r, g, tipper) }));
-  const correct = tips.filter((t) => winners(t.g).includes(t.team)).length;
-  const autoTips = tips.filter((t) => t.auto).length;
-  const featured = r.games.find((g) => g.matchId === r.featuredMatchId);
-  let marginScore = 0;
-  if (featured) {
-    // Margins are signed from the home side, so tipping the wrong team counts against you:
-    // Storm by 6 when the Broncos win by 4 is a margin score of 10. No margin entered: the default.
-    const entered = r.margins.find((x) => x.tipperId === tipper.id);
-    const team = entered?.team ?? tipFor(r, featured, tipper).team;
-    const margin = entered?.margin ?? DEFAULT_MARGIN;
-    const predicted = team === featured.home ? margin : -margin;
-    marginScore = Math.abs(predicted - (featured.homeScore - featured.awayScore));
-  }
-  const complete = !r.partial;
-  return {
-    round: r.round,
-    correct,
-    games: r.games.length,
-    bonus: complete && r.games.length >= BONUS_MIN_GAMES && correct === r.games.length && autoTips === 0 ? 1 : 0,
-    autoTips,
-    marginScore,
-    partial: !complete,
-  };
-}
-
-/* ---------- The ladder ---------- */
-
-export type LadderEntry = {
-  tipper: Tipper;
-  points: number;
-  marginScore: number;
-  /** Place among the tippers. The Model is a yardstick, not a competitor: null. */
-  position: number | null;
-  tied: boolean;
-  /** Places gained since the previous round (negative when dropped); null for the Model or round 1. */
-  movement: number | null;
-  rounds: RoundScore[];
-};
-
-function standings(rounds: ScoredRound[]): LadderEntry[] {
-  const rows: LadderEntry[] = tippers.map((tipper) => {
-    const scored = rounds.map((r) => scoreRound(r, tipper));
-    return {
-      tipper,
-      rounds: scored,
-      points: scored.reduce((n, r) => n + r.correct + r.bonus, 0),
-      marginScore: scored.reduce((n, r) => n + r.marginScore, 0),
-      position: null,
-      tied: false,
-      movement: null,
-    };
-  });
-  // Everyone sorted together so the Model sits where its points put it; only tippers get places.
-  rows.sort((a, b) => b.points - a.points || a.marginScore - b.marginScore || Number(!!b.tipper.isModel) - Number(!!a.tipper.isModel));
-  const humans = rows.filter((r) => !r.tipper.isModel);
-  humans.forEach((row, i) => {
-    const same = (x?: LadderEntry) => !!x && x.points === row.points && x.marginScore === row.marginScore;
-    row.position = same(humans[i - 1]) ? humans[i - 1].position : i + 1;
-    row.tied = same(humans[i - 1]) || same(humans[i + 1]);
-  });
-  return rows;
-}
-
-/** The ladder over some rounds, with movement since the last completed round before them. */
-export function ladder(rounds: ScoredRound[]): LadderEntry[] {
-  const now = standings(rounds);
-  if (rounds.length <= 1) return now;
-  const before = standings(rounds.slice(0, -1));
-  return now.map((row) => {
-    const was = before.find((b) => b.tipper.id === row.tipper.id)!;
-    return { ...row, movement: row.position != null && was.position != null ? was.position - row.position : null };
-  });
-}
+export const tipFor = (r: SeasonRound, g: Game, tipper: Tipper) => rules.tipFor(comp, r, g, tipper);
+export const scoreRound = (r: ScoredRound, tipper: Tipper) => rules.scoreRound(comp, r, tipper);
+export const ladder = (rounds: ScoredRound[]) => rules.ladder(comp, rounds);
+const standings = (rounds: ScoredRound[]) => rules.standings(comp, rounds);
 
 /** The ladder going into a round, in the shape the round view expects. */
 export function ladderBefore(round: number): LadderRow[] {
