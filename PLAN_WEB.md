@@ -1,6 +1,6 @@
 # NRL Predictor: Weekly Automation and Website Plan
 
-This plan extends [PLAN.md](PLAN.md). The website's working name is **rugbyleague-tipper**. It covers two things:
+This plan extends [PLAN.md](PLAN.md). The visual and UX design is in [DESIGN_BRIEF.md](DESIGN_BRIEF.md). The website's working name is **rugbyleague-tipper**. It covers two things:
 
 1. **Weekly automation:** run the model on a fixed schedule each week. Fetch team lists, stats, results and odds, rebuild the features, and publish new predicted scores, winners and margins.
 2. **A personal website** with five sections:
@@ -55,7 +55,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | Grade last round's predictions (tips correct, margin error, log loss, Brier, vs the market) | ✅ | `pipeline/grade.py`, run by the results job: each finished game's prediction of record joined to the result, opening and closing market and Elo; metrics per round and for the season so far, written to `data/pipeline/<live\|replay>/<season>/graded.csv` and `season.md`. Grading the final test's predictions reproduces `reports/final_2026.md` exactly (`tests/test_pipeline.py`). |
 | Prediction of record (last prediction before kickoff) and season record | ✅ | The pipeline keeps every prediction it makes, with when it was made (`predictions.csv` beside the run log), and `grade.prediction_of_record` picks the latest before kickoff. Becomes the `prediction_of_record` view once the database exists. |
 | Betting results and closing line value per round | 🔶 | `betting.py` does whole seasons, not week by week |
-| Tipping-comp scoring (points, auto-tips, bonus, margin, ladder) | ❌ | Needs the database (§2, §3.5) |
+| Tipping-comp scoring (points, auto-tips, bonus, margin, ladder) | ✅ | In SQL: `supabase/migrations/20261010000000_tipping.sql` (`effective_tips`, `tip_results`, `round_scores`, `ladder()`, lockout and hidden tips in row-level security). The website's copy is `web/lib/scoring.ts`. Both are checked against the same hand-worked cases (`tests/tipping/cases.json`) by `npm test` in `web/`, the SQL in PGlite (Postgres 17 in WebAssembly). Not yet applied to a Supabase project. |
 
 **Automation and publishing**
 
@@ -64,10 +64,102 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | `pipeline/run.py --job results / predict / refresh` | ✅ | Runs by hand; `--as-of` replays a past season, and `pipeline/replay.py` runs the whole weekly schedule over one. Not yet scheduled (step 8) or publishing (step 7). |
 | GitHub Actions workflows on the weekly schedule | ❌ | §1.1, §4 |
 | Run log, alerts on failure | 🔶 | Every pipeline run is logged to `runs.jsonl` (job, clock, status, round, games, model version, commit, errors); a failed run exits non-zero. No alerts yet. |
-| Supabase schema, row-level security, publishing | ❌ | §2, milestone 1 |
-| Website and tipping comp | ❌ | §3, milestones 5–8 |
+| Supabase schema, row-level security, publishing | 🔶 | The tipping tables, scoring and row-level security are written and tested locally (above). The model tables, the Supabase project and publishing are still to do (§2, milestone 1). |
+| Website and tipping comp | 🔶 | Every planned page designed and built, on sample data and browser stand-ins (see Website status below); not connected to the pipeline, Supabase or live sources, not deployed |
 
-**Suggested order for the rest:** `pipeline/run.py` with the weekly grading step (both testable now on 2026 replays), then The Odds API fetcher and the automatic odds-sheet download, then the GitHub Actions workflows, then Supabase and the website.
+### Website status (October 2026)
+
+Every planned page is designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and built in `web/` on the `web-design` branch, and each passed an independent design review. **None of it is wired to live data yet.** Each page reads from a sample module or a browser-storage stand-in, behind an interface that the real source replaces in one place. Every sample page carries a dashed "Sample data" note saying what is real and what is made up.
+
+#### Pages and how each is wired
+
+"Real data, frozen" means real project data generated into a TypeScript file by a script in `web/scripts/`, not read live. "Stand-in" means it works end to end in the browser but stores nothing on a server.
+
+| Page | Built | Data today | Wired to live? | What replaces it |
+|---|---|---|---|---|
+| `/` home (round, tipping strip, recap) | ✅ | Real 2026 Round 10 replay predictions and results (frozen); invented tippers and tips | ❌ | `prediction_of_record`, `matches`, the viewer's `tips`, `ladder` |
+| `/round/[season]/[round]` | ✅ | Real replays of rounds 3, 5, 10 (frozen); invented tips | ❌ | Same views, any round |
+| `/match/[id]` | ✅ | Real replay data: no-odds model, opening price, Elo, Tuesday and final team lists, head to head (frozen; rounds 3, 5, 10 only) | ❌ | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
+| `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | ❌ Stand-in | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
+| `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ❌ | `round_scores` view and `ladder()` function (written and tested, step 3) |
+| `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ❌ Frozen | `latest_odds`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
+| `/elo` | ✅ | Real ratings 2009–2026 from `src/elo.py` (asserted equal); 2026 to Round 9 | ❌ Frozen | `elo_ratings` |
+| `/model` | ✅ | Real 2026 test-season tips to Round 9; invented tippers for the comp comparison | ❌ Frozen | `prediction_of_record`, `model_accuracy`, `ladder` |
+| `/about` | ✅ | Figures from `reports/final_2026.md` and `reports/backtest.md` | n/a | Update by hand after each season's test |
+| `/join/[code]`, `/sign-in`, `/auth/callback`, `/account` | ✅ | Browser stand-in (`BrowserAuthStore`): fake Google and email sign-in, profile in the browser; sample invites | ❌ Stand-in | Supabase auth (Google, email link), `profiles`, `invites` via `createAuthStore()` |
+| `/tipping/admin` | ✅ | Browser stand-in (`BrowserAdminStore`): invites, tippers and pipeline runs invented; real Round 10–11 fixtures | ❌ Stand-in | `invites`, `profiles` (admin flag), `rounds` (stored draw), `pipeline_runs` via `createAdminStore()` |
+| `/news` | ✅ | One saved snapshot of r/nrl's RSS feed (10 Oct 2026): real titles, links, times and linked sites; flairs guessed from titles | ❌ Frozen | Reddit API (OAuth app, cached) via `createNewsSource()`, with real flair |
+| Not-found page | ✅ | n/a | n/a | n/a |
+
+#### The swap points
+
+Each one is a single function that returns the real implementation once the backend exists. The pages don't change.
+
+| Interface | File | Sample implementation | Live implementation needs |
+|---|---|---|---|
+| Row shapes | `web/lib/types.ts` | `lib/sample*.ts` modules, generated by `web/scripts/build_sample.py`, `build_odds_sample.py`, `build_elo_sample.py`, `build_news_sample.py` | Server-side Supabase queries returning the same types |
+| `TipStore` | `web/lib/tip-store.ts` | Browser storage | Supabase `tips`, with lockout and hidden tips in row-level security |
+| `AuthStore` | `web/lib/auth.ts` | Browser storage, mock redirect through `/auth/callback` | Supabase auth. Its header lists the work: `shouldCreateUser: false` and a before-user-created hook so signing in never creates an account, a security-definer invite check, redeeming an invite in the same transaction, a service-key route for account deletion, and stripping Google's name and avatar |
+| `AdminStore` | `web/lib/admin.ts`, `web/lib/invites.ts` | Browser storage and a fixed sample clock | Supabase tables, the database clock, the `profiles` admin flag, and the stored margin-game draw |
+| `NewsSource` | `web/lib/news.ts` | Saved RSS snapshot | Reddit API: real flair, NSFW and removed posts hidden, cached about 10 minutes |
+| Tipping rules | `web/lib/ladder.ts`, `web/lib/rules.ts` | Computed in the browser | SQL scoring functions and views ported from these, sharing their test cases |
+
+#### Not connected yet
+
+- **The model pipeline:** nothing publishes predictions. Every Model number on the site is from the 2026 replays or the test season, generated into files.
+- **The database:** no Supabase project, tables, row-level security or migrations exist yet.
+- **Live sources:** no Odds API fetcher, no automatic odds-sheet download, no Reddit API, no live scores.
+- **Accounts:** sign-in is simulated, and nobody is really signed in. Tips, profiles and invites live only in the visitor's browser.
+- **Admin:** the page is open to anyone in the sample, and the admin flag always says yes.
+- **The margin-game draw** (random, excluding last round's teams; §3.5) is implemented as a function (`drawFeatured`), but nothing stores a draw. The sample's Round 10 game is simply the round's first game.
+- **Deployment:** the site isn't on Vercel. `noindex` and `robots.txt` are in place.
+
+#### Still to add to the website
+
+- **Live states the sample can't show:** live scores during games (§3.2 "Later") and the "Updated: Hughes out" refresh badge driven by real team-list changes (milestone 9).
+- **Odds history** on match pages (a chart of the market since opening, §3.3). It needs `odds_snapshots`.
+- **Elo for both teams on match pages** (§3.1). The `/elo` team view exists; the match page doesn't use it yet.
+- **The r/nrl match thread link** on each match page (§3.6).
+- **Match previews** (LLM) and **what drove the prediction** (SHAP) on match pages (§3.1, "Later").
+- **Tip reminders** before each round's first game (email, §3.5 extras).
+- **Notifications and push** (§5 "Later").
+
+### Next steps
+
+Step numbers are fixed (other sections refer to them). Steps 1–3 are done. The work is split across two branches that don't depend on each other until step 7: **`pipeline`** (Python, `pipeline/` and `src/`) and **`web-design`** (the site in `web/` and the database in `supabase/`). This plan is kept identical on both branches so they merge cleanly.
+
+**Done**
+
+- ✅ **Step 1. `pipeline/run.py --job results|predict|refresh`** (October 2026, `pipeline` branch): incremental scrape of the current season (`scrape.build_tables(..., merge=True)`; rebuilding 2026 alone reproduces the committed tables byte for byte), the round to predict from the draw including postponed games (`draw.games_to_predict`), neutral venues from the draw (`draw.neutral_games`, agrees with the odds sheet's flags), `predict.py`, validation, and every run and prediction recorded. *Checked:* `python pipeline/replay.py --season 2026 --rounds 1 10 --check` runs the whole weekly schedule (132 jobs) and every Tuesday run equals `predict.py --replay`. Only 64 of 2026's 213 games have an archived Tuesday list, so the replay predicts 45 of rounds 1–10's games; refreshes correctly find nothing changed.
+- ✅ **Step 2. Weekly grading** (`pipeline` branch): `pipeline/grade.py`, run by the results job, writes `graded.csv` and `season.md`. *Checked:* grading the final test's predictions as predictions of record reproduces every number in `reports/final_2026.md`. (The plan's original check, grading the replayed season, can't reach those totals: the final test used final team lists for all 213 games, and the Tuesday archive covers only 64.)
+- ✅ **Step 3. Tipping scoring outside the browser** (`web-design` branch): `supabase/migrations/20261010000000_tipping.sql`, with the website's rules moved to `web/lib/scoring.ts`; both pass the shared cases in `tests/tipping/cases.json`, and the lockout, hidden-tips and permission rules pass in PGlite (`npm test` in `web/`, 24 tests).
+
+**On `pipeline`**
+
+- **Step 4. Odds:** download the aussportsbetting sheet in the results job, with the impossible-price check (note 4); then The Odds API fetcher, storing every snapshot and guarding credits (§1.2 step 4, §1.6). *Done when:* a week of snapshots is stored and the opening price for each game is chosen the way the model was trained. *Needs:* the aussportsbetting terms checked and an Odds API key.
+- **Step 5. Weather** in the refresh job (note 3). Optional; measure its value on replays first.
+- **Step 8. GitHub Actions** `results.yml`, `predict.yml`, `refresh.yml` and `ci.yml` on the UTC schedule in §1.1, with `actions/cache` for the season's raw pages, the secrets in §1.5, a failure alert and the keep-alive commit. Can run before Supabase exists, with the results job committing `data/pipeline/live/`; publishing is added after step 7. *Done when:* a full week runs unattended, including a deliberately broken run that alerts and doesn't publish (milestone 4).
+- **Step 11a. The pipeline draws each round's margin game** with `drawFeatured`'s rule (fresh randomness) in the predict job; stored in `rounds` once step 7 exists.
+
+**On `web-design`**
+
+- **Step 6. Create the Supabase project and the rest of the migrations** in `supabase/migrations/`: the model tables and views in §2 (predictions, `prediction_of_record`, odds snapshots, Elo ratings, team lists, invites, pipeline runs) beside the tipping migration, with the remaining rule tests (postponed games, ladder ties). Name columns to match `web/lib/types.ts`. *Done when:* the migrations apply to an empty project and every rule test passes. *Needs:* a Supabase account.
+- **Step 9. Swap the sample modules for queries** (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
+- **Step 10. Implement the live stores:** `SupabaseTipStore`, a Supabase `AuthStore` (with the `/auth/callback` code exchange) and a Supabase `AdminStore`, each returned from its `create…()` function. Their interfaces and the work each needs are documented in their files.
+- **Step 11b. The Reddit API** goes behind `NewsSource`. *Needs:* a Reddit app.
+- **Step 12. Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5). *Needs:* a Vercel account.
+
+**After merging both branches into `main`** (on a new branch from `main`)
+
+- **Step 7. `pipeline/publish.py`:** upsert matches, team lists, odds snapshots, Elo ratings, predictions and run records into the step 6 tables; call the website's revalidation hook. Backfill 2026 so the site starts with a real season. *Done when:* a replayed round appears in the database and the views return it. Then add publishing to the step 8 workflows.
+
+Suggested order: step 4 while the accounts are set up, then merge both branches, then 6 → 7 → 8 → 9–12.
+
+**The 2027 season**
+
+- **Step 13. The yearly routine** (note 5): the final 2026 data, the Perth Bears added, then freeze `2027.1`.
+- **Step 14. Dry run on the February trials** with friends tipping (milestone 11), then **launch for Round 1** (milestone 12).
+
 
 ### Notes for the next phase
 
@@ -279,12 +371,12 @@ Views:
 |---|---|
 | `profiles` | user id (from Supabase auth), display name, favourite team, auto-tip choice (home team / crowd / ladder), admin flag |
 | `invites` | code, created by, used by, expires |
-| `rounds` | season, round, featured match (for the margin) |
-| `tips` | user, match, team picked, margin (featured game only), `is_auto` (filled in by an auto-tip, not by the user), updated |
+| `rounds` | season, round, featured match (for the margin; drawn at random by the predict job, excluding last round's featured teams, §3.5), drawn at |
+| `tips` | user, match, team picked, margin (featured game only), updated. Only tippers' own tips: auto-tips aren't stored but filled in by the `effective_tips` view once a game locks, so a job that didn't run can't leave a gap |
 
 There is **one comp** for the whole group, so no comp or membership tables are needed. Adding them later is easy if a second group ever wants in.
 
-Views: `tip_results` (each tip marked correct or not once the game is final), `round_scores` (points, bonus point and margin score per user per round) and `ladder` (season totals, ranked by the rules in §3.5).
+Views: `effective_tips` (every tipper's tip for every locked game, own or auto), `tip_results` (each tip marked correct or not once the game is final or cancelled), `round_scores` (points, bonus point and margin score per user per round) and the `ladder(season)` function (season totals, ranked by the rules in §3.5, with movement). Written in `supabase/migrations/20261010000000_tipping.sql`.
 
 ### Row-level security
 
@@ -293,13 +385,15 @@ This is where the rules are enforced, not just in the website code:
 - Anyone can read model data. Only the pipeline's service key can write it.
 - A user can insert or change their **own** tips only while `now() < kickoff` for that match. A tip can't be sneaked in after kickoff, even by calling the API directly.
 - A user can see **other people's tips** for a game only after it kicks off. Before then, tips stay hidden so nobody copies.
-- Only signed-in users can see the ladder and tips. Only an admin can create invites, set the featured game or remove a user.
+- Only signed-in users can see the ladder and tips. Only an admin can create invites or remove a user. The featured game is drawn by the pipeline, not set by hand.
 
 ---
 
 ## 3. Website
 
 ### 3.1 Pages
+
+Built pages are listed in [Website status](#website-status-october-2026) above.
 
 | Path | Content |
 |---|---|
@@ -310,15 +404,16 @@ This is where the rules are enforced, not just in the website code:
 | `/elo` | Elo ratings and history |
 | `/tipping` | My tips for this round |
 | `/tipping/ladder` | The ladder and round-by-round results |
-| `/tipping/admin` | Invites, featured game, user list (admin only) |
+| `/tipping/admin` | Invites (one use, 7 days), the tippers (remove one), this round's featured game and how it was drawn, and pipeline run status (admin only) |
 | `/news` | r/nrl feed |
-| `/about` | How the model works, in plain words, and its limits |
+| `/model` | The Model's own page: its record this season as a tipper (tips right against the bookies' favourite and Elo, its place among the tippers, round by round, best calls and worst misses) and a short tested record |
+| `/about` | How the model works, in plain words, and its limits, with a technical section and a link to `/model` |
 
 ### 3.2 Predictions
 
 One card per game, ordered by kickoff:
 
-- Teams with logos, kickoff time in the viewer's local time, venue
+- Teams as colour badges (see §3.7), kickoff time in the viewer's local time, venue
 - **Predicted score**, e.g. "Storm 24 – 16 Broncos"
 - **Predicted winner** and **win probability** as a bar (e.g. 68% / 32%)
 - **Margin**, e.g. "Storm by 8"
@@ -344,7 +439,7 @@ A season tab shows how the model and the market have done over time: cumulative 
 
 Notes:
 
-- Present it as analysis for a few friends, not betting advice. No bookmaker logos, links or affiliate deals, a responsible gambling message with the national helpline, and a note that odds may be out of date. Keeping it non-promotional and personal keeps it clear of gambling advertising rules.
+- Just show the odds: no disclaimer or gambling message on the page (decided October 2026, see DESIGN_BRIEF.md). Bookmaker names appear as plain text only, with no logos, links or affiliate deals.
 - Odds data has terms of use. The Odds API allows display, but check the plan's terms, and credit the source.
 
 ### 3.4 Elo
@@ -376,7 +471,7 @@ A single invite-only comp for a few friends, following the **official NRL Tippin
 | **Draws** | A drawn game counts as **a win for both teams**, so everyone who tipped it gets the point. The same applies to a game that is cancelled, abandoned, not completed, or without an official result within 3 days of its scheduled date. |
 | **Auto-tips** | A game you didn't tip is filled in at lockout with your auto-tip choice: **Home team** (the home team in the official draw, even at a neutral venue), **The crowd** (the team most of the other tippers picked) or **Ladder** (the team higher on the NRL ladder). If the crowd or ladder option is tied, it falls back to the home team. You choose when you join and can change it until the first game of the season locks. |
 | **Bonus point** | 1 bonus point for tipping **every** winner in a round with **8 or more games**. No bonus if any of your tips in that round were auto-tips, or in shorter rounds (for example Origin-period rounds). |
-| **Margin** | Each round has a **featured game** (default: the first game of the round; the admin can change it before it locks). Enter a predicted winning margin for it. Your margin score for the round is the gap between your predicted margin and the real one, and it adds up over the season. If you don't enter one, a default margin applies. |
+| **Margin** | Each round has a **featured game**, **drawn at random** when the round's predictions publish, from the games that don't involve either team in the previous round's featured game (decided October 2026; if no game qualifies, from all the round's games). The draw is stored with the round and doesn't change, and everyone sees it before tipping. Enter a predicted winning margin for it. Your margin score for the round is the gap between your predicted margin and the real one, and it adds up over the season. If you don't enter one, a default margin applies. |
 | **Ladder ties** | Most points first, then the **lowest accumulated margin score**. |
 | **Finals** | Same rules as the regular season. |
 
@@ -420,10 +515,10 @@ Rule details to settle while building:
 
 ### 3.7 General
 
-- **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** and a "personal project" tag, and every page has a footer saying: personal project for a few friends, not affiliated with or endorsed by the NRL or any club, not betting advice. Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
+- **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** and a "personal project" tag, and every page has a one-line footer: "Tipping comp and predictor for the boys. I'm not responsible if you lose money." Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
 - **Kept out of search engines:** `noindex` on every page and a `robots.txt` that blocks crawlers. Friends get the link directly.
 - **Phone first:** most tipping happens on a phone. Design every page for a narrow screen first.
-- **Dark mode** and team colours, with enough contrast to read.
+- **Dark only** (see DESIGN_BRIEF.md), with team colours lightened where needed to read on the dark background.
 - **Caching:** prediction, odds and Elo pages are cached and refreshed when the pipeline calls the revalidation hook. Tipping pages are rendered per user and never cached.
 - **Times:** store everything in UTC; show times in the viewer's time zone.
 - **Privacy:** a short note on the about page saying the site stores only email addresses, display names and tips, for running the comp. Let users delete their account and tips.
@@ -449,15 +544,18 @@ nrl-predictor/
     fetch_odds.py              # Odds API snapshots (to do, step 4)
     publish.py                 # upsert to Supabase, call revalidation hook (to do, step 7)
   supabase/
-    migrations/                # tables, views, row-level security policies
+    migrations/                # tables, views, row-level security policies (tipping part exists)
     functions/tip-reminders/   # scheduled reminder emails
-  web/                         # Next.js app
-    app/                       # pages: /, /round, /match, /odds, /elo, /tipping, /news
-    components/                # match card, Elo chart, odds table, ladder
-    lib/supabase.ts, lib/reddit.ts
+  web/                         # Next.js app (exists, on sample data)
+    app/                       # pages: /, /round, /match, /odds, /elo, /model, /about, /tipping, /tipping/ladder (built); /news, /tipping/admin (to do)
+    components/                # game rows, pitch bars, charts, market track, tip list, ladder
+    lib/                       # types.ts (row shapes), scoring.ts and rules.ts (tipping rules), tip-store.ts, sample*.ts (generated)
+    tests/tipping.test.ts      # the tipping rules in scoring.ts and in SQL (PGlite), and row-level security (npm test)
+    scripts/                   # build_sample.py, build_odds_sample.py, build_elo_sample.py
+    lib/supabase.ts, lib/reddit.ts  # to do
   tests/
     test_pipeline.py           # round detection, neutral venues, grading (exists)
-    test_tipping_rules.sql     # lockout, hidden tips, scoring
+    tipping/cases.json         # hand-worked tipping rule cases, shared by scoring.ts and the SQL (exists)
   .github/workflows/
     results.yml                # Monday
     predict.yml                # Tuesday after team lists
