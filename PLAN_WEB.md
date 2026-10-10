@@ -340,7 +340,7 @@ Views:
 |---|---|
 | `profiles` | user id (from Supabase auth), display name, favourite team, auto-tip choice (home team / crowd / ladder), admin flag |
 | `invites` | code, created by, used by, expires |
-| `rounds` | season, round, featured match (for the margin) |
+| `rounds` | season, round, featured match (for the margin; drawn at random by the predict job, excluding last round's featured teams, §3.5), drawn at |
 | `tips` | user, match, team picked, margin (featured game only), `is_auto` (filled in by an auto-tip, not by the user), updated |
 
 There is **one comp** for the whole group, so no comp or membership tables are needed. Adding them later is easy if a second group ever wants in.
@@ -354,7 +354,7 @@ This is where the rules are enforced, not just in the website code:
 - Anyone can read model data. Only the pipeline's service key can write it.
 - A user can insert or change their **own** tips only while `now() < kickoff` for that match. A tip can't be sneaked in after kickoff, even by calling the API directly.
 - A user can see **other people's tips** for a game only after it kicks off. Before then, tips stay hidden so nobody copies.
-- Only signed-in users can see the ladder and tips. Only an admin can create invites, set the featured game or remove a user.
+- Only signed-in users can see the ladder and tips. Only an admin can create invites or remove a user. The featured game is drawn by the pipeline, not set by hand.
 
 ---
 
@@ -373,7 +373,7 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/elo` | Elo ratings and history |
 | `/tipping` | My tips for this round |
 | `/tipping/ladder` | The ladder and round-by-round results |
-| `/tipping/admin` | Invites, featured game, user list (admin only) |
+| `/tipping/admin` | Invites (one use, 7 days), the tippers (remove one), this round's featured game and how it was drawn, and pipeline run status (admin only) |
 | `/news` | r/nrl feed |
 | `/model` | The Model's own page: its record this season as a tipper (tips right against the bookies' favourite and Elo, its place among the tippers, round by round, best calls and worst misses) and a short tested record |
 | `/about` | How the model works, in plain words, and its limits, with a technical section and a link to `/model` |
@@ -440,7 +440,7 @@ A single invite-only comp for a few friends, following the **official NRL Tippin
 | **Draws** | A drawn game counts as **a win for both teams**, so everyone who tipped it gets the point. The same applies to a game that is cancelled, abandoned, not completed, or without an official result within 3 days of its scheduled date. |
 | **Auto-tips** | A game you didn't tip is filled in at lockout with your auto-tip choice: **Home team** (the home team in the official draw, even at a neutral venue), **The crowd** (the team most of the other tippers picked) or **Ladder** (the team higher on the NRL ladder). If the crowd or ladder option is tied, it falls back to the home team. You choose when you join and can change it until the first game of the season locks. |
 | **Bonus point** | 1 bonus point for tipping **every** winner in a round with **8 or more games**. No bonus if any of your tips in that round were auto-tips, or in shorter rounds (for example Origin-period rounds). |
-| **Margin** | Each round has a **featured game** (default: the first game of the round; the admin can change it before it locks). Enter a predicted winning margin for it. Your margin score for the round is the gap between your predicted margin and the real one, and it adds up over the season. If you don't enter one, a default margin applies. |
+| **Margin** | Each round has a **featured game**, **drawn at random** when the round's predictions publish, from the games that don't involve either team in the previous round's featured game (decided October 2026; if no game qualifies, from all the round's games). The draw is stored with the round and doesn't change, and everyone sees it before tipping. Enter a predicted winning margin for it. Your margin score for the round is the gap between your predicted margin and the real one, and it adds up over the season. If you don't enter one, a default margin applies. |
 | **Ladder ties** | Most points first, then the **lowest accumulated margin score**. |
 | **Finals** | Same rules as the regular season. |
 

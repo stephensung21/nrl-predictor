@@ -4,6 +4,7 @@
 // Friends' tips and margins are invented sample data.
 
 import type { ArchivedRound, MatchDetail, SeasonRound } from "./types";
+import type { TeamName } from "./teams";
 
 export const ARCHIVE: ArchivedRound[] = [
   {
@@ -12626,3 +12627,66 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     ]
   }
 } as Record<string, MatchDetail>;
+
+/** The round after the sample's current one: fixtures only. */
+export const NEXT_ROUND: { round: number; games: { matchId: string; kickoff: string; home: TeamName; away: TeamName; venue: string }[] } = {
+  "round": 11,
+  "games": [
+    {
+      "matchId": "20261111110",
+      "kickoff": "2026-05-15T08:00:00Z",
+      "home": "Sharks",
+      "away": "Bulldogs",
+      "venue": "Suncorp Stadium"
+    },
+    {
+      "matchId": "20261111120",
+      "kickoff": "2026-05-15T10:05:00Z",
+      "home": "Rabbitohs",
+      "away": "Dolphins",
+      "venue": "Suncorp Stadium"
+    },
+    {
+      "matchId": "20261111130",
+      "kickoff": "2026-05-16T05:00:00Z",
+      "home": "Wests Tigers",
+      "away": "Sea Eagles",
+      "venue": "Suncorp Stadium"
+    },
+    {
+      "matchId": "20261111140",
+      "kickoff": "2026-05-16T07:30:00Z",
+      "home": "Roosters",
+      "away": "Cowboys",
+      "venue": "Suncorp Stadium"
+    },
+    {
+      "matchId": "20261111150",
+      "kickoff": "2026-05-16T09:45:00Z",
+      "home": "Eels",
+      "away": "Storm",
+      "venue": "Suncorp Stadium"
+    },
+    {
+      "matchId": "20261111160",
+      "kickoff": "2026-05-17T04:00:00Z",
+      "home": "Titans",
+      "away": "Knights",
+      "venue": "Suncorp Stadium"
+    },
+    {
+      "matchId": "20261111170",
+      "kickoff": "2026-05-17T06:05:00Z",
+      "home": "Warriors",
+      "away": "Broncos",
+      "venue": "Suncorp Stadium"
+    },
+    {
+      "matchId": "20261111180",
+      "kickoff": "2026-05-17T08:25:00Z",
+      "home": "Panthers",
+      "away": "Dragons",
+      "venue": "Suncorp Stadium"
+    }
+  ]
+};

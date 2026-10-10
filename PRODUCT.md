@@ -47,7 +47,7 @@ The opponent in this comp is a real, tested model, not a pundit. The Model tips 
 - **Free plans only.** One invite-only comp. Accounts only for tipping; everything else is read-only.
 - **No official NRL or club logos.** Team names are used, with plain coloured badges.
 - `noindex` on every page and a `robots.txt` that blocks crawlers.
-- The site stores only email addresses, display names and tips. Users can delete their account and tips.
+- The site stores only email addresses, display names, favourite teams, auto-tip choices and tips. Users can delete their account and tips. Google sign-in metadata (name, avatar) is not kept.
 
 ## Brand Commitments
 

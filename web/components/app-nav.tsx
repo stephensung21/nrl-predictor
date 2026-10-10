@@ -19,6 +19,7 @@ const MORE = [
   { href: "/news", label: "News" },
   { href: "/model", label: "The Model" },
   { href: "/about", label: "How the Model works" },
+  { href: "/account", label: "Your account" },
 ];
 
 function MoreMenu({ placement }: { placement: "up" | "down" }) {
