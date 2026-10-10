@@ -18,3 +18,6 @@ reports/predictions/
 
 # Pipeline replays of past seasons (pipeline/replay.py); live records in data/pipeline/live/ are committed
 data/pipeline/replay/
+
+# Local secrets (ODDS_API_KEY for pipeline/fetch_odds.py)
+.env

@@ -2,7 +2,7 @@
 Shared pieces for the weekly pipeline: paths, the model code in src/, and the pipeline's own records.
 
 Every run is recorded, and every prediction it made is kept (not overwritten), with when it was
-made. Grading needs the full history: a game's prediction of record is the latest one made before
+made; so is every odds snapshot (fetch_odds.py). Grading needs the full history: a game's prediction of record is the latest one made before
 its kickoff. Live records go in data/pipeline/live/<season>/ and are committed by the results job;
 replays of past seasons go in data/pipeline/replay/<season>/ (ignored by git, regenerable).
 """
@@ -38,6 +38,7 @@ class Records:
         self.runs_file = self.dir / "runs.jsonl"
         self.predictions_file = self.dir / "predictions.csv"
         self.graded_file = self.dir / "graded.csv"
+        self.odds_file = self.dir / "odds_snapshots.csv"
 
     def add_run(self, record):
         with self.runs_file.open("a", encoding="utf-8") as f:
@@ -66,3 +67,12 @@ class Records:
 
     def write_graded(self, graded):
         graded.to_csv(self.graded_file, index=False)
+
+    def odds_snapshots(self):
+        """Every price fetched from The Odds API this season (fetch_odds.py), or None before the first."""
+        if not self.odds_file.exists():
+            return None
+        return pd.read_csv(self.odds_file, dtype={"event_id": str, "issues": str}, keep_default_na=True)
+
+    def add_odds_snapshots(self, snaps):
+        snaps.to_csv(self.odds_file, mode="a", header=not self.odds_file.exists(), index=False)
