@@ -11,7 +11,8 @@ export const SERIES = {
 } as const;
 
 const decided = SEASON_GAMES.filter((g) => g.homeWin != null && g.homeWin !== 0.5 && g.market != null && g.elo != null);
-const right = (p: number, homeWin: number) => (p >= 0.5 ? homeWin === 1 : homeWin === 0);
+/** A forecaster's tip is right when it favoured the winner; an exact 50-50 is no tip (as the reports count it). */
+const right = (p: number, homeWin: number) => (p === 0.5 ? false : p > 0.5 ? homeWin === 1 : homeWin === 0);
 
 export function tipsCorrect() {
   const count = (k: "model" | "market" | "elo") => decided.filter((g) => right(g[k]!, g.homeWin!)).length;

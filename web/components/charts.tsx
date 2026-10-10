@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type Series = { key: string; label: string; colour: string };
 
-function useWidth<T extends HTMLElement>() {
+export function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -23,7 +23,7 @@ function useWidth<T extends HTMLElement>() {
 }
 
 /** Clean tick values that cover the whole range (the axis ends on a tick at or beyond each extreme). */
-function ticks(min: number, max: number, count = 4) {
+export function ticks(min: number, max: number, count = 4) {
   const span = max - min || 1;
   const raw = span / count;
   const mag = 10 ** Math.floor(Math.log10(raw));

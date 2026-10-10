@@ -260,8 +260,8 @@ export function ModelRecordStrip({ record }: { record: ModelRecord }) {
           <dd className="mt-0.5 font-semibold text-ink-3">points a game</dd>
         </div>
       </dl>
-      <Link href="/about" className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-ink-2 underline decoration-line hover:text-ink">
-        How the Model works
+      <Link href="/model" className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-ink-2 underline decoration-line hover:text-ink">
+        The Model&rsquo;s season so far
         <ChevronRight className="size-3.5" aria-hidden />
       </Link>
     </section>

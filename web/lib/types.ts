@@ -162,3 +162,19 @@ export type SeasonGame = {
 };
 
 export type SeasonBet = { matchId: string; side: "home" | "away"; odds: number; won: boolean; profit: number };
+
+/** One season of Elo: each team's rating after every round (finals as "F"). */
+export type EloSeason = {
+  season: number;
+  rounds: string[];
+  lastRound: string;
+  /** Rating going into the season, after the off-season pull back toward 1500. */
+  start: Record<string, number>;
+  ratings: Record<string, number[]>;
+};
+
+/** A team's recent seasons game by game; `swings` index its biggest rises and falls. */
+export type EloTeamView = {
+  points: { season: number; label: string; date: string; rating: number; change: number; text: string }[];
+  swings: number[];
+};

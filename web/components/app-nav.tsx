@@ -17,7 +17,8 @@ const ITEMS: Item[] = [
 const MORE = [
   { href: "/odds", label: "Model vs market" },
   { href: "/news", label: "News" },
-  { href: "/about", label: "About the Model" },
+  { href: "/model", label: "The Model" },
+  { href: "/about", label: "How the Model works" },
 ];
 
 function MoreMenu({ placement }: { placement: "up" | "down" }) {
