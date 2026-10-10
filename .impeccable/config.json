@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/halfway.html"
+        ],
+        "createdAt": "2026-10-09T22:52:32.879Z",
+        "reason": "Claude: decision-round sketch, not shipping UI; the stripe mimics the DESIGN.md team badge"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/split-line.html"
+        ],
+        "createdAt": "2026-10-09T22:52:33.182Z",
+        "reason": "Claude: decision-round sketch, not shipping UI; the stripe mimics the DESIGN.md team badge"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/two-cases.html"
+        ],
+        "createdAt": "2026-10-09T22:52:33.466Z",
+        "reason": "Claude: decision-round sketch, not shipping UI; the stripe mimics the DESIGN.md team badge"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/halfway.html"
+        ],
+        "createdAt": "2026-10-09T22:52:33.709Z",
+        "reason": "Claude: decision-round sketch the user did not pick; not shipping UI"
+      }
+    ]
+  }
+}

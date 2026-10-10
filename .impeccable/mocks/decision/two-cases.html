@@ -1,0 +1,59 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@600;700;800&family=Sofia+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ground:oklch(0.165 0.02 162);--raised:oklch(0.205 0.022 162);--line:oklch(0.31 0.022 162);--soft:oklch(0.255 0.02 162);--pitch:oklch(0.235 0.035 152);--ink:oklch(0.965 0.008 110);--ink2:oklch(0.82 0.016 150);--ink3:oklch(0.68 0.018 155);--lime:oklch(0.91 0.2 126)}
+*{box-sizing:border-box;margin:0}
+html,body{width:390px;height:844px;overflow:hidden;background:var(--ground);color:var(--ink);font-family:"Sofia Sans",sans-serif}
+.d{font-family:"Saira Extra Condensed",sans-serif;text-transform:uppercase;font-variant-numeric:tabular-nums}
+header{height:56px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--soft)}
+header b{font-family:"Saira Extra Condensed";font-size:22px}
+.back{font-size:13px;color:var(--ink3);padding:12px 16px 0}
+.board{margin:10px 16px 0;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--raised)}
+.board .call{font-size:30px;font-weight:700;line-height:1}
+.board .row{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.badge{width:44px;height:30px;border-radius:4px;display:grid;place-items:center;font-family:"Saira Extra Condensed";font-weight:800;font-size:17px;border-bottom:3px solid}
+.score{font-family:"Saira Extra Condensed";font-size:40px;font-weight:600;color:var(--ink2)}
+.bar{position:relative;height:12px;margin-top:12px;border-radius:3px;background:var(--pitch);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;width:63%;background:#b73c72}
+.bar u{position:absolute;inset:0 0 0 auto;width:37%;background:#e06a8c;opacity:.42}
+.bar s{position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--ink)}
+.case{margin:16px 16px 0;padding-top:10px;border-top:3px solid}
+.case h2{font-size:22px;font-weight:700}
+.case ul{list-style:none;padding:0;margin-top:6px}
+.case li{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--soft);font-size:14px;color:var(--ink2)}
+.case li b{font-family:"Saira Extra Condensed";font-size:18px;color:var(--ink)}
+.case li.model span{color:var(--lime);font-weight:600}
+nav{position:absolute;bottom:0;left:0;right:0;height:62px;border-top:1px solid var(--soft);background:var(--ground);display:flex;justify-content:space-around;align-items:center;font-size:12px;color:var(--ink3)}
+nav .on{color:var(--ink);font-weight:700}
+</style></head><body>
+<header><b>rugbyleague-tipper</b></header>
+<p class="back">‹ Round 10 · Sat 7:35pm · 4 Pines Park</p>
+<div class="board">
+  <p class="call d">Sea Eagles by 5</p>
+  <div class="row">
+    <div class="badge" style="background:#8a1f4f;color:#fff;border-color:#fff">MAN</div>
+    <span class="score">26 – 21</span>
+    <div class="badge" style="background:#8f2246;color:#fbbf15;border-color:#fbbf15">BRI</div>
+  </div>
+  <div class="bar"><i></i><u></u><s></s></div>
+</div>
+<section class="case" style="border-color:#b73c72">
+  <h2 class="d">The case for Sea Eagles</h2>
+  <ul>
+    <li class="model"><span>The Model</span><b>63%</b></li>
+    <li><span>Elo</span><b>54%</b></li>
+    <li><span>Last meeting, 2025</span><b>34 – 6</b></li>
+    <li><span>Team list since Tuesday</span><b>No changes</b></li>
+  </ul>
+</section>
+<section class="case" style="border-color:#e06a8c">
+  <h2 class="d">The case for Broncos</h2>
+  <ul>
+    <li><span>Bookies' opening price</span><b>55%</b></li>
+    <li><span>Last 5 meetings</span><b>3 – 2</b></li>
+    <li><span>Team list since Tuesday</span><b>1 change</b></li>
+  </ul>
+</section>
+<nav><span class="on">Round</span><span>Tips</span><span>Ladder</span><span>Elo</span><span>More</span></nav>
+</body></html>

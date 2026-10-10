@@ -223,7 +223,7 @@ nrl-predictor/
 4. **Model A and Model B** (logistic regression and LightGBM), evaluated walk-forward against the closing-odds baseline.
 5. **Calibration, ensemble and SHAP.**
 6. **Betting simulation** at opening or closing odds, with closing line value tracking.
-7. **Weekly pipeline** as a workflow, plus the dashboard and LLM-written previews.
+7. **Weekly pipeline** as a workflow, plus the dashboard and LLM-written previews. *Status (October 2026):* milestones 1–6 are done and `predict.py` exists; the website that replaces the dashboard is built on sample data. The ordered next steps (pipeline, grading, odds, database, automation, connecting the website) are in [PLAN_WEB.md, Next steps](PLAN_WEB.md#next-steps).
 
 **Agentic extensions**
 

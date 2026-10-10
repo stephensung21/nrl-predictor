@@ -1,0 +1,43 @@
+{
+  "title": "Match page: choose a structure",
+  "question": "Three ways to lay out /match/[id] so it answers \"should I tip against the Model?\" first. The look is fixed by DESIGN.md; these differ in how the page is organised. Pick one, steer, or re-roll.",
+  "options": [
+    {
+      "id": "halfway",
+      "label": "Three calls on one pitch",
+      "kicker": "THE ROLL",
+      "thesis": "Model, bookies and Elo drop as markers on one big pitch bar, so a split shows as markers on opposite sides of halfway.",
+      "palette": ["#0c1712", "#f4f5ee", "#c8f04a", "#c23b66", "#b73c72"],
+      "materials": ["pitch bar with three markers", "mirrored home / away columns"],
+      "viewport": "Compact board (call, kickoff), then one large pitch with Model 63 / Elo 54 / Bookies 45 markers and a plain line saying who disagrees, then team lists as a mirrored teamsheet: home left, jersey numbers down the halfway, away right.",
+      "risk": "Three markers on one bar can crowd when the voices sit within a few points of each other.",
+      "raised": [{ "from": "labanotation score", "raise": "Symmetry across the halfway line is the page's rule: every section below mirrors home left, away right." }],
+      "html": ".impeccable/mocks/decision/halfway.html",
+      "htmlFrame": "390x844"
+    },
+    {
+      "id": "split-line",
+      "label": "The split, said plainly",
+      "thesis": "A one-line verdict leads (\"The Model backs Manly. The bookies back Brisbane.\"), then each voice gets its own pitch bar.",
+      "palette": ["#0c1712", "#f4f5ee", "#c8f04a", "#c23b66", "#b73c72"],
+      "materials": ["display-type verdict", "stacked pitch bars", "tabs for Teams / Head to head"],
+      "viewport": "The verdict sentence at display size, then four labelled pitch bars (Model, Model without odds, Bookies' opening price, Elo), then tabs switching between team lists and head to head.",
+      "risk": "Stacked bars repeat a lot of chrome; the verdict sentence must be generated well or it reads robotic.",
+      "html": ".impeccable/mocks/decision/split-line.html",
+      "htmlFrame": "390x844"
+    },
+    {
+      "id": "two-cases",
+      "label": "The case for each side",
+      "thesis": "Evidence is sorted by which team it backs: a panel for Sea Eagles and a panel for Broncos, each listing who backs them and why.",
+      "palette": ["#0c1712", "#f4f5ee", "#c8f04a", "#c23b66", "#b73c72"],
+      "materials": ["two evidence panels in team colours", "full team lists below"],
+      "viewport": "Compact board, then \"The case for Sea Eagles\" (Model 63%, Elo 54%, won the last meeting 34–6) and \"The case for Broncos\" (bookies 55%, 3 of the last 5), then team lists and the head-to-head table.",
+      "risk": "Sorting evidence by side can feel like it argues both ways; the numbers have to stay neutral.",
+      "html": ".impeccable/mocks/decision/two-cases.html",
+      "htmlFrame": "390x844"
+    }
+  ],
+  "reroll": true,
+  "steer": true
+}

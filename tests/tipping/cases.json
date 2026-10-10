@@ -1,0 +1,340 @@
+{
+  "about": "Tipping rule cases shared by web/lib/scoring.ts and the database scoring (supabase/migrations). Every expected value was worked out by hand from the rules in PLAN_WEB.md §3.5. A game with score null hasn't been played; `sqlOnly` cases use rules the sample doesn't model. Run with `npm test` in web/.",
+  "season": 2026,
+  "cases": [
+    {
+      "name": "points, a draw and margin scores, including tipping the wrong team",
+      "tippers": [
+        { "id": "amy", "autoTip": "home" },
+        { "id": "ben", "autoTip": "home" },
+        { "id": "model", "isModel": true }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "101",
+          "games": [
+            { "id": "101", "home": "Storm", "away": "Broncos", "score": [24, 10] },
+            { "id": "102", "home": "Panthers", "away": "Eels", "score": [18, 18] },
+            { "id": "103", "home": "Sharks", "away": "Dragons", "score": [12, 20] }
+          ],
+          "tips": [
+            { "tipper": "amy", "match": "101", "team": "Storm", "margin": 6 },
+            { "tipper": "amy", "match": "102", "team": "Eels" },
+            { "tipper": "amy", "match": "103", "team": "Sharks" },
+            { "tipper": "ben", "match": "101", "team": "Broncos", "margin": 6 },
+            { "tipper": "ben", "match": "102", "team": "Panthers" },
+            { "tipper": "ben", "match": "103", "team": "Dragons" },
+            { "tipper": "model", "match": "101", "team": "Storm", "margin": 10 },
+            { "tipper": "model", "match": "102", "team": "Panthers" },
+            { "tipper": "model", "match": "103", "team": "Dragons" }
+          ]
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "amy": [{ "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 8, "partial": false }],
+          "ben": [{ "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 20, "partial": false }],
+          "model": [{ "round": 1, "correct": 3, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 4, "partial": false }]
+        },
+        "ladder": {
+          "amy": { "points": 2, "marginScore": 8, "position": 1, "tied": false, "movement": null },
+          "ben": { "points": 2, "marginScore": 20, "position": 2, "tied": false, "movement": null },
+          "model": { "points": 3, "marginScore": 4, "position": null, "tied": false, "movement": null }
+        }
+      }
+    },
+    {
+      "name": "the plan's wrong-team example: Storm by 6 when the Broncos win by 4 scores 10",
+      "tippers": [{ "id": "kim", "autoTip": "home" }],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "201",
+          "games": [{ "id": "201", "home": "Storm", "away": "Broncos", "score": [16, 20] }],
+          "tips": [{ "tipper": "kim", "match": "201", "team": "Storm", "margin": 6 }]
+        }
+      ],
+      "expect": {
+        "rounds": { "kim": [{ "round": 1, "correct": 0, "games": 1, "bonus": 0, "autoTips": 0, "marginScore": 10, "partial": false }] },
+        "ladder": { "kim": { "points": 0, "marginScore": 10, "position": 1, "tied": false, "movement": null } }
+      }
+    },
+    {
+      "name": "auto-tips: home, crowd (the Model doesn't count) and ladder, with ties falling back to home; movement",
+      "tippers": [
+        { "id": "hana", "autoTip": "home" },
+        { "id": "cris", "autoTip": "crowd" },
+        { "id": "lou", "autoTip": "ladder" },
+        { "id": "x1", "autoTip": "home" },
+        { "id": "x2", "autoTip": "home" },
+        { "id": "model", "isModel": true }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "301",
+          "games": [
+            { "id": "301", "home": "Storm", "away": "Broncos", "score": [30, 10] },
+            { "id": "302", "home": "Eels", "away": "Panthers", "score": [10, 12] },
+            { "id": "303", "home": "Titans", "away": "Dragons", "score": [20, 20] }
+          ],
+          "tips": [
+            { "tipper": "hana", "match": "301", "team": "Storm" }, { "tipper": "hana", "match": "302", "team": "Eels" }, { "tipper": "hana", "match": "303", "team": "Titans" },
+            { "tipper": "cris", "match": "301", "team": "Storm" }, { "tipper": "cris", "match": "302", "team": "Eels" }, { "tipper": "cris", "match": "303", "team": "Titans" },
+            { "tipper": "lou", "match": "301", "team": "Storm" }, { "tipper": "lou", "match": "302", "team": "Eels" }, { "tipper": "lou", "match": "303", "team": "Titans" },
+            { "tipper": "x1", "match": "301", "team": "Storm" }, { "tipper": "x1", "match": "302", "team": "Eels" }, { "tipper": "x1", "match": "303", "team": "Titans" },
+            { "tipper": "x2", "match": "301", "team": "Storm" }, { "tipper": "x2", "match": "302", "team": "Eels" }, { "tipper": "x2", "match": "303", "team": "Titans" },
+            { "tipper": "model", "match": "301", "team": "Storm" }, { "tipper": "model", "match": "302", "team": "Eels" }, { "tipper": "model", "match": "303", "team": "Titans" }
+          ]
+        },
+        {
+          "round": 2,
+          "featured": "311",
+          "games": [
+            { "id": "311", "home": "Broncos", "away": "Storm", "score": [14, 22] },
+            { "id": "312", "home": "Panthers", "away": "Eels", "score": [10, 24] },
+            { "id": "313", "home": "Dragons", "away": "Titans", "score": [30, 6] },
+            { "id": "314", "home": "Knights", "away": "Raiders", "score": [6, 18] }
+          ],
+          "tips": [
+            { "tipper": "x1", "match": "311", "team": "Storm" }, { "tipper": "x1", "match": "312", "team": "Panthers" }, { "tipper": "x1", "match": "313", "team": "Titans" },
+            { "tipper": "x2", "match": "311", "team": "Storm" }, { "tipper": "x2", "match": "312", "team": "Eels" }, { "tipper": "x2", "match": "313", "team": "Dragons" },
+            { "tipper": "model", "match": "311", "team": "Storm" }, { "tipper": "model", "match": "312", "team": "Panthers" }, { "tipper": "model", "match": "313", "team": "Dragons" }, { "tipper": "model", "match": "314", "team": "Raiders" }
+          ]
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "hana": [
+            { "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 8, "partial": false },
+            { "round": 2, "correct": 1, "games": 4, "bonus": 0, "autoTips": 4, "marginScore": 20, "partial": false }
+          ],
+          "cris": [
+            { "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 8, "partial": false },
+            { "round": 2, "correct": 2, "games": 4, "bonus": 0, "autoTips": 4, "marginScore": 4, "partial": false }
+          ],
+          "lou": [
+            { "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 8, "partial": false },
+            { "round": 2, "correct": 2, "games": 4, "bonus": 0, "autoTips": 4, "marginScore": 4, "partial": false }
+          ],
+          "x1": [
+            { "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 8, "partial": false },
+            { "round": 2, "correct": 1, "games": 4, "bonus": 0, "autoTips": 1, "marginScore": 4, "partial": false }
+          ],
+          "x2": [
+            { "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 8, "partial": false },
+            { "round": 2, "correct": 3, "games": 4, "bonus": 0, "autoTips": 1, "marginScore": 4, "partial": false }
+          ],
+          "model": [
+            { "round": 1, "correct": 2, "games": 3, "bonus": 0, "autoTips": 0, "marginScore": 8, "partial": false },
+            { "round": 2, "correct": 3, "games": 4, "bonus": 0, "autoTips": 0, "marginScore": 4, "partial": false }
+          ]
+        },
+        "ladder": {
+          "x2": { "points": 5, "marginScore": 12, "position": 1, "tied": false, "movement": 0 },
+          "cris": { "points": 4, "marginScore": 12, "position": 2, "tied": true, "movement": -1 },
+          "lou": { "points": 4, "marginScore": 12, "position": 2, "tied": true, "movement": -1 },
+          "x1": { "points": 3, "marginScore": 12, "position": 4, "tied": false, "movement": -3 },
+          "hana": { "points": 3, "marginScore": 28, "position": 5, "tied": false, "movement": -4 },
+          "model": { "points": 5, "marginScore": 12, "position": null, "tied": false, "movement": null }
+        }
+      }
+    },
+    {
+      "name": "bonus point: every winner in a round of 8 or more, with no auto-tips",
+      "tippers": [
+        { "id": "perf", "autoTip": "home" },
+        { "id": "auto7", "autoTip": "home" },
+        { "id": "miss1", "autoTip": "home" }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "401",
+          "games": [
+            { "id": "401", "home": "Broncos", "away": "Raiders", "score": [20, 10] },
+            { "id": "402", "home": "Bulldogs", "away": "Sharks", "score": [20, 10] },
+            { "id": "403", "home": "Dolphins", "away": "Titans", "score": [20, 10] },
+            { "id": "404", "home": "Sea Eagles", "away": "Storm", "score": [20, 10] },
+            { "id": "405", "home": "Knights", "away": "Cowboys", "score": [20, 10] },
+            { "id": "406", "home": "Eels", "away": "Panthers", "score": [20, 10] },
+            { "id": "407", "home": "Rabbitohs", "away": "Dragons", "score": [20, 10] },
+            { "id": "408", "home": "Roosters", "away": "Warriors", "score": [20, 10] }
+          ],
+          "tips": [
+            { "tipper": "perf", "match": "401", "team": "Broncos" }, { "tipper": "perf", "match": "402", "team": "Bulldogs" },
+            { "tipper": "perf", "match": "403", "team": "Dolphins" }, { "tipper": "perf", "match": "404", "team": "Sea Eagles" },
+            { "tipper": "perf", "match": "405", "team": "Knights" }, { "tipper": "perf", "match": "406", "team": "Eels" },
+            { "tipper": "perf", "match": "407", "team": "Rabbitohs" }, { "tipper": "perf", "match": "408", "team": "Roosters" },
+            { "tipper": "auto7", "match": "401", "team": "Broncos" }, { "tipper": "auto7", "match": "402", "team": "Bulldogs" },
+            { "tipper": "auto7", "match": "403", "team": "Dolphins" }, { "tipper": "auto7", "match": "404", "team": "Sea Eagles" },
+            { "tipper": "auto7", "match": "405", "team": "Knights" }, { "tipper": "auto7", "match": "406", "team": "Eels" },
+            { "tipper": "auto7", "match": "407", "team": "Rabbitohs" },
+            { "tipper": "miss1", "match": "401", "team": "Broncos" }, { "tipper": "miss1", "match": "402", "team": "Sharks" },
+            { "tipper": "miss1", "match": "403", "team": "Dolphins" }, { "tipper": "miss1", "match": "404", "team": "Sea Eagles" },
+            { "tipper": "miss1", "match": "405", "team": "Knights" }, { "tipper": "miss1", "match": "406", "team": "Eels" },
+            { "tipper": "miss1", "match": "407", "team": "Rabbitohs" }, { "tipper": "miss1", "match": "408", "team": "Roosters" }
+          ]
+        },
+        {
+          "round": 2,
+          "featured": "411",
+          "games": [
+            { "id": "411", "home": "Raiders", "away": "Broncos", "score": [24, 12] },
+            { "id": "412", "home": "Sharks", "away": "Bulldogs", "score": [24, 12] },
+            { "id": "413", "home": "Titans", "away": "Dolphins", "score": [24, 12] },
+            { "id": "414", "home": "Storm", "away": "Sea Eagles", "score": [24, 12] },
+            { "id": "415", "home": "Cowboys", "away": "Knights", "score": [24, 12] },
+            { "id": "416", "home": "Panthers", "away": "Eels", "score": [24, 12] },
+            { "id": "417", "home": "Dragons", "away": "Rabbitohs", "score": [24, 12] }
+          ],
+          "tips": [
+            { "tipper": "perf", "match": "411", "team": "Raiders" }, { "tipper": "perf", "match": "412", "team": "Sharks" },
+            { "tipper": "perf", "match": "413", "team": "Titans" }, { "tipper": "perf", "match": "414", "team": "Storm" },
+            { "tipper": "perf", "match": "415", "team": "Cowboys" }, { "tipper": "perf", "match": "416", "team": "Panthers" },
+            { "tipper": "perf", "match": "417", "team": "Dragons" },
+            { "tipper": "auto7", "match": "411", "team": "Raiders" }, { "tipper": "auto7", "match": "412", "team": "Sharks" },
+            { "tipper": "auto7", "match": "413", "team": "Titans" }, { "tipper": "auto7", "match": "414", "team": "Storm" },
+            { "tipper": "auto7", "match": "415", "team": "Cowboys" }, { "tipper": "auto7", "match": "416", "team": "Panthers" },
+            { "tipper": "auto7", "match": "417", "team": "Dragons" },
+            { "tipper": "miss1", "match": "411", "team": "Raiders" }, { "tipper": "miss1", "match": "412", "team": "Sharks" },
+            { "tipper": "miss1", "match": "413", "team": "Titans" }, { "tipper": "miss1", "match": "414", "team": "Storm" },
+            { "tipper": "miss1", "match": "415", "team": "Cowboys" }, { "tipper": "miss1", "match": "416", "team": "Panthers" },
+            { "tipper": "miss1", "match": "417", "team": "Dragons" }
+          ]
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "perf": [
+            { "round": 1, "correct": 8, "games": 8, "bonus": 1, "autoTips": 0, "marginScore": 2, "partial": false },
+            { "round": 2, "correct": 7, "games": 7, "bonus": 0, "autoTips": 0, "marginScore": 0, "partial": false }
+          ],
+          "auto7": [
+            { "round": 1, "correct": 8, "games": 8, "bonus": 0, "autoTips": 1, "marginScore": 2, "partial": false },
+            { "round": 2, "correct": 7, "games": 7, "bonus": 0, "autoTips": 0, "marginScore": 0, "partial": false }
+          ],
+          "miss1": [
+            { "round": 1, "correct": 7, "games": 8, "bonus": 0, "autoTips": 0, "marginScore": 2, "partial": false },
+            { "round": 2, "correct": 7, "games": 7, "bonus": 0, "autoTips": 0, "marginScore": 0, "partial": false }
+          ]
+        },
+        "ladder": {
+          "perf": { "points": 16, "marginScore": 2, "position": 1, "tied": false, "movement": 0 },
+          "auto7": { "points": 15, "marginScore": 2, "position": 2, "tied": false, "movement": 0 },
+          "miss1": { "points": 14, "marginScore": 2, "position": 3, "tied": false, "movement": 0 }
+        }
+      }
+    },
+    {
+      "name": "a round in progress: finished games count, the bonus and an unplayed margin game wait",
+      "tippers": [{ "id": "perf", "autoTip": "home" }, { "id": "late", "autoTip": "home" }],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "508",
+          "games": [
+            { "id": "501", "home": "Broncos", "away": "Raiders", "score": [20, 10] },
+            { "id": "502", "home": "Bulldogs", "away": "Sharks", "score": [20, 10] },
+            { "id": "503", "home": "Dolphins", "away": "Titans", "score": [20, 10] },
+            { "id": "504", "home": "Sea Eagles", "away": "Storm", "score": [20, 10] },
+            { "id": "505", "home": "Knights", "away": "Cowboys", "score": [20, 10] },
+            { "id": "506", "home": "Eels", "away": "Panthers", "score": [20, 10] },
+            { "id": "507", "home": "Rabbitohs", "away": "Dragons", "score": [20, 10] },
+            { "id": "508", "home": "Roosters", "away": "Warriors", "score": null }
+          ],
+          "tips": [
+            { "tipper": "perf", "match": "501", "team": "Broncos" }, { "tipper": "perf", "match": "502", "team": "Bulldogs" },
+            { "tipper": "perf", "match": "503", "team": "Dolphins" }, { "tipper": "perf", "match": "504", "team": "Sea Eagles" },
+            { "tipper": "perf", "match": "505", "team": "Knights" }, { "tipper": "perf", "match": "506", "team": "Eels" },
+            { "tipper": "perf", "match": "507", "team": "Rabbitohs" }, { "tipper": "perf", "match": "508", "team": "Warriors", "margin": 4 },
+            { "tipper": "late", "match": "501", "team": "Raiders" }
+          ]
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "perf": [{ "round": 1, "correct": 7, "games": 7, "bonus": 0, "autoTips": 0, "marginScore": 0, "partial": true }],
+          "late": [{ "round": 1, "correct": 6, "games": 7, "bonus": 0, "autoTips": 6, "marginScore": 0, "partial": true }]
+        },
+        "ladder": {
+          "perf": { "points": 7, "marginScore": 0, "position": 1, "tied": false, "movement": null },
+          "late": { "points": 6, "marginScore": 0, "position": 2, "tied": false, "movement": null }
+        }
+      }
+    },
+    {
+      "name": "ladder ties: the margin score breaks them, equal tippers share a place, the Model is never tied",
+      "tippers": [
+        { "id": "p", "autoTip": "home" },
+        { "id": "q", "autoTip": "home" },
+        { "id": "r", "autoTip": "home" },
+        { "id": "s", "autoTip": "home" },
+        { "id": "model", "isModel": true }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "601",
+          "games": [
+            { "id": "601", "home": "Storm", "away": "Broncos", "score": [20, 14] },
+            { "id": "602", "home": "Eels", "away": "Panthers", "score": [10, 30] }
+          ],
+          "tips": [
+            { "tipper": "p", "match": "601", "team": "Storm", "margin": 6 }, { "tipper": "p", "match": "602", "team": "Panthers" },
+            { "tipper": "q", "match": "601", "team": "Storm", "margin": 10 }, { "tipper": "q", "match": "602", "team": "Panthers" },
+            { "tipper": "r", "match": "601", "team": "Storm", "margin": 2 }, { "tipper": "r", "match": "602", "team": "Panthers" },
+            { "tipper": "s", "match": "601", "team": "Broncos", "margin": 6 }, { "tipper": "s", "match": "602", "team": "Panthers" },
+            { "tipper": "model", "match": "601", "team": "Storm", "margin": 6 }, { "tipper": "model", "match": "602", "team": "Panthers" }
+          ]
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "p": [{ "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 0, "partial": false }],
+          "q": [{ "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 4, "partial": false }],
+          "r": [{ "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 4, "partial": false }],
+          "s": [{ "round": 1, "correct": 1, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 12, "partial": false }],
+          "model": [{ "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 0, "partial": false }]
+        },
+        "ladder": {
+          "p": { "points": 2, "marginScore": 0, "position": 1, "tied": false, "movement": null },
+          "q": { "points": 2, "marginScore": 4, "position": 2, "tied": true, "movement": null },
+          "r": { "points": 2, "marginScore": 4, "position": 2, "tied": true, "movement": null },
+          "s": { "points": 1, "marginScore": 12, "position": 4, "tied": false, "movement": null },
+          "model": { "points": 2, "marginScore": 0, "position": null, "tied": false, "movement": null }
+        }
+      }
+    },
+    {
+      "name": "a cancelled game counts as a win for both teams",
+      "sqlOnly": true,
+      "tippers": [{ "id": "amy", "autoTip": "home" }, { "id": "ben", "autoTip": "home" }],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "701",
+          "games": [
+            { "id": "701", "home": "Storm", "away": "Broncos", "score": [20, 14] },
+            { "id": "702", "home": "Eels", "away": "Panthers", "score": null, "status": "cancelled" }
+          ],
+          "tips": [
+            { "tipper": "amy", "match": "701", "team": "Storm", "margin": 6 }, { "tipper": "amy", "match": "702", "team": "Panthers" },
+            { "tipper": "ben", "match": "701", "team": "Storm", "margin": 6 }
+          ]
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "amy": [{ "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 0, "partial": false }],
+          "ben": [{ "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 1, "marginScore": 0, "partial": false }]
+        },
+        "ladder": {
+          "amy": { "points": 2, "marginScore": 0, "position": 1, "tied": true, "movement": null },
+          "ben": { "points": 2, "marginScore": 0, "position": 1, "tied": true, "movement": null }
+        }
+      }
+    }
+  ]
+}

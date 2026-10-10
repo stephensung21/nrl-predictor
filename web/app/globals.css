@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/* Night game under lights: green-black ground, floodlight-white ink, one lime
+   accent for you, actions and right calls. Dark only (DESIGN_BRIEF.md). */
+@theme {
+  --color-ground: oklch(0.165 0.02 162);
+  --color-raised: oklch(0.205 0.022 162);
+  --color-raised-2: oklch(0.245 0.024 162);
+  --color-line: oklch(0.31 0.022 162);
+  --color-line-soft: oklch(0.255 0.02 162);
+  --color-pitch: oklch(0.235 0.035 152);
+  --color-pitch-line: oklch(0.42 0.03 150);
+
+  --color-ink: oklch(0.965 0.008 110);
+  --color-ink-2: oklch(0.82 0.016 150);
+  --color-ink-3: oklch(0.68 0.018 155);
+
+  --color-lime: oklch(0.91 0.2 126);
+  --color-lime-ink: oklch(0.22 0.05 135);
+  --color-lime-wash: oklch(0.91 0.2 126 / 0.12);
+  --color-miss: oklch(0.74 0.15 28);
+  --color-miss-wash: oklch(0.74 0.15 28 / 0.12);
+  --color-live: oklch(0.78 0.16 60);
+
+  --font-display: var(--font-saira), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-sofia), system-ui, sans-serif;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-ground);
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-color: var(--color-line) var(--color-ground);
+  }
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-lime);
+    color: var(--color-lime-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  a {
+    text-underline-offset: 0.2em;
+  }
+}
+
+@utility font-score {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* Win-probability bar: fills slide out from the halfway line when they first
+   come into view. The resting state is the final one, so nothing is hidden
+   without JavaScript. */
+@keyframes pitch-fill {
+  from {
+    width: 50%;
+  }
+}
+[data-pitch][data-run="1"] [data-fill] {
+  animation: pitch-fill 900ms var(--ease-out-expo) both;
+}
+
+@keyframes tick-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.tick-pop {
+  animation: tick-pop 420ms var(--ease-out-expo) both;
+}
+
+/* Perfect round: the scoreboard lamps chase once, left to right. */
+@keyframes lamp-chase {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    filter: none;
+  }
+  40% {
+    filter: brightness(1.35);
+    box-shadow: 0 0 10px 1px oklch(0.91 0.2 126 / 0.55);
+  }
+}
+.lamp-chase > * {
+  animation: lamp-chase 700ms ease-out both;
+  animation-delay: calc(var(--i) * 70ms + 300ms);
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.live-dot {
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
