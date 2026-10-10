@@ -1,0 +1,25 @@
+# Wednesday to Sunday: re-predict games whose team lists or prices changed.
+# Times are UTC (GitHub cron has no time zones or daylight saving): see PLAN_WEB.md §1.1.
+# Run by hand from the Actions tab; tick "fail" to test the alert.
+name: refresh
+
+on:
+  schedule:
+    - cron: "15 23 * * 2-6" # Wednesday to Sunday 9:15am AEST / 10:15am AEDT
+    - cron: "15 5 * * 0,3-6" # Wednesday to Sunday 3:15pm AEST / 4:15pm AEDT
+  workflow_dispatch:
+    inputs:
+      fail:
+        description: Fail on purpose, to test the alert
+        type: boolean
+        default: false
+
+jobs:
+  refresh:
+    uses: ./.github/workflows/pipeline-job.yml
+    permissions:
+      contents: write
+    with:
+      job: refresh
+      fail: ${{ inputs.fail || false }}
+    secrets: inherit

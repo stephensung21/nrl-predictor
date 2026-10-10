@@ -158,3 +158,17 @@ def test_replayed_predict_run_matches_predict_replay(tmp_path):
 
     graded = run.run_job("results", 2026, as_of="2026-05-11 10:15", records=records)
     assert graded["status"] == "ok" and graded["games"] == len(ref)
+
+
+def test_no_draw_is_nothing_to_do_before_the_season_and_a_failure_during_it(tmp_path, monkeypatch):
+    import run
+    monkeypatch.setattr(draw, "live_draw", lambda season: pd.DataFrame(columns=draw.COLUMNS))
+    records = Records(2027, replay=False, root=tmp_path)
+    monkeypatch.setattr(run.fetch_odds, "api_key", lambda: None)
+    clock = {"now": T("2026-10-11")}
+    monkeypatch.setattr(run.pd.Timestamp, "now", classmethod(lambda cls, tz=None: clock["now"]))
+    assert run.run_job("predict", 2027, records=records)["status"] == "nothing to do"
+    clock["now"] = T("2027-02-10")
+    with pytest.raises(RuntimeError, match="no 2027 draw"):
+        run.run_job("predict", 2027, records=records)
+    assert records.runs()[-1]["status"] == "failed"

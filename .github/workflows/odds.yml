@@ -1,0 +1,24 @@
+# Sunday night, after the round: catch the next round's prices as the markets open.
+# Times are UTC (GitHub cron has no time zones or daylight saving): see PLAN_WEB.md §1.1.
+# Run by hand from the Actions tab; tick "fail" to test the alert.
+name: odds
+
+on:
+  schedule:
+    - cron: "15 11 * * 0"   # Sunday 9:15pm AEST / 10:15pm AEDT
+  workflow_dispatch:
+    inputs:
+      fail:
+        description: Fail on purpose, to test the alert
+        type: boolean
+        default: false
+
+jobs:
+  odds:
+    uses: ./.github/workflows/pipeline-job.yml
+    permissions:
+      contents: write
+    with:
+      job: odds
+      fail: ${{ inputs.fail || false }}
+    secrets: inherit

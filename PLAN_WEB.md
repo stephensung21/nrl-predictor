@@ -61,9 +61,9 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 | Step | Status | Where / notes |
 |---|---|---|
-| `pipeline/run.py --job results / predict / refresh` | ✅ | Runs by hand; `--as-of` replays a past season, and `pipeline/replay.py` runs the whole weekly schedule over one. Not yet scheduled (step 8) or publishing (step 7). |
-| GitHub Actions workflows on the weekly schedule | ❌ | §1.1, §4 |
-| Run log, alerts on failure | 🔶 | Every pipeline run is logged to `runs.jsonl` (job, clock, status, round, games, model version, commit, errors); a failed run exits non-zero. No alerts yet. |
+| `pipeline/run.py --job results / predict / refresh / odds` | ✅ | Scheduled by the workflows below; `--as-of` replays a past season, and `pipeline/replay.py` runs the whole weekly schedule over one. Before the season's year, a draw nrl.com hasn't published is "nothing to do"; from January it's a failure. Not yet publishing (step 7). |
+| GitHub Actions workflows on the weekly schedule | 🔶 | `.github/workflows/`: `results.yml`, `predict.yml`, `refresh.yml`, `odds.yml`, each calling `pipeline-job.yml`; `ci.yml` for tests. Written and linted (actionlint), the commit step simulated; they run only once merged into `main` (step 8). |
+| Run log, alerts on failure | ✅ | Every pipeline run is logged to `runs.jsonl` (job, clock, status, round, games, model version, commit, errors); a failed run exits non-zero, which fails the workflow: GitHub emails, and `ALERT_WEBHOOK_URL` (Discord or Slack, optional) gets the reason. `run.py --fail` (the workflows' "fail" box) fails on purpose to test it. |
 | Supabase schema, row-level security, publishing | 🔶 | The tipping tables, scoring and row-level security are written and tested locally (above). The model tables, the Supabase project and publishing are still to do (§2, milestone 1). |
 | Website and tipping comp | 🔶 | Every planned page designed and built, on sample data and browser stand-ins (see Website status below); not connected to the pipeline, Supabase or live sources, not deployed |
 
@@ -138,7 +138,7 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done and 
 
 - 🔶 **Step 4. Odds.** *Built (October 2026):* the sheet only updates now and then, so the weekly opening prices come from The Odds API instead. The sheet's bookmaker since April 2024, BlueBet, took over Betr in July 2024 and now trades as Betr on BlueBet's platform, and The Odds API carries Betr (`betr_au`; BlueBet isn't listed). `pipeline/fetch_odds.py` fetches Betr's head-to-head, line and total at the start of every live job and in the Sunday-night odds job, keeps every snapshot in `data/pipeline/live/<season>/odds_snapshots.csv` (raw responses in `data/raw/odds_api/`), blanks impossible prices (note 4) and logs them as warnings, and skips while fewer than 50 credits are left. A game's first snapshot before kickoff is its opening price when the sheet doesn't have the game; the sheet's prices come first when it does. A refresh re-predicts a game when its first price arrives; a failed fetch is a warning and unpriced games get the no-odds prediction. Errors never carry the key (they go into the committed run log). *Checked:* `tests/test_odds.py` on a saved response, including a 2026 game priced from "live" odds predicting exactly as from the sheet; a real call with the key returned Betr's prices on the free plan (EPL, 1 credit; NRL is out of season). *Still to do:* (a) in the February trials, confirm Betr lists NRL and the team names map; (b) once the sheet has the same games, compare its BlueBet opening prices with our first snapshots, and change which snapshot counts as opening if they differ consistently; (c) download the sheet automatically in the results job, for closing prices and retraining (check the site's terms). *Needs:* `ODDS_API_KEY` in `.env` locally (done) and in GitHub secrets for step 8.
 - **Step 5. Weather** in the refresh job (note 3). Optional; measure its value on replays first.
-- **Step 8. GitHub Actions** `results.yml`, `predict.yml`, `refresh.yml`, `odds.yml` and `ci.yml` on the UTC schedule in §1.1, with `actions/cache` for the season's raw pages, the secrets in §1.5, a failure alert and the keep-alive commit. Can run before Supabase exists, with the results job committing `data/pipeline/live/`; publishing is added after step 7. *Done when:* a full week runs unattended, including a deliberately broken run that alerts and doesn't publish (milestone 4).
+- 🔶 **Step 8. GitHub Actions.** *Built (October 2026, `backend`):* `results.yml` (Monday 00:15 UTC), `predict.yml` (Tuesday 07:15), `refresh.yml` (Tuesday–Saturday 23:15 and Sunday, Wednesday–Saturday 05:15, i.e. Wednesday–Sunday mornings and afternoons in Sydney), `odds.yml` (Sunday 11:15), each a thin caller of `pipeline-job.yml`, plus `ci.yml` (the fast Python tests and the website's `npm test` on every push). `pipeline-job.yml` installs Python 3.12 and `requirements.txt`, restores the season's raw match pages from `actions/cache` (saved again after each results run), runs `pipeline/run.py --job …` with `ODDS_API_KEY`, commits `data/pipeline/live/`, `data/processed/` and the fetched team lists, and alerts on failure. Pipeline jobs queue one at a time (they commit to the same records). A run that only logged "nothing to do" isn't committed, except the weekly results run, which is also the keep-alive. Every workflow can be run by hand, with a "fail" box for the broken-run test. *Checked:* actionlint passes; the commit step was run against a scratch repository under `bash -e` (nothing to do, predictions, results, failure, and a crash before any records); every job was run live from a clean checkout as Actions will (off-season: all "nothing to do", tables unchanged). *Still to do:* merge `backend` into `main` (schedules only run on the default branch), add the `ODDS_API_KEY` secret (and optionally `ALERT_WEBHOOK_URL`), run each workflow once by hand with and without "fail", then let a full in-season week run unattended (milestone 4). Publishing is added after step 7.
 - **Step 11a. The pipeline draws each round's margin game** with `drawFeatured`'s rule (fresh randomness) in the predict job; stored in `rounds` once step 7 exists.
 
 **Database and website**
@@ -153,7 +153,7 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done and 
 
 - **Step 7. `pipeline/publish.py`:** upsert matches, team lists, odds snapshots, Elo ratings, predictions and run records into the step 6 tables; call the website's revalidation hook. Backfill 2026 so the site starts with a real season. *Done when:* a replayed round appears in the database and the views return it. Then add publishing to the step 8 workflows.
 
-Suggested order: step 8 next (it needs no new accounts and puts the odds fetch on a schedule before the trials), then 6 → 7 → 9–12, with step 4's checks in the February trials.
+Suggested order: finish step 8 (merge, secrets, a run by hand), then 6 → 7 → 9–12, with step 4's checks and step 8's unattended week in the February trials.
 
 **The 2027 season**
 
@@ -235,7 +235,7 @@ There is no always-on server. The model is the frozen bundle committed in `model
 
 | Piece | What it does | Branch / step | Status |
 |---|---|---|---|
-| Scheduled runs | GitHub Actions `results.yml` (Mon), `predict.yml` (Tue), `refresh.yml` (Wed–Sun), `odds.yml` (Sun night), `ci.yml`: install, restore the raw-page cache, call `pipeline/run.py`, alert on failure, commit records (also the keep-alive) | `pipeline`, step 8 | ❌ |
+| Scheduled runs | GitHub Actions `results.yml` (Mon), `predict.yml` (Tue), `refresh.yml` (Wed–Sun), `odds.yml` (Sun night), each calling `pipeline-job.yml`, and `ci.yml`: install, restore the raw-page cache, call `pipeline/run.py`, alert on failure, commit records (also the keep-alive) | `backend`, step 8 | 🔶 built; runs once merged into `main` |
 | The weekly jobs | `pipeline/run.py`: scrape, round detection, predict, validate, grade, run log | `pipeline`, steps 1–2 | ✅ |
 | Data sources | Draw, results and team lists (`scrape.py`, `draw.py`); Betr's live prices from The Odds API (`fetch_odds.py`); odds sheet download; weather (optional) | `backend`, steps 4–5 | 🔶 live odds built; sheet download and weather to do |
 | Interim storage | Run log, every prediction and the graded season as CSV in `data/pipeline/live/<season>/`, committed by the results job | `pipeline` | ✅ (until step 7) |
@@ -577,6 +577,7 @@ nrl-predictor/
     test_pipeline.py           # round detection, neutral venues, grading (exists)
     tipping/cases.json         # hand-worked tipping rule cases, shared by scoring.ts and the SQL (exists)
   .github/workflows/
+    pipeline-job.yml           # one pipeline job: run, commit the records, alert (called by the four below)
     results.yml                # Monday
     predict.yml                # Tuesday after team lists
     refresh.yml                # Wednesday to Sunday

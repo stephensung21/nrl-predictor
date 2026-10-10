@@ -97,6 +97,12 @@ def fingerprints(fixtures, lists, neutral, odds, live_odds=None):
 
 def predict_job(season, now, replay, records, refresh, run, model_season):
     draw = drawlib.replay_draw(season, now) if replay else drawlib.live_draw(season)
+    if draw.empty:
+        # Before the season's year the draw may not be out yet; from January it should be there, so
+        # an empty one means nrl.com failed, and the run fails (and alerts) rather than skip a round.
+        if now.year < season:
+            raise NothingToDo(f"no {season} draw on nrl.com yet")
+        raise RuntimeError(f"no {season} draw from nrl.com (site down or changed?)")
     rnd, games = drawlib.games_to_predict(draw, now)
     if rnd is None:
         raise NothingToDo("no games left to predict this season")
@@ -171,8 +177,9 @@ def odds_step(records, now, run):
         run.setdefault("warnings", []).append(f"impossible price dropped: {issue}")
 
 
-def run_job(job, season, as_of=None, model_season=None, records=None):
-    """Run one job and record it. Returns the run record; raises if the job failed."""
+def run_job(job, season, as_of=None, model_season=None, records=None, fail=False):
+    """Run one job and record it. Returns the run record; raises if the job failed. `fail` makes it
+    fail on purpose, after starting, to test the workflows' alerts (PLAN_WEB.md step 8)."""
     warnings.filterwarnings("ignore")
     replay = as_of is not None
     now = utc(as_of) if replay else pd.Timestamp.now(tz="UTC")
@@ -182,6 +189,8 @@ def run_job(job, season, as_of=None, model_season=None, records=None):
            "as_of": now.isoformat(), "started": pd.Timestamp.now(tz="UTC").isoformat(), "commit": commit,
            "uncommitted_changes": dirty, "status": "ok"}
     try:
+        if fail:
+            raise RuntimeError("deliberate failure (--fail), to test alerts; nothing was predicted or published")
         if job == "odds":
             if replay:
                 raise ValueError("the odds job only runs live (past prices come from the odds sheet)")
@@ -212,9 +221,10 @@ def main():
     parser.add_argument("--season", type=int, default=config.PREDICT_SEASON)
     parser.add_argument("--as-of", help="replay the job at this time (Sydney time unless a zone is given)")
     parser.add_argument("--models", type=int, help="model season to load (default: the season)")
+    parser.add_argument("--fail", action="store_true", help="fail on purpose, to test alerts")
     args = parser.parse_args()
     try:
-        run_job(args.job, args.season, args.as_of, args.models)
+        run_job(args.job, args.season, args.as_of, args.models, fail=args.fail)
     except Exception as ex:
         print(f"{args.job} FAILED: {ex}", file=sys.stderr)
         sys.exit(1)
