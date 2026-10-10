@@ -3,13 +3,14 @@
 // run in PGlite, a real Postgres compiled to WebAssembly, with Supabase's auth roles stubbed.
 // Then the rules only the database enforces: lockout, hidden tips and who can change what.
 
-import { readdirSync, readFileSync } from "node:fs";
-import { PGlite } from "@electric-sql/pglite";
+import { readFileSync } from "node:fs";
+import type { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
 import { ladder, scoreRound, type Comp, type ScoredRound } from "../lib/scoring";
 import type { TeamName } from "../lib/teams";
 import type { AutoTip } from "../lib/rules";
 import type { Tipper } from "../lib/types";
+import { as, freshDatabase, uuid } from "./db";
 
 type CaseGame = { id: string; home: TeamName; away: TeamName; score: [number, number] | null; status?: "cancelled" };
 type CaseTip = { tipper: string; match: string; team: TeamName; margin?: number };
@@ -28,11 +29,6 @@ type Case = {
 
 const root = new URL("../../", import.meta.url);
 const { season, cases } = JSON.parse(readFileSync(new URL("tests/tipping/cases.json", root), "utf8")) as { season: number; cases: Case[] };
-const migrationsDir = new URL("supabase/migrations/", root);
-const migrations = readdirSync(migrationsDir)
-  .filter((f) => f.endsWith(".sql"))
-  .sort()
-  .map((f) => readFileSync(new URL(f, migrationsDir), "utf8"));
 
 /* ---------- the website's rules ---------- */
 
@@ -67,37 +63,6 @@ describe("tipping rules in lib/scoring.ts", () => {
 });
 
 /* ---------- the database's rules ---------- */
-
-/** Supabase's roles and auth schema, as far as the migrations use them. */
-const SUPABASE_STUB = `
-  create role anon nologin;
-  create role authenticated nologin;
-  create schema auth;
-  create table auth.users (id uuid primary key);
-  create function auth.uid() returns uuid language sql stable as
-    $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema auth to anon, authenticated;
-  grant usage on schema public to anon, authenticated;
-`;
-
-const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
-
-async function freshDatabase() {
-  const db = new PGlite();
-  await db.exec(SUPABASE_STUB);
-  for (const sql of migrations) await db.exec(sql);
-  return db;
-}
-
-/** Run as a signed-in tipper, under row-level security. */
-async function as<T>(db: PGlite, user: string | null, fn: () => Promise<T>): Promise<T> {
-  await db.exec(user ? `set role authenticated; set request.jwt.claim.sub = '${user}';` : "set role anon; reset request.jwt.claim.sub;");
-  try {
-    return await fn();
-  } finally {
-    await db.exec("reset role; reset request.jwt.claim.sub;");
-  }
-}
 
 async function load(db: PGlite, c: Case) {
   await db.exec("truncate tips, rounds, profiles, matches cascade; delete from auth.users;");

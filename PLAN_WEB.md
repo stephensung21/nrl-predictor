@@ -64,7 +64,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | `pipeline/run.py --job results / predict / refresh / odds` | ✅ | Scheduled by the workflows below; `--as-of` replays a past season, and `pipeline/replay.py` runs the whole weekly schedule over one. Before the season's year, a draw nrl.com hasn't published is "nothing to do"; from January it's a failure. Not yet publishing (step 7). |
 | GitHub Actions workflows on the weekly schedule | 🔶 | `.github/workflows/`: `results.yml`, `predict.yml`, `refresh.yml`, `odds.yml`, each calling `pipeline-job.yml`; `ci.yml` for tests. Written and linted (actionlint), the commit step simulated; they run only once merged into `main` (step 8). |
 | Run log, alerts on failure | ✅ | Every pipeline run is logged to `runs.jsonl` (job, clock, status, round, games, model version, commit, errors); a failed run exits non-zero, which fails the workflow: GitHub emails, and `ALERT_WEBHOOK_URL` (Discord or Slack, optional) gets the reason. `run.py --fail` (the workflows' "fail" box) fails on purpose to test it. |
-| Supabase schema, row-level security, publishing | 🔶 | The tipping tables, scoring and row-level security are written and tested locally (above). The model tables, the Supabase project and publishing are still to do (§2, milestone 1). |
+| Supabase schema, row-level security, publishing | 🔶 | Both migrations written and tested locally in PGlite with Supabase's default permissions reproduced: tipping (above) and model data (`20261011000000_model_data.sql`, step 6). The Supabase project itself (your setup steps under step 6) and publishing (step 7) are still to do (§2, milestone 1). |
 | Website and tipping comp | 🔶 | Every planned page designed and built, on sample data and browser stand-ins (see Website status below); not connected to the pipeline, Supabase or live sources, not deployed |
 
 ### Website status (October 2026)
@@ -82,7 +82,7 @@ Every planned page is designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and buil
 | `/match/[id]` | ✅ | Real replay data: no-odds model, opening price, Elo (both teams going in, the season so far, last five games, the change from the result), Tuesday and final team lists, head to head (frozen; rounds 3, 5, 10 only) | ❌ | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
 | `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | ❌ Stand-in | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
 | `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ❌ | `round_scores` view and `ladder()` function (written and tested, step 3) |
-| `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ❌ Frozen | `latest_odds`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
+| `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ❌ Frozen | `match_odds_probs`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
 | `/elo` | ✅ | Real ratings 2009–2026 from `src/elo.py` (asserted equal); 2026 to Round 9 | ❌ Frozen | `elo_ratings` |
 | `/model` | ✅ | Real 2026 test-season tips to Round 9; invented tippers for the comp comparison | ❌ Frozen | `prediction_of_record`, `model_accuracy`, `ladder` |
 | `/about` | ✅ | Figures from `reports/final_2026.md` and `reports/backtest.md` | n/a | Update by hand after each season's test |
@@ -107,7 +107,7 @@ Each one is a single function that returns the real implementation once the back
 #### Not connected yet
 
 - **The model pipeline:** nothing publishes predictions. Every Model number on the site is from the 2026 replays or the test season, generated into files.
-- **The database:** no Supabase project, tables, row-level security or migrations exist yet.
+- **The database:** the migrations and their tests exist (step 6), but no Supabase project yet, so nothing is stored online.
 - **Live sources:** the Odds API fetcher exists but only feeds the pipeline's CSV records; no automatic odds-sheet download, no Reddit API, no live scores.
 - **Accounts:** sign-in is simulated, and nobody is really signed in. Tips, profiles and invites live only in the visitor's browser.
 - **Admin:** the page is open to anyone in the sample, and the admin flag always says yes.
@@ -153,17 +153,45 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done and 
 
 **Database and website**
 
-- **Step 6. Create the Supabase project and the rest of the migrations** in `supabase/migrations/`: the model tables and views in §2 (predictions, `prediction_of_record`, odds snapshots, Elo ratings, team lists, invites, pipeline runs) beside the tipping migration, with the remaining rule tests (postponed games, ladder ties). Name columns to match `web/lib/types.ts`. *Done when:* the migrations apply to an empty project and every rule test passes. *Needs:* a Supabase account.
+- 🔶 **Step 6. The Supabase database.** *Built (October 2026, `supabase` branch):* `supabase/migrations/20261011000000_model_data.sql` beside the tipping migration: the model tables and views in §2, invites with `check_invite()` and `join_comp()` (joining is the only way to get a profile), the `summaries` and `model_versions` tables for the agent features (§7), the read-only `analyst` role for agents, and every grant made explicitly (Supabase's defaults grant everything, so the migration revokes them first). *Checked:* `npm test` in `web/` (39 tests): the tipping rules and lockout as before, plus the views (prediction of record, the market's opening and closing price, the model's record against `grade.metrics`' definitions), invites and joining, who can read and write what (including the analyst role), postponed games in the scores and unknown teams. The tests now start from Supabase's default permissions (`web/tests/db.ts`), so they check what a real project would allow. Ladder ties were already covered. *Still to do:* create the project and push the migrations (your steps below); the margin-game draw (11a) and publishing (7) fill `rounds` and the model tables.
 - **Step 9. Swap the sample modules for queries** through `lib/supabase.ts` (a server client for pages, a browser client for tipping) (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
 - **Step 10. Implement the live stores:** `SupabaseTipStore`, a Supabase `AuthStore` (with the `/auth/callback` code exchange) and a Supabase `AdminStore`, each returned from its `create…()` function. Their interfaces and the work each needs are documented in their files.
 - **Step 11b. The Reddit API** goes behind `NewsSource`. *Needs:* a Reddit app.
 - **Step 12. Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5). *Needs:* a Vercel account.
 
+**Setting up Supabase: steps only you can do** (no Docker needed)
+
+1. **Create the project.** supabase.com → sign in with GitHub → *New project*. Name `rugbyleague-tipper`, region **Sydney (ap-southeast-2)**, free plan. Choose a strong **database password** and keep it in a password manager: the CLI asks for it, and it can't be shown again (only reset).
+2. **Note the project's details** (Project Settings → API, and → General): the **project URL**, the **anon (public) key**, the **service-role key** (secret: never in the browser or the repo), and the **project ref** (the id in the dashboard's address, e.g. `abcdefghijkl`).
+3. **Push the migrations from the repo** (in a terminal at the repo root, on a branch that has `supabase/migrations/20261011000000_model_data.sql`):
+   ```
+   npx supabase login                         # opens the browser once
+   npx supabase init                          # only if supabase/config.toml doesn't exist yet
+   npx supabase link --project-ref <ref>      # asks for the database password
+   npx supabase db push --dry-run             # lists the two migrations it would apply
+   npx supabase db push
+   ```
+   Then the Table Editor should show `matches`, `tips`, `predictions` and the rest, each with RLS enabled. The CLI needs Docker only for `db pull` and the local stack, not for `db push`.
+4. **Secrets.** Add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to GitHub (Settings → Secrets and variables → Actions) for the pipeline, and keep the anon key for Vercel (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, step 12). Locally, put the same names in `.env` (ignored by git).
+5. **Sign-in settings** (Authentication → Sign In / Providers; needed for step 10):
+   - **Email links:** Supabase's built-in email only sends to members of your Supabase organisation, about 2 an hour, so friends' links wouldn't arrive. Set up custom SMTP (Authentication → Emails → SMTP; for example Resend's free plan, with link tracking off) before inviting anyone, or offer Google only.
+   - **Google:** create an OAuth client in Google Cloud (APIs & Services → Credentials), add the callback URL Supabase shows, and paste the client id and secret into the Google provider.
+   - Set the Site URL and redirect URLs to the Vercel address (and `http://localhost:3000` for development).
+6. **Make yourself the admin** after you've joined through the site once (Table Editor → `profiles` → your row → `is_admin` = true), or in the SQL editor: `update profiles set is_admin = true where display_name = '<you>';`. The Model's profile is made by the pipeline (step 7).
+7. **Later, only when an agent needs it:** give the `analyst` role a password in the SQL editor (`alter role analyst login password '...';`, never in a migration) and use that connection string for the agent.
+8. **Off-season and backups:** free projects pause after a week with no activity (restore from the dashboard; nothing is lost). Publishing (step 7) keeps it awake in season; a small weekly query from the Monday workflow covers the off-season. The free plan has no backups you can download, so step 7 adds a weekly export of the tipping tables, kept privately (never in the public repo).
+
+**Optional: Docker, to run Supabase on your computer.** Useful from steps 9–10: real sign-in, a mail catcher for email links, and the dashboard, all offline. Not needed for steps 6–7, which are tested in PGlite. Checked October 2026: virtualisation is on, 15 GB RAM and 700 GB free, so only WSL is missing. About 30 minutes:
+
+1. Open PowerShell **as administrator** and run `wsl --install`, then restart.
+2. Install **Docker Desktop** (docker.com, free for personal use), keeping "Use WSL 2", then open it once so it's running (the whale icon in the taskbar).
+3. In the repo: `npx supabase start`. The first run downloads the images (a few GB, a few minutes) and prints local URLs and keys: the API, Studio (the dashboard) and Mailpit (where email links land). `npx supabase db reset` reapplies every migration from scratch, and `npx supabase stop` shuts it down. It uses about 2–3 GB of RAM while running.
+
 **Joining the two** (the branches are merged, so this can start once step 6 exists)
 
 - **Step 7. `pipeline/publish.py`:** upsert matches, team lists, odds snapshots, Elo ratings, predictions and run records into the step 6 tables; call the website's revalidation hook. Backfill 2026 so the site starts with a real season. *Done when:* a replayed round appears in the database and the views return it. Then add publishing to the step 8 workflows.
 
-Suggested order: finish step 8 (merge, secrets, a run by hand), then 6 → 7 → 9–12, with step 4's checks and step 8's unattended week in the February trials.
+Suggested order: finish step 8 (secrets, a run by hand), set up Supabase (above), then 7 → 9–12, with step 4's checks and step 8's unattended week in the February trials.
 
 **The 2027 season**
 
@@ -249,8 +277,8 @@ There is no always-on server. The model is the frozen bundle committed in `model
 | The weekly jobs | `pipeline/run.py`: scrape, round detection, predict, validate, grade, run log | `pipeline`, steps 1–2 | ✅ |
 | Data sources | Draw, results and team lists (`scrape.py`, `draw.py`); Betr's live prices from The Odds API (`fetch_odds.py`); odds sheet download; weather (optional) | `backend`, steps 4–5 | 🔶 live odds built; sheet download and weather to do |
 | Interim storage | Run log, every prediction and the graded season as CSV in `data/pipeline/live/<season>/`, committed by the results job | `pipeline` | ✅ (until step 7) |
-| Database: tipping | `matches`, `profiles`, `rounds`, `tips`, scoring views, `ladder()`, row-level security | `web-design`, step 3 | ✅ tested locally |
-| Database: model data | `predictions`, `team_lists`, `odds_snapshots`, `elo_ratings`, `pipeline_runs`, `invites`; views `prediction_of_record`, `latest_odds`, `model_accuracy`; the Supabase project itself | `web-design`, step 6 | ❌ |
+| Database: tipping | `matches`, `profiles`, `rounds`, `tips`, scoring views, `ladder()`, row-level security | step 3 | ✅ tested locally |
+| Database: model data | `teams`, `model_versions`, `pipeline_runs`, `predictions`, `graded_games`, `team_lists`, `odds_snapshots`, `odds_sheet`, `elo_ratings`, `summaries`, `invites`; views `prediction_of_record`, `match_odds_probs`, `model_accuracy`; the `analyst` role; the Supabase project itself | `supabase`, step 6 | 🔶 migrations tested locally; project to create |
 | Publishing | `pipeline/publish.py`: validate, upsert with the service key (safe to re-run), call the revalidation hook; backfill 2026; store each round's margin game | after merging, step 7 (11a) | ❌ |
 | Website server side | `lib/supabase.ts` (server and browser clients), queries replacing `sample*.ts`, Supabase tip/auth/admin stores, `/auth/callback`, the `/api/revalidate` endpoint (secret-protected), Reddit fetched and cached on the server | `web-design`, steps 9–11b | ❌ |
 | Hosting | Vercel deploy with `noindex`, `robots.txt` and the environment variables in §1.5 | `web-design`, step 12 | ❌ |
@@ -377,30 +405,36 @@ To stay safe, the pipeline reads the remaining credits from the response headers
 
 One Postgres database in Supabase. Schema changes live in `supabase/migrations/` so they are versioned with the code.
 
+Written in `supabase/migrations/` (`20261010000000_tipping.sql`, `20261011000000_model_data.sql`) and tested in PGlite by `npm test` in `web/`. The repo stays the source of truth for model data: `data/pipeline/live/` is committed and publishing is a re-runnable upsert, so the model tables can always be rebuilt from it. Only the tipping data lives only here.
+
 ### Model data (written by the pipeline only)
 
 | Table | Key columns |
 |---|---|
-| `teams` | id, name, short name, colours, logo |
-| `matches` | id, season, round, kickoff (UTC), home team, away team, venue, status (scheduled / live / final / postponed), home score, away score |
-| `team_lists` | match, team, player, jersey number, position, `announced_at` (one row per player per version) |
-| `odds_snapshots` | match, bookmaker, `captured_at`, home and away price, line, total |
-| `elo_ratings` | team, match, season, date, rating before, rating after |
-| `predictions` | match, run, model version, `created_at`, home win probability, predicted margin, predicted total, predicted home and away score |
-| `pipeline_runs` | id, job, started, finished, status, git commit, model version, notes |
+| `teams` | name (nrl.com's nickname, e.g. `Storm`), full name, state. Matches and team lists must use these names; a new club is added here |
+| `matches` | id (nrl.com), season, round, kickoff (UTC), home team, away team, venue, city, neutral, status (scheduled / live / final / postponed / cancelled), home score, away score |
+| `model_versions` | version (`2027.1`), season, seasons trained on, commit, features hash, settings, headline backtest figures, notes |
+| `pipeline_runs` | id, job, season, mode, clock, started, finished, status, round, games, model version, commit, notes, and the whole `runs.jsonl` entry |
+| `predictions` | run, match, `created_at`, model version, with or without odds, home win probability, margin, total, display scores, the no-odds probability, the opening price used, inputs fingerprint, why it changed |
+| `graded_games` | match, run, model version, the prediction of record, opening and closing market, Elo, the result, tip correct (from `pipeline/grade.py`) |
+| `team_lists` | match, team, `fetched_at`, nrl.com's update time, player, jersey number, position (every version kept) |
+| `odds_snapshots` | match, bookmaker (`betr_au`), `captured_at`, head-to-head prices, line and its prices, total and its prices |
+| `odds_sheet` | match, bookmaker, opening and closing price, line and total from the aussportsbetting sheet, and whether the closing figures are reliable |
+| `elo_ratings` | team, season, date, round, opponent, home or away, match (none before 2021), win chance, rating before and after |
+| `summaries` | kind (match preview / round recap / model review), season, round, match, text, Claude model, prompt version, run (written by the pipeline, §7) |
 
 Views:
 
 - `prediction_of_record`: the latest prediction made before each game's kickoff.
-- `latest_odds`: the latest snapshot per game, with implied probabilities and the bookmaker margin removed.
-- `model_accuracy`: per round and per season, tips correct, average margin error, log loss and Brier score, for both the model and the market.
+- `match_odds` and `match_odds_probs`: each game's opening price (the sheet's, else the first live snapshot, as the predictions use) and closing price (the sheet's when reliable, else the last live snapshot before kickoff), with the bookmaker's margin removed.
+- `model_accuracy`: per round and per season, for the model, the opening market, the closing market and Elo on the same games: games, tips correct, accuracy, log loss, Brier score, margin and total error. It adds up `graded_games`, so the metric definitions stay in `grade.py`.
 
 ### Tipping data (written by the website)
 
 | Table | Key columns |
 |---|---|
 | `profiles` | user id (from Supabase auth), display name, favourite team, auto-tip choice (home team / crowd / ladder), admin flag |
-| `invites` | code, created by, used by, expires |
+| `invites` | code (8 characters, made by the database), created by, expires (7 days), used by and when, cancelled. `check_invite(code)` tells the join page a code's status and who sent it before sign-in; `join_comp(code, name, team, auto-tip)` makes the profile and uses the invite together, and is the only way to get a profile |
 | `rounds` | season, round, featured match (for the margin; drawn at random by the predict job, excluding last round's featured teams, §3.5), drawn at |
 | `tips` | user, match, team picked, margin (featured game only), updated. Only tippers' own tips: auto-tips aren't stored but filled in by the `effective_tips` view once a game locks, so a job that didn't run can't leave a gap |
 
@@ -415,7 +449,9 @@ This is where the rules are enforced, not just in the website code:
 - Anyone can read model data. Only the pipeline's service key can write it.
 - A user can insert or change their **own** tips only while `now() < kickoff` for that match. A tip can't be sneaked in after kickoff, even by calling the API directly.
 - A user can see **other people's tips** for a game only after it kicks off. Before then, tips stay hidden so nobody copies.
-- Only signed-in users can see the ladder and tips. Only an admin can create invites or remove a user. The featured game is drawn by the pipeline, not set by hand.
+- Only signed-in users can see the ladder and tips. Only an admin can see, create or cancel invites and see the run log. Removing a user deletes their sign-in account, which needs the service key (a server route, step 10). The featured game is drawn by the pipeline, not set by hand.
+- Supabase grants every table to the public roles by default and relies on these policies. The migrations revoke that and grant each role only what it needs, so a table without a policy is closed rather than open.
+- **The `analyst` role** is for agents (§7): it reads the model's tables and views and nothing about the tippers (no tips, profiles, invites or run log), and can't write anything. It can't log in until you give it a password by hand.
 
 ---
 
@@ -632,3 +668,19 @@ The core model is done and beats Elo, so there's no Elo-only stage: publish the 
 | Which model | With-odds ensemble for predictions and the "Model" tipper; no-odds ensemble for model vs market and as the fallback without odds |
 | Refitting | Frozen once before the season; features update weekly (weekly refitting tested worse) |
 | Team lists | Predict from Tuesday's list, re-predict on changes (item 40 showed Tuesday lists lose almost no accuracy) |
+| Backend | **Supabase**, reviewed again in October 2026 with the agent features in mind (§7): the tipping rules and lockout are Postgres SQL and row-level security, tested in PGlite; the website's sign-in, tip and admin stores are designed around Supabase; the pipeline writes with the service key; and it's free. The alternatives (Postgres on Neon with Auth.js, Firebase, SQLite-style databases) mean rewriting the tested rules or building sign-in by hand. Watch the free plan's limits: email sign-in needs custom SMTP, projects pause after a week idle, and there are no downloadable backups |
+| Odds source | Betr through The Odds API (BlueBet, the sheet's bookmaker, now trades as Betr); the sheet for closing prices and history |
+
+---
+
+## 7. Agent features (later)
+
+Planned: LLM-written match previews and round recaps, a weekly review of the model's results, an agent that reviews results and formulas and suggests changes, and an "Ask the model" chat. Where each part lives:
+
+| Feature | Runs where | Reads | Writes |
+|---|---|---|---|
+| Match previews, round recaps, the weekly review | A step in the pipeline (Python, GitHub Actions, the Claude API with `ANTHROPIC_API_KEY`) after predict or results | The round's predictions, team lists, odds, Elo and graded results | `summaries` (with the Claude model and prompt version), shown by the site |
+| Results-and-formulas reviewer | A scheduled GitHub Actions job working in the repo (for example Claude Code or the Agent SDK, headless), since it needs the code in `src/`, the history and the Python environment to run backtests | `data/pipeline/live/` (graded games, predictions), `models/<season>/meta.json`, the backtest reports, IMPROVEMENTS.md | A pull request with the change and its backtest, judged by the adoption rule (only a meaningful backtest gain is adopted; small gains go to "Already tried"). It never changes the live models or the database: you merge, then refreeze a new model version, which `model_versions` records |
+| "Ask the model" chat | A website route on Vercel calling Claude with read-only SQL as its tool | The model's tables and views, through the `analyst` role | Nothing |
+
+Rules for all of them: agents read through the `analyst` role or the repo, never the service key; nothing about the tippers goes into a prompt; and anything that changes the model goes through a pull request and a backtest.
