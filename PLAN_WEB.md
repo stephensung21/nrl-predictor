@@ -79,7 +79,7 @@ Every planned page is designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and buil
 |---|---|---|---|---|
 | `/` home (round, tipping strip, recap) | ✅ | Real 2026 Round 10 replay predictions and results (frozen); invented tippers and tips | ❌ | `prediction_of_record`, `matches`, the viewer's `tips`, `ladder` |
 | `/round/[season]/[round]` | ✅ | Real replays of rounds 3, 5, 10 (frozen); invented tips | ❌ | Same views, any round |
-| `/match/[id]` | ✅ | Real replay data: no-odds model, opening price, Elo, Tuesday and final team lists, head to head (frozen; rounds 3, 5, 10 only) | ❌ | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
+| `/match/[id]` | ✅ | Real replay data: no-odds model, opening price, Elo (both teams going in, the season so far, last five games, the change from the result), Tuesday and final team lists, head to head (frozen; rounds 3, 5, 10 only) | ❌ | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
 | `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | ❌ Stand-in | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
 | `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ❌ | `round_scores` view and `ladder()` function (written and tested, step 3) |
 | `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ❌ Frozen | `latest_odds`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
@@ -118,7 +118,6 @@ Each one is a single function that returns the real implementation once the back
 
 - **Live states the sample can't show:** live scores during games (§3.2 "Later") and the "Updated: Hughes out" refresh badge driven by real team-list changes (milestone 9).
 - **Odds history** on match pages (a chart of the market since opening, §3.3). It needs `odds_snapshots`.
-- **Elo for both teams on match pages** (§3.1). The `/elo` team view exists; the match page doesn't use it yet.
 - **The r/nrl match thread link** on each match page (§3.6).
 - **Match previews** (LLM) and **what drove the prediction** (SHAP) on match pages (§3.1, "Later").
 - **Tip reminders** before each round's first game (email, §3.5 extras).
