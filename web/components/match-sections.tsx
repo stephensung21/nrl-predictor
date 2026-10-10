@@ -1,9 +1,12 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ArrowRight, Check, ChevronLeft, X } from "lucide-react";
-import type { Game } from "@/lib/round";
+import { lineColours, type MatchElo } from "@/lib/elo";
+import { ordinal, type Game } from "@/lib/round";
 import type { Verdict, Voice } from "@/lib/match";
 import type { ListedPlayer, MatchDetail } from "@/lib/types";
 import { team, type TeamName } from "@/lib/teams";
+import { EloMatchChart } from "./elo-charts";
 import { LocalTime } from "./local-time";
 import { PitchBar } from "./pitch-bar";
 import { ModelBadge, TeamBadge } from "./team-badge";
@@ -163,11 +166,12 @@ export function TipLine({ game }: { game: Game }) {
 
 /* ---------- Tabs (links, so they work without JavaScript) ---------- */
 
-export type MatchTab = "teams" | "h2h";
+export type MatchTab = "teams" | "elo" | "h2h";
 
 export function MatchTabs({ id, tab, query }: { id: string; tab: MatchTab; query: string }) {
   const tabs: [MatchTab, string][] = [
     ["teams", "Team lists"],
+    ["elo", "Elo"],
     ["h2h", "Head to head"],
   ];
   return (
@@ -297,6 +301,115 @@ export function HeadToHead({ game, detail }: { game: Game; detail: MatchDetail }
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/* ---------- Elo: both teams going in ---------- */
+
+const signed = (n: number) => `${Math.round(n) > 0 ? "+" : Math.round(n) < 0 ? "−" : ""}${Math.abs(Math.round(n))}`;
+
+export function EloSection({ game, elo }: { game: Game; elo?: MatchElo }) {
+  if (!elo) return <p className="mt-4 text-[14px] text-ink-3">No Elo ratings for this game yet.</p>;
+  const { home, away } = elo;
+  const colours = lineColours([home.team, away.team]);
+  const gap = Math.round(home.rating) - Math.round(away.rating);
+  const backs = elo.homeProb >= 0.5 ? home.team : away.team;
+  const chance = Math.round((elo.homeProb >= 0.5 ? elo.homeProb : 1 - elo.homeProb) * 100);
+  // The sample's ratings stop before its current round, so a game can be final without an "after".
+  const graded = game.status === "final";
+
+  const Side = ({ s, align }: { s: MatchElo["home"]; align: "left" | "right" }) => (
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className={`flex items-center gap-1.5 text-[14px] font-semibold text-ink-2 ${align === "right" ? "flex-row-reverse" : ""}`}>
+        <TeamBadge name={s.team} size="sm" />
+        {s.team}
+      </p>
+      <p className="mt-1.5 font-score text-[34px] leading-none font-bold text-ink">{Math.round(s.rating)}</p>
+      <p className="mt-1 text-[13px] text-ink-3">
+        {ordinal(s.rank)} of {elo.teamCount}
+      </p>
+      {graded && s.after && (
+        <p className="mt-1 text-[13px] text-ink-2">
+          After: <span className="font-score text-[15px] font-semibold text-ink">{Math.round(s.after.rating)}</span>{" "}
+          <span className="font-score text-[15px]">({signed(s.after.change)})</span>
+        </p>
+      )}
+    </div>
+  );
+
+  const rows: [string, ReactNode][] = [
+    ["Rating gap", gap === 0 ? "Level" : <>{team(gap > 0 ? home.team : away.team).name} by <span className="font-score text-[17px] font-semibold text-ink">{Math.abs(gap)}</span></>],
+    [
+      "Home ground",
+      elo.homeAdvantage === 0 ? "Neutral venue, so none" : <>{team(home.team).name} <span className="font-score text-[17px] font-semibold text-ink">+{elo.homeAdvantage}</span></>,
+    ],
+    ["Elo’s chance", <>{team(backs).name} <span className="font-score text-[17px] font-semibold text-ink">{chance}%</span></>],
+  ];
+
+  return (
+    <section aria-label="Elo" className="mt-3">
+      <p className="text-[13px] text-ink-3">
+        Ratings going into Round {game.match.round}
+        {elo.labels.length === 1 ? ", where every team starts the season" : ""}.
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-4">
+        <Side s={home} align="left" />
+        <Side s={away} align="right" />
+      </div>
+
+      <dl className="mt-4 border-t border-line-soft text-[14px]">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-3 border-b border-line-soft py-2">
+            <dt className="text-ink-3">{k}</dt>
+            <dd className="text-ink-2">{v}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {elo.labels.length > 1 && (
+        <>
+          <h3 className="mt-7 text-[16px] font-semibold text-ink">{elo.season} so far</h3>
+          <EloMatchChart
+            season={elo.season}
+            labels={elo.labels}
+            home={{ team: home.team, path: home.path, colour: colours[home.team] }}
+            away={{ team: away.team, path: away.path, colour: colours[away.team] }}
+          />
+        </>
+      )}
+
+      <h3 className="mt-7 text-[16px] font-semibold text-ink">Last five games</h3>
+      <div className="mt-2 grid gap-5 sm:grid-cols-2">
+        {[home, away].map((s) => (
+          <div key={s.team}>
+            <p className="flex items-center gap-1.5 pb-2 text-[13px] font-semibold text-ink-2">
+              <TeamBadge name={s.team} size="sm" />
+              {s.team}
+            </p>
+            <ol className="border-t border-line-soft">
+              {s.form.map((f) => (
+                <li key={`${f.season}-${f.label}`} className="flex items-baseline gap-3 border-b border-line-soft py-2 text-[14px]">
+                  <span className="w-10 shrink-0 font-score text-[16px] font-bold text-ink">{signed(f.change)}</span>
+                  <span className="min-w-0 flex-1 text-ink-2">{f.text}</span>
+                  <span className="shrink-0 text-[12px] text-ink-3">
+                    {f.label === "Finals" ? "Finals" : f.label.replace("Round ", "R")}
+                    {f.season !== elo.season && ` ${f.season}`}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </div>
+
+      <Link
+        href={`/elo?season=${elo.season}&team=${encodeURIComponent(home.team)}#team`}
+        className="mt-5 inline-flex items-center gap-1 text-[14px] font-semibold text-ink-2 hover:text-ink"
+      >
+        All Elo ratings
+        <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden />
+      </Link>
     </section>
   );
 }

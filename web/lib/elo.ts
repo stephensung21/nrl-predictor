@@ -33,4 +33,75 @@ export function table(season: number): EloRow[] {
     .map((row, i) => ({ ...row, rank: i + 1 }));
 }
 
+/* ---------- One game: both teams going in, and what the game did to them ---------- */
+
+export type MatchEloSide = {
+  team: TeamName;
+  /** Going into the game. */
+  rating: number;
+  /** Among every team at that point, best first. */
+  rank: number;
+  /** This season so far: the start, then after each round before this one. */
+  path: number[];
+  /** Last five games before this one, most recent first. */
+  form: { season: number; label: string; change: number; text: string }[];
+  /** What the game itself did, once it's in the ratings. */
+  after?: { rating: number; change: number };
+};
+
+export type MatchElo = {
+  season: number;
+  /** Labels for `path`: "Start", then "R1", "R2", ... */
+  labels: string[];
+  home: MatchEloSide;
+  away: MatchEloSide;
+  homeAdvantage: number;
+  /** Home team's chance from the ratings alone (equals the game's stored Elo chance). */
+  homeProb: number;
+  teamCount: number;
+};
+
+/** Both teams' Elo around a game, from the same ratings the /elo page shows. */
+export function matchElo(m: { season: number; round: number; home: TeamName; away: TeamName }, neutral: boolean): MatchElo | undefined {
+  const s = seasonOf(m.season);
+  if (!s || !(m.home in s.ratings) || !(m.away in s.ratings)) return undefined;
+  // Ratings after each round before this one (round 1 goes in on the season-start rating).
+  const before = s.rounds.findIndex((r) => r === `R${m.round}`);
+  const upTo = before === -1 ? s.rounds.filter((r) => r.startsWith("R") && Number(r.slice(1)) < m.round).length : before;
+  const at = (t: string) => (upTo === 0 ? s.start[t] : s.ratings[t][upTo - 1]);
+  const teams = Object.keys(s.ratings);
+  const rankOf = (t: string) => teams.filter((x) => at(x) > at(t)).length + 1;
+  const homeAdvantage = neutral ? ELO_PARAMS.neutral_hfa : ELO_PARAMS.hfa;
+
+  const side = (t: TeamName): MatchEloSide => {
+    const rating = at(t);
+    const played = before !== -1 && s.ratings[t][before] !== rating ? s.ratings[t][before] : undefined;
+    const form = teamView(t)
+      .points.filter((p) => p.season < m.season || (p.season === m.season && p.label.startsWith("Round ") && Number(p.label.slice(6)) < m.round))
+      .slice(-5)
+      .reverse()
+      .map(({ season, label, change, text }) => ({ season, label, change, text }));
+    return {
+      team: t,
+      rating,
+      rank: rankOf(t),
+      path: [s.start[t], ...s.ratings[t].slice(0, upTo)],
+      form,
+      after: played == null ? undefined : { rating: played, change: played - rating },
+    };
+  };
+
+  const home = side(m.home);
+  const away = side(m.away);
+  return {
+    season: m.season,
+    labels: ["Start", ...s.rounds.slice(0, upTo)],
+    home,
+    away,
+    homeAdvantage,
+    homeProb: chanceForGap(home.rating - away.rating + homeAdvantage),
+    teamCount: teams.length,
+  };
+}
+
 export { lineColours } from "./line-colours";

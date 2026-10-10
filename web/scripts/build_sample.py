@@ -43,9 +43,10 @@ def num(x):
 
 matches = pd.read_csv(ROOT / "data/processed/matches.csv")
 matches["match_id"] = matches["match_id"].astype(str)
-features = pd.read_csv(ROOT / "data/processed/features.csv", usecols=["match_id", "elo_prob"])
+features = pd.read_csv(ROOT / "data/processed/features.csv", usecols=["match_id", "elo_prob", "neutral"])
 features["match_id"] = features["match_id"].astype(str)
 elo = dict(zip(features.match_id, features.elo_prob))
+neutral = dict(zip(features.match_id, features.neutral.astype(bool)))
 lists = pd.read_csv(ROOT / "data/processed/pre_kickoff_teamlists.csv")
 lists["match_id"] = lists["match_id"].astype(str)
 played = pd.read_csv(ROOT / "data/processed/player_match_stats.csv",
@@ -101,6 +102,7 @@ for rnd in ROUNDS:
             "noOddsHomeProb": num(p.no_odds_home_win_prob),
             "marketHomeProb": num(p.market_open_home_prob),
             "eloHomeProb": num(elo.get(mid)),
+            "neutral": bool(neutral.get(mid, False)),
             "lists": teams,
             "headToHead": [{
                 "matchId": r.match_id, "season": int(r.season), "roundTitle": r.round_title,

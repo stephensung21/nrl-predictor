@@ -89,6 +89,8 @@ export type MatchDetail = {
   /** Bookies' opening price, overround removed. */
   marketHomeProb: number | null;
   eloHomeProb: number | null;
+  /** Neither team at home (Magic Round, Las Vegas, a grand final): no home advantage. */
+  neutral: boolean;
   /** Tuesday's 1-17, then the players who took the field (ins marked) and who dropped out. */
   lists: Record<"home" | "away", { tuesday: ListedPlayer[]; players: ListedPlayer[]; out: string[] }>;
   headToHead: {

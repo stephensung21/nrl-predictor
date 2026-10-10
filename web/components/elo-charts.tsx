@@ -5,7 +5,7 @@ import { useState } from "react";
 import { colourFor } from "@/lib/line-colours";
 import type { TeamName } from "@/lib/teams";
 import { team } from "@/lib/teams";
-import { ticks, TableView, useWidth } from "./charts";
+import { LineChart, ticks, TableView, useWidth } from "./charts";
 import { TeamBadge } from "./team-badge";
 
 const MAX_HIGHLIGHT = 3;
@@ -301,6 +301,39 @@ export function EloTeamChart({
         )}
       </div>
     </figure>
+  );
+}
+
+/* ---------- Match page: the two teams' season so far ---------- */
+
+export function EloMatchChart({
+  season,
+  labels,
+  home,
+  away,
+}: {
+  season: number;
+  labels: string[];
+  home: { team: TeamName; path: number[]; colour: string };
+  away: { team: TeamName; path: number[]; colour: string };
+}) {
+  const roundText = (l: string) => (l === "Start" ? "Start of season" : l.replace("R", "Round "));
+  return (
+    <LineChart
+      data={labels.map((l, i) => ({ x: i, label: l, home: Math.round(home.path[i]), away: Math.round(away.path[i]) }))}
+      series={[
+        { key: "home", label: home.team, colour: home.colour },
+        { key: "away", label: away.team, colour: away.colour },
+      ]}
+      fromZero={false}
+      xLabel={(p) => `${season} · ${roundText(p.label as string)}`}
+      xTicks={labels.map((l, i) => ({ i, text: l === "Start" ? "Start" : l })).filter((t, i) => i === 0 || i === labels.length - 1 || i % 2 === 0)}
+      label={`${home.team} and ${away.team} Elo ratings through ${season}, up to this game`}
+      table={{
+        columns: ["Round", home.team, away.team],
+        rows: labels.map((l, i) => [roundText(l), Math.round(home.path[i]), Math.round(away.path[i])]),
+      }}
+    />
   );
 }
 
