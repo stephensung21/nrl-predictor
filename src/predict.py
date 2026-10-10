@@ -56,13 +56,21 @@ def live_round(season, rnd):
     import scrape
     draw = scrape.get_q_data(f"https://www.nrl.com/draw/?competition={scrape.COMPETITION_ID}&round={rnd}"
                              f"&season={season}", "vue-draw")
+    urls = [f["matchCentreUrl"] for f in (draw or {}).get("fixtures", []) if f.get("type") == "Match"]
+    return fetch_lists(season, urls, snapshot=f"round-{rnd}")
+
+
+def fetch_lists(season, urls, snapshot):
+    """Fixtures and current team lists from each game's match centre, saved as a timestamped snapshot
+    in data/raw/teamlists_live/<season>/<snapshot>/, so every version of a list is kept."""
+    import scrape
     fixtures, rows = [], []
     fetched = pd.Timestamp.now(tz="UTC")
-    for fx in [f for f in (draw or {}).get("fixtures", []) if f.get("type") == "Match"]:
-        data = scrape.get_q_data(scrape.match_url(fx["matchCentreUrl"]), "vue-match-centre")
+    for url in urls:
+        data = scrape.get_q_data(scrape.match_url(url), "vue-match-centre")
         m = (data or {}).get("match")
         if not m:
-            print(f"  no match data: {fx['matchCentreUrl']}")
+            print(f"  no match data: {url}")
             continue
         title = m.get("roundTitle", "")
         fixtures.append({"match_id": int(m["matchId"]), "season": season, "round": m.get("roundNumber"),
@@ -78,7 +86,7 @@ def live_round(season, rnd):
                              "jersey_number": p["number"], "position": p["position"],
                              "list_updated_utc": m.get("updated"), "fetched_utc": fetched})
     fixtures, lists = pd.DataFrame(fixtures), pd.DataFrame(rows)
-    snap = LIVE_LISTS / str(season) / f"round-{rnd}"
+    snap = LIVE_LISTS / str(season) / snapshot
     snap.mkdir(parents=True, exist_ok=True)
     lists.to_csv(snap / f"{fetched:%Y%m%dT%H%M%SZ}.csv", index=False)
     return fixtures, lists
@@ -101,9 +109,10 @@ def named_17(lists):
 
 # ---------------------------------------------------------------- inputs as of the round
 
-def inputs_before(fixtures, keep_weather):
+def inputs_before(fixtures, keep_weather, neutral=()):
     """Every input as it stood before the round's first kickoff: later games are removed, and the
-    round's own games keep only what is known in advance (draw, venue, opening odds)."""
+    round's own games keep only what is known in advance (draw, venue, opening odds). `neutral` is
+    the match ids the draw puts at a neutral venue, used for games the odds sheet doesn't have yet."""
     matches, team_stats, players, odds, origin, reserve = load_inputs()
     fx = fixtures.copy()
     fx["start_time_utc"] = pd.to_datetime(fx["start_time_utc"], utc=True)
@@ -146,7 +155,8 @@ def inputs_before(fixtures, keep_weather):
         extra = pd.DataFrame({"date": local.to_numpy(), "home_team": missing["home_team"].to_numpy(),
                               "away_team": missing["away_team"].to_numpy(), "season": missing["season"].to_numpy(),
                               "is_final": missing["is_final"].astype(bool).to_numpy(), "notes": "",
-                              "home_at_ground": True, "away_at_ground": False, "neutral": False,
+                              "home_at_ground": ~missing["match_id"].isin(neutral).to_numpy(),
+                              "away_at_ground": False, "neutral": missing["match_id"].isin(neutral).to_numpy(),
                               "bookmaker": "BlueBet", "close_ok": False, "data_issue": False,
                               "kickoff_local": ""})
         extra["odds_id"] = np.arange(len(extra)) + odds["odds_id"].max() + 1
@@ -206,15 +216,30 @@ def git_commit():
     return run("rev-parse", "HEAD"), bool(run("status", "--porcelain", "--untracked-files=no"))
 
 
+def load_bundle(season):
+    model_dir = config.MODELS_DIR / str(season)
+    if not (model_dir / "bundle.joblib").exists():
+        raise SystemExit(f"No frozen models in {model_dir}: run `python src/train.py --freeze {season}`.")
+    return joblib.load(model_dir / "bundle.joblib")
+
+
 def predict_round(season, rnd, replay=False, keep_weather=None, model_season=None):
     warnings.filterwarnings("ignore")
-    model_dir = config.MODELS_DIR / str(model_season or season)
-    if not (model_dir / "bundle.joblib").exists():
-        raise SystemExit(f"No frozen models in {model_dir}: run `python src/train.py --freeze {model_season or season}`.")
-    bundle = joblib.load(model_dir / "bundle.joblib")
+    bundle = load_bundle(model_season or season)
     fixtures, lists = replay_round(season, rnd) if replay else live_round(season, rnd)
     keep_weather = replay if keep_weather is None else keep_weather
+    out, rows, errors, warns = predict_fixtures(fixtures, lists, bundle, keep_weather)
+    has_odds = rows["open_logit"].notna()
+    for w in warns:
+        print(f"  warning: {w}")
+    write_round(season, rnd, replay, keep_weather, bundle, out, has_odds, errors, warns)
+    return out
 
+
+def predict_fixtures(fixtures, lists, bundle, keep_weather, neutral=()):
+    """Predict the games in `fixtures` that have both team lists. Returns the predictions, the model
+    rows they came from and the validation result (errors, warnings). The games can come from
+    different rounds: a postponed game is predicted with the round it is now played in."""
     # Only games with a full named 17 for both teams can be predicted.
     named = named_17(lists)
     full = named.groupby(["match_id", "team"]).size().eq(17).groupby(level=0).sum().eq(2)
@@ -224,7 +249,7 @@ def predict_round(season, rnd, replay=False, keep_weather=None, model_season=Non
     for r in fixtures[~fixtures["match_id"].isin(ready["match_id"])].itertuples():
         print(f"  skipped {r.home_team} v {r.away_team}: team lists not available")
 
-    matches, team_stats, players, odds, origin, reserve = inputs_before(ready, keep_weather)
+    matches, team_stats, players, odds, origin, reserve = inputs_before(ready, keep_weather, neutral)
     feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds),
                            reserve=reserve, pre_kickoff=lists[lists["match_id"].isin(ready["match_id"])])
     rows = feats[feats["match_id"].isin(ready["match_id"])].set_index("match_id").loc[ready["match_id"]]
@@ -237,7 +262,8 @@ def predict_round(season, rnd, replay=False, keep_weather=None, model_season=Non
     main = {t: preds.get(f"with_odds|{model}|{t}", pd.Series(np.nan, index=rows.index))
             .fillna(preds[f"no_odds|{model}|{t}"]) for t in config.TARGETS}
     out = pd.DataFrame({
-        "match_id": rows.index, "season": season, "round": rnd,
+        "match_id": rows.index, "season": ready["season"].astype(int).to_numpy(),
+        "round": ready["round"].astype(int).to_numpy(),
         "kickoff_sydney": pd.to_datetime(rows["start_time_utc"], utc=True).dt.tz_convert("Australia/Sydney")
         .dt.strftime("%a %d %b %H:%M").to_numpy(),
         "home_team": rows["home_team"].to_numpy(), "away_team": rows["away_team"].to_numpy(),
@@ -251,9 +277,11 @@ def predict_round(season, rnd, replay=False, keep_weather=None, model_season=Non
     out["home_score"], out["away_score"] = display_scores(out["home_win_prob"].to_numpy(), out["margin"].to_numpy(),
                                                           out["total"].to_numpy())
     errors, warns = validate(out, lists, rows, bundle)
-    for w in warns:
-        print(f"  warning: {w}")
+    return out, rows, errors, warns
 
+
+def write_round(season, rnd, replay, keep_weather, bundle, out, has_odds, errors, warns):
+    """The round's run record, and its predictions as CSV and Markdown if validation passed."""
     commit, dirty = git_commit()
     stem = f"{season}_round{rnd}" + ("_replay" if replay else "")
     record = {"run_at": f"{pd.Timestamp.now(tz='UTC'):%Y-%m-%d %H:%M} UTC", "season": season, "round": rnd,
@@ -282,7 +310,6 @@ def predict_round(season, rnd, replay=False, keep_weather=None, model_season=Non
     (OUT / f"{stem}.md").write_text("\n".join(md), encoding="utf-8")
     print(table.to_string(index=False))
     print(f"wrote reports/predictions/{stem}.csv")
-    return out
 
 
 def main():

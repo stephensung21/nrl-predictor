@@ -52,8 +52,8 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 | Step | Status | Where / notes |
 |---|---|---|
-| Grade last round's predictions (tips correct, margin error, log loss, Brier, vs the market) | ❌ | The metric code exists (`evaluate.py`, used for the backtest and the 2026 test) but no weekly step runs it. Can be built in Python now, writing a season record to a file, before Supabase exists. |
-| Prediction of record (last prediction before kickoff) and season record | 🔶 | Each run writes `reports/predictions/<season>_round<N>.*`; nothing yet picks the last one before kickoff or collects a season record. Later a database view (§2). |
+| Grade last round's predictions (tips correct, margin error, log loss, Brier, vs the market) | ✅ | `pipeline/grade.py`, run by the results job: each finished game's prediction of record joined to the result, opening and closing market and Elo; metrics per round and for the season so far, written to `data/pipeline/<live\|replay>/<season>/graded.csv` and `season.md`. Grading the final test's predictions reproduces `reports/final_2026.md` exactly (`tests/test_pipeline.py`). |
+| Prediction of record (last prediction before kickoff) and season record | ✅ | The pipeline keeps every prediction it makes, with when it was made (`predictions.csv` beside the run log), and `grade.prediction_of_record` picks the latest before kickoff. Becomes the `prediction_of_record` view once the database exists. |
 | Betting results and closing line value per round | 🔶 | `betting.py` does whole seasons, not week by week |
 | Tipping-comp scoring (points, auto-tips, bonus, margin, ladder) | ❌ | Needs the database (§2, §3.5) |
 
@@ -61,9 +61,9 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 | Step | Status | Where / notes |
 |---|---|---|
-| `pipeline/run.py --job results / predict / refresh` | ❌ | Chains the steps above (§1.2) |
+| `pipeline/run.py --job results / predict / refresh` | ✅ | Runs by hand; `--as-of` replays a past season, and `pipeline/replay.py` runs the whole weekly schedule over one. Not yet scheduled (step 8) or publishing (step 7). |
 | GitHub Actions workflows on the weekly schedule | ❌ | §1.1, §4 |
-| Run log, alerts on failure | 🔶 | Each `predict.py` run writes a JSON record (commit, model version, errors); no alerts yet |
+| Run log, alerts on failure | 🔶 | Every pipeline run is logged to `runs.jsonl` (job, clock, status, round, games, model version, commit, errors); a failed run exits non-zero. No alerts yet. |
 | Supabase schema, row-level security, publishing | ❌ | §2, milestone 1 |
 | Website and tipping comp | ❌ | §3, milestones 5–8 |
 
@@ -441,12 +441,13 @@ nrl-predictor/
     teamlists.py               # historical pre-kickoff lists from the Internet Archive (exists)
   models/<season>/             # frozen model bundles from `train.py --freeze` (exists)
   pipeline/
-    run.py                     # entry point: --job results|predict|refresh (wraps scrape.py, features.py, predict.py)
-    fetch_draw.py              # fixtures, kickoffs, match status
-    fetch_team_lists.py        # versioned team lists
-    fetch_odds.py              # Odds API snapshots
-    publish.py                 # upsert to Supabase, call revalidation hook
-    validate.py                # checks before publishing
+    run.py                     # entry point: --job results|predict|refresh, --as-of to replay (exists)
+    draw.py                    # the draw, which games to predict, neutral venues (exists)
+    grade.py                   # prediction of record, grading, season report (exists)
+    replay.py                  # runs the weekly schedule over a past season, as a test (exists)
+    common.py                  # paths and the run/prediction records (exists)
+    fetch_odds.py              # Odds API snapshots (to do, step 4)
+    publish.py                 # upsert to Supabase, call revalidation hook (to do, step 7)
   supabase/
     migrations/                # tables, views, row-level security policies
     functions/tip-reminders/   # scheduled reminder emails
@@ -455,7 +456,7 @@ nrl-predictor/
     components/                # match card, Elo chart, odds table, ladder
     lib/supabase.ts, lib/reddit.ts
   tests/
-    test_pipeline.py
+    test_pipeline.py           # round detection, neutral venues, grading (exists)
     test_tipping_rules.sql     # lockout, hidden tips, scoring
   .github/workflows/
     results.yml                # Monday
