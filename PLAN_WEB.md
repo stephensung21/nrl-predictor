@@ -81,7 +81,7 @@ Every planned page is designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and buil
 | `/round/[season]/[round]` | ✅ | Real replays of rounds 3, 5, 10 (frozen); invented tips | ❌ | Same views, any round |
 | `/match/[id]` | ✅ | Real replay data: no-odds model, opening price, Elo, Tuesday and final team lists, head to head (frozen; rounds 3, 5, 10 only) | ❌ | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
 | `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | ❌ Stand-in | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
-| `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ❌ | `round_scores`, `ladder` views (scoring ported from `lib/ladder.ts`) |
+| `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ❌ | `round_scores` view and `ladder()` function (written and tested, step 3) |
 | `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ❌ Frozen | `latest_odds`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
 | `/elo` | ✅ | Real ratings 2009–2026 from `src/elo.py` (asserted equal); 2026 to Round 9 | ❌ Frozen | `elo_ratings` |
 | `/model` | ✅ | Real 2026 test-season tips to Round 9; invented tippers for the comp comparison | ❌ Frozen | `prediction_of_record`, `model_accuracy`, `ladder` |
@@ -126,39 +126,39 @@ Each one is a single function that returns the real implementation once the back
 
 ### Next steps
 
-In order. Each step can be tested before the next one starts, and steps 1–3 can be built and checked on the 2026 replays now.
+Step numbers are fixed (other sections refer to them). Steps 1–3 are done. The work is split across two branches that don't depend on each other until step 7: **`pipeline`** (Python, `pipeline/` and `src/`) and **`web-design`** (the site in `web/` and the database in `supabase/`). This plan is kept identical on both branches so they merge cleanly.
 
-**A. The weekly pipeline (no database needed yet)**
+**Done**
 
-1. ✅ **`pipeline/run.py --job results|predict|refresh`** (done October 2026): incremental scrape of the current season (`scrape.build_tables(..., merge=True)`; rebuilding 2026 alone reproduces the committed tables byte for byte), the round to predict from the draw including postponed games (`draw.games_to_predict`), neutral venues from the draw (`draw.neutral_games`, agrees with the odds sheet's flags), `predict.py`, validation, and every run and prediction recorded. *Checked:* `python pipeline/replay.py --season 2026 --rounds 1 10 --check` runs the whole weekly schedule (132 jobs) and every Tuesday run equals `predict.py --replay`. Only 64 of 2026's 213 games have an archived Tuesday list, so the replay predicts 45 of rounds 1–10's games; refreshes correctly find nothing changed.
-2. ✅ **Weekly grading** (done): `pipeline/grade.py`, run by the results job, writes `graded.csv` and `season.md`. *Checked:* grading the final test's predictions as predictions of record reproduces every number in `reports/final_2026.md`. (The plan's original check, grading the replayed season, can't reach those totals: the final test used final team lists for all 213 games, and the Tuesday archive covers only 64.)
-3. ✅ **Tipping scoring outside the browser** (done): `supabase/migrations/20261010000000_tipping.sql`, with the website's rules moved to `web/lib/scoring.ts`; both pass the shared cases in `tests/tipping/cases.json`, and the lockout, hidden-tips and permission rules pass in PGlite (`npm test` in `web/`, 24 tests).
+- ✅ **Step 1. `pipeline/run.py --job results|predict|refresh`** (October 2026, `pipeline` branch): incremental scrape of the current season (`scrape.build_tables(..., merge=True)`; rebuilding 2026 alone reproduces the committed tables byte for byte), the round to predict from the draw including postponed games (`draw.games_to_predict`), neutral venues from the draw (`draw.neutral_games`, agrees with the odds sheet's flags), `predict.py`, validation, and every run and prediction recorded. *Checked:* `python pipeline/replay.py --season 2026 --rounds 1 10 --check` runs the whole weekly schedule (132 jobs) and every Tuesday run equals `predict.py --replay`. Only 64 of 2026's 213 games have an archived Tuesday list, so the replay predicts 45 of rounds 1–10's games; refreshes correctly find nothing changed.
+- ✅ **Step 2. Weekly grading** (`pipeline` branch): `pipeline/grade.py`, run by the results job, writes `graded.csv` and `season.md`. *Checked:* grading the final test's predictions as predictions of record reproduces every number in `reports/final_2026.md`. (The plan's original check, grading the replayed season, can't reach those totals: the final test used final team lists for all 213 games, and the Tuesday archive covers only 64.)
+- ✅ **Step 3. Tipping scoring outside the browser** (`web-design` branch): `supabase/migrations/20261010000000_tipping.sql`, with the website's rules moved to `web/lib/scoring.ts`; both pass the shared cases in `tests/tipping/cases.json`, and the lockout, hidden-tips and permission rules pass in PGlite (`npm test` in `web/`, 24 tests).
 
-**B. Data sources**
+**On `pipeline`**
 
-4. **Odds:** download the aussportsbetting sheet in the results job, with the impossible-price check (note 4); then The Odds API fetcher, storing every snapshot and guarding credits (§1.2 step 4, §1.6). *Done when:* a week of snapshots is stored and the opening price for each game is chosen the way the model was trained.
-5. **Weather** in the refresh job (note 3). Optional; measure its value on replays first.
+- **Step 4. Odds:** download the aussportsbetting sheet in the results job, with the impossible-price check (note 4); then The Odds API fetcher, storing every snapshot and guarding credits (§1.2 step 4, §1.6). *Done when:* a week of snapshots is stored and the opening price for each game is chosen the way the model was trained. *Needs:* the aussportsbetting terms checked and an Odds API key.
+- **Step 5. Weather** in the refresh job (note 3). Optional; measure its value on replays first.
+- **Step 8. GitHub Actions** `results.yml`, `predict.yml`, `refresh.yml` and `ci.yml` on the UTC schedule in §1.1, with `actions/cache` for the season's raw pages, the secrets in §1.5, a failure alert and the keep-alive commit. Can run before Supabase exists, with the results job committing `data/pipeline/live/`; publishing is added after step 7. *Done when:* a full week runs unattended, including a deliberately broken run that alerts and doesn't publish (milestone 4).
+- **Step 11a. The pipeline draws each round's margin game** with `drawFeatured`'s rule (fresh randomness) in the predict job; stored in `rounds` once step 7 exists.
 
-**C. The database**
+**On `web-design`**
 
-6. **Create the Supabase project and the migrations** in `supabase/migrations/`: every table and view in §2, row-level security, and `tests/test_tipping_rules.sql` (lockout at kickoff, hidden tips, draws, each auto-tip option, bonus, margin, ladder ties, postponed games). Name columns to match `web/lib/types.ts`. *Done when:* the migrations apply to an empty project and every rule test passes.
-7. **`pipeline/publish.py`:** upsert matches, team lists, odds snapshots, Elo ratings, predictions and run records; call the website's revalidation hook. Backfill 2026 so the site starts with a real season. *Done when:* a replayed round appears in the database and the views return it.
+- **Step 6. Create the Supabase project and the rest of the migrations** in `supabase/migrations/`: the model tables and views in §2 (predictions, `prediction_of_record`, odds snapshots, Elo ratings, team lists, invites, pipeline runs) beside the tipping migration, with the remaining rule tests (postponed games, ladder ties). Name columns to match `web/lib/types.ts`. *Done when:* the migrations apply to an empty project and every rule test passes. *Needs:* a Supabase account.
+- **Step 9. Swap the sample modules for queries** (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
+- **Step 10. Implement the live stores:** `SupabaseTipStore`, a Supabase `AuthStore` (with the `/auth/callback` code exchange) and a Supabase `AdminStore`, each returned from its `create…()` function. Their interfaces and the work each needs are documented in their files.
+- **Step 11b. The Reddit API** goes behind `NewsSource`. *Needs:* a Reddit app.
+- **Step 12. Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5). *Needs:* a Vercel account.
 
-**D. Automation**
+**After merging both branches into `main`** (on a new branch from `main`)
 
-8. **GitHub Actions** `results.yml`, `predict.yml`, `refresh.yml` and `ci.yml` on the UTC schedule in §1.1, with `actions/cache` for the season's raw pages, the secrets in §1.5, a failure alert and the keep-alive commit. *Done when:* a full week runs unattended, including a deliberately broken run that alerts and doesn't publish (milestone 4).
+- **Step 7. `pipeline/publish.py`:** upsert matches, team lists, odds snapshots, Elo ratings, predictions and run records into the step 6 tables; call the website's revalidation hook. Backfill 2026 so the site starts with a real season. *Done when:* a replayed round appears in the database and the views return it. Then add publishing to the step 8 workflows.
 
-**E. Connect the website** (every page is built; see Website status)
+Suggested order: step 4 while the accounts are set up, then merge both branches, then 6 → 7 → 8 → 9–12.
 
-9. **Swap the sample modules for queries** (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
-10. **Implement the live stores:** `SupabaseTipStore`, a Supabase `AuthStore` (with the `/auth/callback` code exchange) and a Supabase `AdminStore`, each returned from its `create…()` function. Their interfaces and the work each needs are documented in their files.
-11. **The pipeline draws each round's margin game** with `drawFeatured`'s rule (fresh randomness) and stores it in `rounds`. **The Reddit API** goes behind `NewsSource`.
-12. **Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5).
+**The 2027 season**
 
-**F. The 2027 season**
-
-13. **The yearly routine** (note 5): the final 2026 data, the Perth Bears added, then freeze `2027.1`.
-14. **Dry run on the February trials** with friends tipping (milestone 11), then **launch for Round 1** (milestone 12).
+- **Step 13. The yearly routine** (note 5): the final 2026 data, the Perth Bears added, then freeze `2027.1`.
+- **Step 14. Dry run on the February trials** with friends tipping (milestone 11), then **launch for Round 1** (milestone 12).
 
 
 ### Notes for the next phase
