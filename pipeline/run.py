@@ -195,6 +195,7 @@ def run_job(job, season, as_of=None, model_season=None, records=None, fail=False
             if replay:
                 raise ValueError("the odds job only runs live (past prices come from the odds sheet)")
             run["odds"] = fetch_odds.record_snapshot(records, now)
+            print(f"odds: {run['odds']}")
             return run
         if not replay:
             odds_step(records, now, run)
