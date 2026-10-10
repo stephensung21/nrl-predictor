@@ -3893,6 +3893,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.514,
     "marketHomeProb": 0.5263,
     "eloHomeProb": 0.5683,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -4307,6 +4308,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.3612,
     "marketHomeProb": 0.3875,
     "eloHomeProb": 0.4795,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -4721,6 +4723,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.785,
     "marketHomeProb": 0.6563,
     "eloHomeProb": 0.6884,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -5135,6 +5138,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.7401,
     "marketHomeProb": 0.6563,
     "eloHomeProb": 0.6558,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -5529,6 +5533,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.5304,
     "marketHomeProb": 0.6045,
     "eloHomeProb": 0.5093,
+    "neutral": true,
     "lists": {
       "home": {
         "tuesday": [
@@ -5951,6 +5956,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.6636,
     "marketHomeProb": 0.6563,
     "eloHomeProb": 0.648,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -6371,6 +6377,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.6388,
     "marketHomeProb": 0.6416,
     "eloHomeProb": 0.6231,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -6796,6 +6803,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.6983,
     "marketHomeProb": 0.7096,
     "eloHomeProb": 0.6552,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -7196,6 +7204,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.7344,
     "marketHomeProb": 0.6416,
     "eloHomeProb": 0.6494,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -7613,6 +7622,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.5206,
     "marketHomeProb": 0.4737,
     "eloHomeProb": 0.4861,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -8032,6 +8042,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.362,
     "marketHomeProb": 0.2105,
     "eloHomeProb": 0.3631,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -8449,6 +8460,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.5994,
     "marketHomeProb": 0.5897,
     "eloHomeProb": 0.6092,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -8866,6 +8878,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.5675,
     "marketHomeProb": 0.4201,
     "eloHomeProb": 0.5208,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -9283,6 +9296,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.5095,
     "marketHomeProb": 0.5584,
     "eloHomeProb": 0.5846,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -9703,6 +9717,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.7332,
     "marketHomeProb": 0.7927,
     "eloHomeProb": 0.7522,
+    "neutral": true,
     "lists": {
       "home": {
         "tuesday": [
@@ -10117,6 +10132,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.7391,
     "marketHomeProb": 0.6797,
     "eloHomeProb": 0.6731,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -10531,6 +10547,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.4482,
     "marketHomeProb": 0.331,
     "eloHomeProb": 0.4337,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -10955,6 +10972,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.5253,
     "marketHomeProb": 0.6156,
     "eloHomeProb": 0.5146,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -11374,6 +11392,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.6449,
     "marketHomeProb": 0.4503,
     "eloHomeProb": 0.5355,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -11794,6 +11813,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.6316,
     "marketHomeProb": 0.5913,
     "eloHomeProb": 0.5669,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [
@@ -12214,6 +12234,7 @@ export const MATCH_DETAILS: Record<string, MatchDetail> = {
     "noOddsHomeProb": 0.2232,
     "marketHomeProb": 0.2693,
     "eloHomeProb": 0.3474,
+    "neutral": false,
     "lists": {
       "home": {
         "tuesday": [

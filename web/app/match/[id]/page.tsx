@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { HeadToHead, MatchHeading, MatchTabs, TeamLists, TipLine, VoiceList, type MatchTab } from "@/components/match-sections";
+import { EloSection, HeadToHead, MatchHeading, MatchTabs, TeamLists, TipLine, VoiceList, type MatchTab } from "@/components/match-sections";
 import { SampleNote } from "@/components/sample-note";
+import { matchElo } from "@/lib/elo";
 import { CURRENT_ROUND, findSampleMatch, sampleRoundView, verdictFor, voicesFor } from "@/lib/match";
 import { SAMPLE_NOW, YOUR_EARLY_TIP_COUNT } from "@/lib/sample";
 
@@ -32,7 +33,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
   const voices = voicesFor(game, found.detail);
   const verdict = verdictFor(voices, game.status === "final");
-  const tab: MatchTab = query.tab === "h2h" ? "h2h" : "teams";
+  const tab: MatchTab = query.tab === "h2h" || query.tab === "elo" ? query.tab : "teams";
   const qs = new URLSearchParams(Object.entries(query).filter((e): e is [string, string] => e[1] != null)).toString();
 
   return (
@@ -41,7 +42,13 @@ export default async function MatchPage({ params, searchParams }: Props) {
       <VoiceList game={game} voices={voices} />
       <TipLine game={game} />
       <MatchTabs id={id} tab={tab} query={qs} />
-      {tab === "teams" ? <TeamLists game={game} detail={found.detail} before={game.status === "upcoming"} /> : <HeadToHead game={game} detail={found.detail} />}
+      {tab === "teams" ? (
+        <TeamLists game={game} detail={found.detail} before={game.status === "upcoming"} />
+      ) : tab === "elo" ? (
+        <EloSection game={game} elo={matchElo(game.match, found.detail.neutral)} />
+      ) : (
+        <HeadToHead game={game} detail={found.detail} />
+      )}
       <SampleNote
         states={
           current

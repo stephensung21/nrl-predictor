@@ -59,6 +59,7 @@ export function LineChart({
   xLabel,
   xTicks,
   zero = false,
+  fromZero = true,
   label,
   table,
 }: {
@@ -72,6 +73,8 @@ export function LineChart({
   xTicks: { i: number; text: string }[];
   /** Draw the zero line a step stronger (an indexed chart's baseline). */
   zero?: boolean;
+  /** Stretch the axis to include 0 (off for values far from it, like Elo ratings). */
+  fromZero?: boolean;
   label: string;
   table: { columns: string[]; rows: (string | number)[][] };
 }) {
@@ -81,7 +84,7 @@ export function LineChart({
   const w = Math.max(0, width - pad.left - pad.right);
   const h = height - pad.top - pad.bottom;
   const values = data.flatMap((d) => series.map((s) => d[s.key] as number));
-  const yt = ticks(Math.min(0, ...values), Math.max(0, ...values));
+  const yt = fromZero ? ticks(Math.min(0, ...values), Math.max(0, ...values)) : ticks(Math.min(...values), Math.max(...values));
   const [y0, y1] = [yt[0], yt.at(-1)!];
   const xs = (i: number) => pad.left + (data.length < 2 ? 0 : (i / (data.length - 1)) * w);
   const ys = (v: number) => pad.top + h - ((v - y0) / (y1 - y0 || 1)) * h;
