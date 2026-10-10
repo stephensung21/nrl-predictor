@@ -144,7 +144,7 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done. The
 **On `web-design`**
 
 - **Step 6. Create the Supabase project and the rest of the migrations** in `supabase/migrations/`: the model tables and views in §2 (predictions, `prediction_of_record`, odds snapshots, Elo ratings, team lists, invites, pipeline runs) beside the tipping migration, with the remaining rule tests (postponed games, ladder ties). Name columns to match `web/lib/types.ts`. *Done when:* the migrations apply to an empty project and every rule test passes. *Needs:* a Supabase account.
-- **Step 9. Swap the sample modules for queries** (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
+- **Step 9. Swap the sample modules for queries** through `lib/supabase.ts` (a server client for pages, a browser client for tipping) (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
 - **Step 10. Implement the live stores:** `SupabaseTipStore`, a Supabase `AuthStore` (with the `/auth/callback` code exchange) and a Supabase `AdminStore`, each returned from its `create…()` function. Their interfaces and the work each needs are documented in their files.
 - **Step 11b. The Reddit API** goes behind `NewsSource`. *Needs:* a Reddit app.
 - **Step 12. Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5). *Needs:* a Vercel account.
@@ -228,6 +228,25 @@ The wet-conditions flag (rain or a wet ground) is used by the total-points model
                                                      ▲
                                  Reddit API ─────────┘  (news feed, cached server-side)
 ```
+
+There is no always-on server. The model is the frozen bundle committed in `models/<season>/`; each scheduled run checks out the repo, loads it, predicts and exits. Supabase holds everything the website shows, and Vercel re-renders pages when the pipeline tells it new data is in.
+
+**The backend pieces, and where each is built** (step numbers from Next steps):
+
+| Piece | What it does | Branch / step | Status |
+|---|---|---|---|
+| Scheduled runs | GitHub Actions `results.yml` (Mon), `predict.yml` (Tue), `refresh.yml` (Wed–Sun), `ci.yml`: install, restore the raw-page cache, call `pipeline/run.py`, alert on failure, commit records (also the keep-alive) | `pipeline`, step 8 | ❌ |
+| The weekly jobs | `pipeline/run.py`: scrape, round detection, predict, validate, grade, run log | `pipeline`, steps 1–2 | ✅ |
+| Data sources | Draw, results and team lists (`scrape.py`, `draw.py`); odds sheet download and The Odds API; weather (optional) | `pipeline`, steps 4–5 | 🔶 odds and weather to do |
+| Interim storage | Run log, every prediction and the graded season as CSV in `data/pipeline/live/<season>/`, committed by the results job | `pipeline` | ✅ (until step 7) |
+| Database: tipping | `matches`, `profiles`, `rounds`, `tips`, scoring views, `ladder()`, row-level security | `web-design`, step 3 | ✅ tested locally |
+| Database: model data | `predictions`, `team_lists`, `odds_snapshots`, `elo_ratings`, `pipeline_runs`, `invites`; views `prediction_of_record`, `latest_odds`, `model_accuracy`; the Supabase project itself | `web-design`, step 6 | ❌ |
+| Publishing | `pipeline/publish.py`: validate, upsert with the service key (safe to re-run), call the revalidation hook; backfill 2026; store each round's margin game | after merging, step 7 (11a) | ❌ |
+| Website server side | `lib/supabase.ts` (server and browser clients), queries replacing `sample*.ts`, Supabase tip/auth/admin stores, `/auth/callback`, the `/api/revalidate` endpoint (secret-protected), Reddit fetched and cached on the server | `web-design`, steps 9–11b | ❌ |
+| Hosting | Vercel deploy with `noindex`, `robots.txt` and the environment variables in §1.5 | `web-design`, step 12 | ❌ |
+| Tip reminders (optional) | A scheduled Supabase function emailing tippers before each round's first game | later (§3.5 extras) | ❌ |
+
+Accounts and secrets only you can set up: Supabase, The Odds API, a Reddit app and Vercel, with their keys in GitHub and Vercel secrets (§1.5). Free Supabase projects pause after a week without activity; the weekly runs keep it awake in season, so check it after the off-season.
 
 ### Recommended stack
 
