@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-10T18:00:00.000Z",
+  "generatedAt": "2026-10-10T21:00:00.000Z",
   "title": "Design System: rugbyleague-tipper",
   "extensions": {
     "colorMeta": {
@@ -415,14 +415,15 @@
       }
     ],
     "teamColours": {
-      "source": "web/lib/teams.ts",
+      "source": "web/lib/teams.ts; line colours web/lib/line-colours.ts",
       "fields": {
         "primary": "badge fill",
         "secondary": "code lettering and stripe",
         "ink": "lettering when secondary is too dark on the fill",
         "bar": "pitch-bar fill, lightened for the dark ground"
       },
-      "clashRule": "When the away bar is under 90 RGB distance from the home bar, the away fill switches to whichever of its primary or secondary is furthest from the home bar (barColours in web/components/pitch-bar.tsx); Sea Eagles v Broncos draws the Broncos gold."
+      "clashRule": "When the away bar is under 90 RGB distance from the home bar, the away fill switches to whichever of its primary or secondary is furthest from the home bar (barColours in web/components/pitch-bar.tsx); Sea Eagles v Broncos draws the Broncos gold.",
+      "teamLineRule": "On /elo, lines are team colours (colourFor and lineColours in web/lib/line-colours.ts): a lit team takes its bar colour unless clearance() finds it under OKLab deltaE x100 of 15 (normal vision) or 8 (protan, deutan; Machado 2009 full severity) from a colour already lit, then whichever of bar, secondary or primary clears best. At most three lit; colour held in state from the moment it is lit. The field is ink-3 at 0.28 opacity, 1.25px; the 1500 gridline is ink-3; end labels (code plus rating, 13px semibold score face ink-2) replace a legend."
     },
     "tippingRules": {
       "source": "web/lib/rules.ts",
@@ -443,7 +444,8 @@
         "lime",
         "live",
         "miss"
-      ]
+      ],
+      "scope": "Charts that compare forecasters (Model vs market and the series-keyed stat rows on /odds and /model). The /elo charts compare teams and use the team-colour series instead."
     },
     "containers": [
       {
@@ -466,7 +468,11 @@
         "value": "60ch",
         "purpose": "Prose measure on wide pages."
       }
-    ]
+    ],
+    "dataTruth": {
+      "coinFlip": "An exact 50-50 price or chance is no tip: the /odds and /model tallies count it as not right (as the reports count it), and a 50% bookies' price never marks a call against the bookies (web/lib/odds.ts, web/lib/model-record.ts).",
+      "printedFigures": "Derived figures come from the rounded figures shown: Elo Week and Season changes are differences of rounded ratings (web/lib/elo.ts, web/app/elo/page.tsx)."
+    }
   },
   "components": [
     {
@@ -594,6 +600,20 @@
       "description": "Data-page chart: legend of line keys, line-soft grid with an ink-3 zero line, 2px series lines, r=5 end dots in a 2px ground ring, ink-2 end values, crosshair tooltip on raised-2, and a Show as table view.",
       "html": "<figure class=\"ds-ch\"><ul class=\"ds-lg\"><li><i style=\"background:#3987e5\"></i>The Model</li><li><i style=\"background:#d95926\"></i>Elo</li></ul><div class=\"ds-pl\"><svg width=\"360\" height=\"160\" role=\"img\" aria-label=\"Correct tips compared with the bookies' favourite\"><g class=\"ds-ax\"><line x1=\"40\" x2=\"296\" y1=\"12\" y2=\"12\"/><line x1=\"40\" x2=\"296\" y1=\"55\" y2=\"55\"/><line x1=\"40\" x2=\"296\" y1=\"98\" y2=\"98\" class=\"ds-zero\"/><line x1=\"40\" x2=\"296\" y1=\"141\" y2=\"141\"/><text x=\"32\" y=\"12\" dy=\"0.32em\">+4</text><text x=\"32\" y=\"55\" dy=\"0.32em\">+2</text><text x=\"32\" y=\"98\" dy=\"0.32em\">0</text><text x=\"32\" y=\"141\" dy=\"0.32em\">&#8722;2</text></g><path d=\"M40,98L90,55L140,76L190,98L240,120L296,120\" stroke=\"#3987e5\"/><path d=\"M40,98L90,120L140,55L190,55L240,98L296,141\" stroke=\"#d95926\"/><line x1=\"190\" x2=\"190\" y1=\"12\" y2=\"141\" class=\"ds-xh\"/><circle cx=\"296\" cy=\"120\" r=\"5\" fill=\"#3987e5\"/><circle cx=\"296\" cy=\"141\" r=\"5\" fill=\"#d95926\"/><text x=\"306\" y=\"120\" dy=\"0.32em\" class=\"ds-end\">&#8722;1</text><text x=\"306\" y=\"141\" dy=\"0.32em\" class=\"ds-end\">&#8722;2</text></svg><div class=\"ds-tt\" role=\"status\"><p class=\"ds-tt-h\">Game 96 &middot; Round 13</p><p><i style=\"background:#3987e5\"></i><b>0</b><span>The Model</span></p><p><i style=\"background:#d95926\"></i><b>+1</b><span>Elo</span></p></div></div><details class=\"ds-tv\"><summary>Show as table</summary></details></figure>",
       "css": ".ds-ch{width:360px;margin:0;font-family:var(--font-sans)}.ds-lg{display:flex;gap:16px;margin:0 0 8px;padding:0;list-style:none;font-size:12px;color:var(--color-ink-2)}.ds-lg li{display:flex;align-items:center;gap:6px}.ds-lg i,.ds-tt i{display:inline-block;width:14px;height:2px;border-radius:9999px}.ds-pl{position:relative}.ds-pl svg{display:block}.ds-ax line{stroke:var(--color-line-soft);stroke-width:1}.ds-ax line.ds-zero{stroke:var(--color-ink-3)}.ds-ax text{fill:var(--color-ink-3);font:12px var(--font-display);font-variant-numeric:tabular-nums lining-nums;text-anchor:end}.ds-pl path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.ds-pl circle{stroke:var(--color-ground);stroke-width:4;paint-order:stroke}.ds-xh{stroke:var(--color-ink-3);stroke-width:1}.ds-end{fill:var(--color-ink-2);font:600 13px var(--font-display);font-variant-numeric:tabular-nums}.ds-tt{position:absolute;top:0;left:120px;min-width:144px;padding:8px 12px;border-radius:6px;background:var(--color-raised-2);box-shadow:0 6px 20px rgb(0 0 0/.45),0 0 0 1px var(--color-line);font-size:12px}.ds-tt p{display:flex;align-items:center;gap:8px;margin:4px 0 0}.ds-tt i{width:12px}.ds-tt .ds-tt-h{margin:0;color:var(--color-ink-3)}.ds-tt b{font:600 15px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--color-ink)}.ds-tt span{color:var(--color-ink-3)}.ds-tv{margin-top:8px;font-size:13px}.ds-tv summary{cursor:pointer;font-weight:600;color:var(--color-ink-3)}.ds-tv summary:hover{color:var(--color-ink-2)}"
+    },
+    {
+      "name": "Elo Team Chips",
+      "kind": "chip",
+      "description": "Badge-only toggle buttons in ratings order that light up to three teams on the Elo season chart; on is a filled ink-2 frame, off a 1px line ring with the badge at full strength.",
+      "html": "<div class=\"ds-ec\"><button class=\"ds-ec-chip ds-ec-on\" aria-pressed=\"true\" aria-label=\"Panthers\"><span class=\"ds-ec-b\" style=\"background:#2a2a2a;color:#e0218a\">PEN</span></button><button class=\"ds-ec-chip\" aria-pressed=\"false\" aria-label=\"Roosters\"><span class=\"ds-ec-b\" style=\"background:#22457f;color:#fff\">SYD</span></button><button class=\"ds-ec-chip ds-ec-on\" aria-pressed=\"true\" aria-label=\"Rabbitohs\"><span class=\"ds-ec-b\" style=\"background:#0f7a3c;color:#fff\">SOU</span></button></div>",
+      "css": ".ds-ec{display:flex;flex-wrap:wrap;gap:4px}.ds-ec-chip{padding:4px;border:0;border-radius:6px;background:transparent;box-shadow:inset 0 0 0 1px var(--color-line);cursor:pointer;transition:background-color .15s,box-shadow .15s}.ds-ec-chip:hover{box-shadow:inset 0 0 0 1px var(--color-ink-3)}.ds-ec-chip:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}.ds-ec-on,.ds-ec-on:hover{background:var(--color-ink-2);box-shadow:none}.ds-ec-b{display:inline-flex;align-items:center;justify-content:center;width:38px;height:24px;border-radius:5px;font:700 13px/1 var(--font-display);letter-spacing:.04em}"
+    },
+    {
+      "name": "Disclosure",
+      "kind": "custom",
+      "description": "Read-mode details/summary on line-soft rules; the ink-3 chevron rotates 90 degrees when open.",
+      "html": "<details class=\"ds-dc\"><summary>The technical details<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></summary><p>Each version is an ensemble: the average of a regularised linear model and a LightGBM model.</p></details>",
+      "css": ".ds-dc{width:360px;border-top:1px solid var(--color-line-soft);border-bottom:1px solid var(--color-line-soft);font-family:var(--font-sans)}.ds-dc summary{display:flex;align-items:center;justify-content:space-between;padding:14px 0;list-style:none;cursor:pointer;font-size:15px;font-weight:600;color:var(--color-ink)}.ds-dc summary::-webkit-details-marker{display:none}.ds-dc summary:focus-visible{outline:2px solid var(--color-lime);outline-offset:2px}.ds-dc svg{color:var(--color-ink-3);transition:transform .15s}.ds-dc[open] svg{transform:rotate(90deg)}.ds-dc p{margin:0 0 20px;max-width:60ch;font-size:15px;line-height:1.625;color:var(--color-ink-2)}"
     }
   ],
   "narrative": {
@@ -606,12 +626,17 @@
       "Tabular, lining figures everywhere.",
       "Hairline rows and strips; one raised board per page.",
       "The pitch bar is the signature: win probability as a field with a halfway line and ten-metre lines.",
-      "Data pages (Model vs market, Elo) widen on desktop and draw their charts in a fixed three-colour series palette; ink still carries every word."
+      "Data pages (Model vs market, Elo) widen on desktop. Charts that compare forecasters use a fixed three-colour series palette; the Elo page draws teams in their own colours, at most three lit over a faint field. Ink still carries every word."
     ],
     "rules": [
       {
         "name": "The Fixed Series Rule",
-        "body": "An entity keeps its series colour on every chart and every page: the Model is always blue, the bookies always aqua, Elo always orange. Lime, amber and coral keep their jobs and are never series colours. Text is never set in a series colour; labels, values and tooltips use the ink steps. At most three series share an all-pairs chart, because the validation covers exactly these three.",
+        "body": "On every chart that compares forecasters, an entity keeps its series colour on every page: the Model is always blue, the bookies always aqua, Elo always orange. Lime, amber and coral keep their jobs and are never series colours. Text is never set in a series colour; labels, values and tooltips use the ink steps. At most three series share an all-pairs chart, because the validation covers exactly these three. The Elo page, which compares teams, follows the Team Line Rule instead.",
+        "section": "colors"
+      },
+      {
+        "name": "The Team Line Rule",
+        "body": "On `/elo`, lines are team colours, checked for clearance as each team is lit (ΔE×100 of at least 15 for normal vision, 8 for protan and deutan), at most three lit at once, each colour held from the moment it is lit; the rest of the field stays faint `ink-3`. Team colours there are line marks only: labels, values and tooltips stay in the ink steps.",
         "section": "colors"
       },
       {
@@ -661,7 +686,7 @@
       },
       {
         "name": "The One Board Rule",
-        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. Never build a grid or stack of cards.",
+        "body": "Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. The Elo, Model and How the Model works pages have no board. Never build a grid or stack of cards.",
         "section": "elevation"
       },
       {
@@ -672,6 +697,16 @@
       {
         "name": "The One Tag Rule",
         "body": "At most one trash-talk tag per tipper and no tag twice on the same ladder; the more specific tag wins.",
+        "section": "components"
+      },
+      {
+        "name": "The Coin-Flip Rule",
+        "body": "An exact 50-50 is no tip. The tallies on `/odds` and `/model` count a 50% price or chance as not a right tip, as the project's reports count it, and a 50% bookies' price never makes a call \"against the bookies\".",
+        "section": "components"
+      },
+      {
+        "name": "The Printed Figures Rule",
+        "body": "A figure derived from figures on screen is computed from them as printed: the Elo Week and Season columns are differences of the rounded ratings, so every column equals what the reader can check.",
         "section": "components"
       }
     ],
@@ -692,8 +727,9 @@
       "Do show the Model as an unranked, `raised-2` row sorted among the tippers by points, and measure \"off the lead\" against the leading tipper.",
       "Do keep the comp's tips hidden until a game locks, then show the tally (\"5 of 6 on SYD\").",
       "Do drive every sample page from the same sample week so home, tips and ladder agree.",
-      "Do draw every chart at its measured width with 2px lines, one y-axis, a legend for two or more series and a \"Show as table\" view.",
-      "Do keep each entity's series colour on every chart (Model blue, bookies aqua, Elo orange), at most three series per all-pairs chart.",
+      "Do draw every chart at its measured width with 2px lines, one y-axis, a legend for two or more series (end labels in its place on `/elo`) and a \"Show as table\" view.",
+      "Do keep each entity's series colour on every chart (Model blue, bookies aqua, Elo orange), at most three series per all-pairs chart; on `/elo`, draw teams in their own clearance-checked colours, at most three lit.",
+      "Do count an exact 50-50 as no tip in every tally, and derive shown differences from the rounded figures shown.",
       "Do write minus as U+2212 and show cents only when there are cents.",
       "Do widen data pages on desktop to the wide container, keeping prose at 60ch and single charts and stat rows at 40rem."
     ],
@@ -704,7 +740,7 @@
       "Don't build card grids or stacks of bordered tiles; games are rows.",
       "Don't show a number in the score slot of a live or awaiting game, or let a predicted score look like a result.",
       "Don't use club logos, photography or bookmaker colours; teams are two colours and a code.",
-      "Don't use team colours outside badges and pitch bars.",
+      "Don't use team colours outside badges, pitch bars and the lit lines on `/elo`.",
       "Don't add a light theme or a second accent; the chart series colours are data marks on chart pages, not accents.",
       "Don't set text in a series colour, or use lime, amber or coral as a series colour.",
       "Don't add a disclaimer, gambling message or bookmaker branding to odds pages; name the bookmaker in plain text and credit the source.",

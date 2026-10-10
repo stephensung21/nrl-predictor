@@ -261,7 +261,7 @@ Dark only. Motion is rare and earns its place: bars fill as they appear, a corre
 - Tabular, lining figures everywhere.
 - Hairline rows and strips; one raised board per page.
 - The pitch bar is the signature: win probability as a field with a halfway line and ten-metre lines.
-- Data pages (Model vs market, Elo) widen on desktop and draw their charts in a fixed three-colour series palette; ink still carries every word.
+- Data pages (Model vs market, Elo) widen on desktop. Charts that compare forecasters use a fixed three-colour series palette; the Elo page draws teams in their own colours, at most three lit over a faint field. Ink still carries every word.
 
 ## Colors
 
@@ -287,7 +287,7 @@ A cool green-black ground lit by near-white ink, with a single acid-lime lamp an
 - **Back Row** (`ink-3`): meta lines, captions, losing scores, the "–" placeholder, inactive tabs, the dissent half of a verdict, recap placings, struck-through "Out:" players, locked unchosen tip buttons, the Model hint and tip tally, ladder tags, movement and margin scores, and every round-by-round figure but the round's best.
 
 ### Team colours
-Team colours live in `web/lib/teams.ts`, not in the token set: `primary` (badge fill), `secondary` (code lettering and badge stripe), optional `ink` (lettering when secondary is too dark on the fill), and `bar` (pitch-bar fill, lightened so navy, maroon and black teams read on the ground). They appear only inside badges and pitch bars, never as text, borders or backgrounds of UI chrome.
+Team colours live in `web/lib/teams.ts`, not in the token set: `primary` (badge fill), `secondary` (code lettering and badge stripe), optional `ink` (lettering when secondary is too dark on the fill), and `bar` (pitch-bar fill, lightened so navy, maroon and black teams read on the ground). They appear only inside badges, pitch bars and the Elo page's lit lines (Team-colour series, below), never as text, borders or backgrounds of UI chrome.
 
 ### Chart series
 A page-scoped family for chart pages only (first shipped on Model vs market, `SERIES` in `web/lib/odds.ts`), validated all-pairs on `ground` with the dataviz validator: worst colour-vision-deficiency ΔE 9.4, normal-vision ΔE 20.9, every colour at least 3:1 against the ground.
@@ -297,8 +297,17 @@ A page-scoped family for chart pages only (first shipped on Model vs market, `SE
 
 Series colours appear only as marks: lines, dots, the track's markers and connector, and the short line keys in legends and stat labels.
 
+### Team-colour series (Elo only)
+The `/elo` charts plot teams, not forecasters, so they leave the fixed palette and draw each team in its own colour (`colourFor` and `lineColours` in `web/lib/line-colours.ts`).
+- **Colour:** a lit team takes its `bar` colour unless that is too close to a colour already lit. `clearance()` measures OKLab ΔE×100 against each lit colour and needs at least 15 for normal vision and at least 8 under protan and deutan simulation (Machado 2009, full severity), the dataviz validator's floors. A team that fails takes whichever of its `bar`, `secondary` or `primary` clears best.
+- **Lit set:** at most three teams. A team's colour is fixed when it is lit and held in state, so switching another team off never repaints it. The team view's single line is that team's `bar`.
+- **The field:** every unlit team is a 1.25px `ink-3` line at 0.28 opacity.
+- **Labels:** each lit line ends in an r=5 dot and an end label (team code and rating, "PEN 1650", 13px semibold score face `ink-2`) in place of a legend; the team chips above the chart are the key.
+
 ### Named Rules
-**The Fixed Series Rule.** An entity keeps its series colour on every chart and every page: the Model is always blue, the bookies always aqua, Elo always orange. Lime, amber and coral keep their jobs and are never series colours. Text is never set in a series colour; labels, values and tooltips use the ink steps. At most three series share an all-pairs chart, because the validation covers exactly these three.
+**The Fixed Series Rule.** On every chart that compares forecasters, an entity keeps its series colour on every page: the Model is always blue, the bookies always aqua, Elo always orange. Lime, amber and coral keep their jobs and are never series colours. Text is never set in a series colour; labels, values and tooltips use the ink steps. At most three series share an all-pairs chart, because the validation covers exactly these three. The Elo page, which compares teams, follows the Team Line Rule instead.
+
+**The Team Line Rule.** On `/elo`, lines are team colours, checked for clearance as each team is lit (ΔE×100 of at least 15 for normal vision, 8 for protan and deutan), at most three lit at once, each colour held from the moment it is lit; the rest of the field stays faint `ink-3`. Team colours there are line marks only: labels, values and tooltips stay in the ink steps.
 
 **The One Lamp Rule.** Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration ("Margin game" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime. Wherever the Model is a row among others (the recap table, the ladder and its round-by-round grid, the match page's voice list, the tips page's "Show the Model's pick" switch), it is marked with the sm MDL badge and an `ink` label, never lime text.
 
@@ -318,13 +327,13 @@ Series colours appear only as marks: lines, dots, the track's markers and connec
 - **Score board** (600 predicted / 700 final, 48px, 1): the featured board's score. Second only to the tipping strip.
 - **Headline** (700, 30px, 1): the board's call ("Roosters by 14"), the live strip ("This round: 4/6 correct so far"); recap line at 28px.
 - **Title** (700, 26px, 1): page heading such as "Round 10", "Round 10 tips", "Ladder".
-- **Section** (700, 24px, 1): in-page section headings such as "Results", "Round by round", "Bragging rights". The margin number field uses the score face at the same 24px, bold.
+- **Section** (700, 24px, 1): in-page section headings such as "Results", "Round by round", "Bragging rights", and the section heads of `/model` and `/about` ("Best calls", "What goes in", "Where it falls down"). The margin number field uses the score face at the same 24px, bold.
 - **Score row** (700 final / 500 predicted, 21px): scores in game rows and ladder points (bold `ink`); record figures at 22px, recap-table scores at 19px; ladder positions and margin scores at 17px semibold, final scores on tip buttons at 17px `ink-3`, round-by-round figures at 16px.
-- **Body** (400 to 600, 15px): team names in rows, menu items, the Model's record heading; 16px with relaxed leading for empty-state and recap prose, capped at 34ch.
+- **Body** (400 to 600, 15px): team names in rows, menu items, the Model's record heading; 16px with relaxed leading for empty-state and recap prose, capped at 34ch. Read-mode prose (`/about`, and `/model`'s "How it was tested" at 15px) is relaxed at a 60ch measure.
 - **Meta** (500, 13px): date ranges, board meta line, kickoff times, standing line.
 - **Caption** (500, 12px): "Model's score", "win chance", record labels, row footnotes.
 - **Data page figures:** the stat row's figures at 30px bold display (the "/213" at 16px semibold `ink-3`); the hero money figure ("+$240.50") at 40px bold display; the figures row at 22px bold `ink` for the highlighted Opening and 19px semibold `ink-2` for the rest, each after a 12px semibold `ink-3` team code.
-- **Chart text:** chart titles 16px semibold `ink` in sentence case with a 13px `ink-3` note below; y-axis ticks 12px score face `ink-3`; x labels 11px `ink-3`; end values 13px semibold score face `ink-2`; legends 12px `ink-2`; tooltip values 15px semibold score face `ink`.
+- **Chart text:** chart titles 16px semibold `ink` in sentence case with a 13px `ink-3` note below; y-axis ticks 12px score face `ink-3`; x labels 11px `ink-3`; end values 13px semibold score face `ink-2`; legends 12px `ink-2`; tooltip values 15px semibold score face `ink`. On Elo, end labels carry the team code with the rating ("PEN 1650") and the team view's swing numbers are 12px semibold score face `ink-2`.
 - **Label** (700, 11px, 0.06em, uppercase): status words and tags only: "Your tip", the lime "You" beside your ladder name, "LIVE", "FT", "Full time", "Postponed", the amber "In" team-list marker, the tab-bar labels (600, no uppercase), the "personal project" wordmark tag (10px).
 
 ### Named Rules
@@ -346,7 +355,9 @@ Series colours appear only as marks: lines, dots, the track's markers and connec
 
 One centred column, `max-width: 34rem` (544px), 16px side padding, on every page except the wide data pages (Elo, model vs market), which the brief allows to widen on desktop. The desktop top bar spans up to 64rem; content stays in the column.
 
-**Wide data pages.** From 768px the page's `main` breaks out of the column to `min(60rem, 100vw − 4rem)` (the `wide` step), centred on the column. Inside it, prose keeps a 60ch measure, stat rows and single full-width charts are capped at 40rem (`chart`), and paired content runs in a two-column grid with a 40px gap, top-aligned (`items-start`) so a short chart never stretches: two charts side by side, or game rows two-up. On phones everything returns to the single column.
+**Wide data pages.** From 768px the page's `main` breaks out of the column to `min(60rem, 100vw − 4rem)` (the `wide` step), centred on the column. Inside it, prose keeps a 60ch measure, stat rows and single full-width charts are capped at 40rem (`chart`), and paired content runs in a two-column grid with a 40px gap, top-aligned (`items-start`) so a short chart never stretches: two charts side by side, or game rows two-up. On phones everything returns to the single column. On Elo the ratings table (up to 24rem) and the season chart share that two-column grid; the team view below is capped at 40rem.
+
+**Read-mode pages.** The Model (`/model`) and How the Model works (`/about`) stay in the single column at every width, with prose capped at 60ch.
 
 Phones get a fixed bottom tab bar (64px plus safe-area inset), so content carries 112px bottom padding (48px from 768px up, where the tab bar is replaced by the top bar). The sticky top header is 56px.
 
@@ -368,11 +379,11 @@ Flat and tonal. Depth comes from stepping the ground: `ground` to `raised` to `r
 - **Lamp glow** (`box-shadow: 0 0 10px 1px` lime at 55%, transient): the perfect-round lamp chase; never at rest.
 
 ### Named Rules
-**The One Board Rule.** Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. Never build a grid or stack of cards.
+**The One Board Rule.** Hairline rows and strips everywhere; a single raised, bordered, 12px-rounded board per page carries the game that matters (the featured margin game on home, the recap panel on the recap and round pages). The match page has no board; its voices are hairline rows. The tips page and ladder have no board: the margin stepper is an unbordered `raised` panel inset inside its game's row, not a board, and the Model's ladder row is a tint, not a raised surface. On Model vs market the highlighted Opening figure is an unbordered `raised` tile inside its row, not a board. The Elo, Model and How the Model works pages have no board. Never build a grid or stack of cards.
 
 ## Shapes
 
-Small, tight corners that read as scoreboard hardware: 2px lamps, 3px pitch bars, 5px team badges, 6px row tints, 8px row hover and menus, 12px for the board. Actions and chips are full pills. Borders are 1px hairlines; the only heavy strokes are the 2 to 3px lime active-tab marks, the 3px badge stripe and the halfway line.
+Small, tight corners that read as scoreboard hardware: 2px lamps, 3px pitch bars, 5px team badges, 6px row tints, 8px row hover and menus, 12px for the board. Actions and chips are full pills; the Elo team chips are the exception, 6px frames around a badge. Borders are 1px hairlines; the only heavy strokes are the 2 to 3px lime active-tab marks, the 3px badge stripe and the halfway line.
 
 ## Components
 
@@ -394,14 +405,14 @@ A dashed `line` border, 12px radius, 16px padding, 40px above it; 13px `ink-3` c
 ### Cards / Containers
 - **The board:** `raised` fill, 1px `line` border, 12px radius, 16px padding; whole board is a link with hover to `raised-2` at 50%.
 - **Tipping strip:** in the build, a bordered `raised` container with two bands: the loud top band (lime fill while tips are missing, plain once all are in with a lime check) and a `line-soft`-divided standing line.
-- **Record strip:** no fill; `line-soft` hairlines top and bottom, 16px vertical padding, three-up stat grid.
+- **Record strip:** no fill; `line-soft` hairlines top and bottom, 16px vertical padding, three-up stat grid, closed by a quiet link ("The Model's season so far") to `/model`.
 - **Recap table rows:** `line-soft` dividers; your row `lime-wash`, the Model's row `raised-2` (the full ladder is under Ladder Table). The first column is this round's placing among the human tippers in the score face (`ink-3`, "=" prefix for a tie, e.g. "=2nd"); the Model is not ranked and shows the sm MDL badge instead. On the round page the panel drops its own heading (the round heading with steppers sits above it); the next-round line under it is optional.
 
 ### Navigation
 - **Phone:** fixed bottom tab bar (Round, Tips, Ladder, Elo, More), `raised` at 95% with blur and a `line` top border. 22px Lucide icons over 11px semibold labels; inactive `ink-3`, active `ink` with a lime icon and a 3px by 32px lime mark at the top edge.
 - **Desktop (768px+):** the same items in the sticky top bar, 14px semibold, active marked by a 2px lime underline on the header's bottom edge.
 - **In-page tabs:** link tabs (they work without JavaScript) on a `line` bottom rule, 14px semibold; active `ink` with a 2px lime underline, inactive `ink-3` (hover `ink-2`). Used on the match page for "Team lists" and "Head to head", and on Model vs market for "This round" and "Season".
-- **More:** opens a `raised-2` menu with the menu drop shadow; closes on outside click, Escape or navigation.
+- **More:** opens a `raised-2` menu with the menu drop shadow listing Model vs market, News, The Model (`/model`) and How the Model works (`/about`); closes on outside click, Escape or navigation.
 - **Wordmark:** "rugbyleague-tipper" in the display face at 23px with the hyphen in lime, plus a bordered 10px "personal project" tag.
 
 ### Team Badge
@@ -453,6 +464,10 @@ Banter belongs on the ladder only. Each tipper gets at most one tag, in 12px `in
 
 **The One Tag Rule.** At most one trash-talk tag per tipper and no tag twice on the same ladder; the more specific tag wins.
 
+**The Coin-Flip Rule.** An exact 50-50 is no tip. The tallies on `/odds` and `/model` count a 50% price or chance as not a right tip, as the project's reports count it, and a 50% bookies' price never makes a call "against the bookies".
+
+**The Printed Figures Rule.** A figure derived from figures on screen is computed from them as printed: the Elo Week and Season columns are differences of the rounded ratings, so every column equals what the reader can check.
+
 ### Market Track (signature)
 The Model vs market row's picture: one pitch per game where each estimate is a marker, so a disagreement is a distance and the market's move is an arrow.
 - **Bar:** an 8px `pitch` track, 3px radius, with tenth lines (1px dark ground marks) and a 2px `ink-3` halfway line standing 4px proud. Home's team code sits at the left end and away's at the right (11px semibold `ink-3`).
@@ -466,17 +481,46 @@ The Model vs market row's picture: one pitch per game where each estimate is a m
 Under each market track, four equal columns: Model, Opening, Closing, Gap. Each is a 12px label over the backed team's code and percentage. Opening is highlighted because it is what the Model is most comparable against: an unbordered `raised` tile (6px radius, 6px by 8px padding), a semibold `ink-2` label and a 22px bold `ink` figure, against 19px semibold `ink-2` for the others. Gap is the difference between the Model's and the opening price's figures; at 10 or more it takes a 1px inset `ink-3` ring and the 22px bold figure, and "split" when the two back different teams. Before kickoff, Closing reads "At kickoff". Once graded, a quiet tick (`ink-2`) or cross (`ink-3`) before Model and Opening shows who backed the winner. Below, a 13px definition list gives the margin and total: the Model's figure, the bookies' line and total, the move to closing ("→"), and the actual total.
 
 ### Stat Row
-Three figures across a `line-soft`-ruled strip (top and bottom, 12px vertical padding), capped at 40rem. Each label is 12px `ink-3`, led by its series' 12px line key, in a fixed two-line slot (`min-height: 2lh`) so the figures share a baseline whether or not a label wraps; then the 30px figure and a 12px `ink-3` line ("63% tipped right").
+Three figures across a `line-soft`-ruled strip (top and bottom, 12px vertical padding), capped at 40rem. Each label is 12px `ink-3`, led by its series' 12px line key, in a fixed two-line slot (`min-height: 2lh`) so the figures share a baseline whether or not a label wraps; then the 30px figure and a 12px `ink-3` line ("63% tipped right"). Used on Model vs market, `/model` and `/about`.
 
 ### Charts
 Small SVG charts for data pages (`web/components/charts.tsx`), shared by Model vs market and Elo.
 - **Drawing:** drawn at the measured width (ResizeObserver), never a stretched viewBox, so lines stay 2px and text stays crisp.
 - **Marks:** 2px series lines with round joins. End dots and crosshair dots are r=5 with a 4px `ground` stroke under the fill (`paint-order: stroke`): a 10px coloured dot inside a visible 2px ground ring.
-- **Grid and axes:** solid 1px `line-soft` gridlines. An indexed chart's zero line is one step stronger (`ink-3`). One y-axis, its ticks covering the full range (the axis ends on a tick at or beyond each extreme). X labels are thinned so they sit at least 40px apart, always keeping the last ("Finals").
-- **Labels:** each series' end value is labelled at its line's end in `ink-2`, nudged apart only where two would overlap. A legend of short line keys sits above any chart with two or more series; a single-series chart has none.
+- **Grid and axes:** solid 1px `line-soft` gridlines. An indexed chart's zero line is one step stronger (`ink-3`), and so is an Elo chart's 1500 line. One y-axis, its ticks covering the full range (the axis ends on a tick at or beyond each extreme). X labels are thinned so they sit at least 40px apart, always keeping the last ("Finals").
+- **Labels:** each series' end value is labelled at its line's end in `ink-2`, nudged apart only where two would overlap. A legend of short line keys sits above any chart with two or more series; a single-series chart has none. The Elo season chart has no legend: lit teams are named by end labels, and its team chips are the key.
 - **Tooltip:** a crosshair (1px `ink-3`) and a `raised-2` tooltip with a 1px `line` ring and the tooltip lift, headed by the point in `ink-3` and listing every series, value first, then its name. The chart is focusable and the arrow keys step through the points.
 - **Calibration:** a square plot (up to 340px) with an `ink-3` diagonal for perfect calibration; every dot carries its own hit target of at least 24px, and the plot is `role="group"`.
 - **Table view:** every chart ends in a "Show as table" disclosure (13px semibold `ink-3`) opening a scrollable table with the chart's values in the score face.
+
+### Elo Team Chips
+The season chart's picker: a fieldset under a 13px `ink-3` legend ("Tap up to 3 teams to light them up"), the teams as badge-only buttons in ratings order with 4px gaps, each with `aria-pressed` and the team's name as its `aria-label`. Each chip is a 6px frame with 4px padding around an sm badge. On is a filled `ink-2` frame; off is a 1px inset `line` ring (hover `ink-3`) with the badge at full strength, because the badge is the only label.
+
+### Elo Ratings Table
+Under a `line` header rule (12px semibold `ink-3`), `line-soft` rows: rank at 16px semibold score face `ink-3`; the sm badge and 14px `ink` name, linking to the team view, with the lime "Yours" label beside your team; rating at 19px bold `ink`; Week (Season for a finished season) as an `ink-2` 14px score-face arrow and figure, "–" in `ink-3` for no change, and a 12px `ink-3` "Bye" for a team that didn't play; Start at 14px `ink-3`. The selected team's row is tinted `raised`. A 12px `ink-3` footnote defines the columns.
+
+### Elo Team View
+A section head with the md badge ("Rabbitohs since 2021"), a 13px `ink-3` note, then a single line in the team's `bar` colour with each season start as a `line-soft` vertical labelled in the 11px score face. The biggest swings carry r=5 dots and numbers (12px semibold score face `ink-2`) above a rise or below a fall, kept inside the plot and nudged 14px sideways when two collide. Below, a `line-soft`-ruled list repeats them: the number in `ink-3`, the signed change at 17px bold `ink`, the game in 14px `ink-2`, and round and season in 12px `ink-3`.
+
+### Season Picker
+A native select labelled "Season" (13px `ink-3`): 40px tall, `raised` fill, 6px radius, inset `line` ring, 16px semibold score face `ink`, 2px `lime` ring on focus. Changing it loads that season and keeps the picked team.
+
+### Model Season Card
+The `/model` page, in the column with no board.
+- **Heading:** the md MDL badge before the 26px title "The Model", with a 13px `ink-3` meta line ("2026 so far, Rounds 1–9").
+- **Tally:** the stat row (the Model, Bookies' favourite, Elo, each led by its series line key), then one 15px `ink` sentence placing the Model among the tippers (its points in the 17px score face) with a quiet "See the ladder" link.
+- **Round by round:** a table under a `line` header rule: round at 15px semibold score face `ink-3`; one 11px lamp per game in kickoff order, the recap's lamps (lit `lime` when it tipped the winner, unlit `raised-2` with a `line` ring, 2px radius, 3px gaps); the round score at 19px bold `ink` with "/N" at 14px `ink-3`; "vs bookies" at 15px `ink-2` ("+1", "−2", "Level").
+- **Best calls / Worst misses:** `line-soft`-divided rows: the pick's sm badge, a 14px `ink` line ("Sharks over the Storm") over a 12px `ink-3` meta line (round, result, the bookies' figure), and the Model's chance at the right, 19px bold `ink` over an 11px `ink-3` "its chance". A row links to a match page, with `raised` hover, only when one exists; otherwise it is a plain row.
+- **How it was tested:** a 60ch paragraph, then link rows to `/about` and `/odds`.
+
+### Link Rows
+Full-width `line-soft`-ruled rows of 15px semibold `ink` text with a trailing `ink-3` chevron that nudges 2px right on hover. Used for onward links on `/model` and near the top of `/about` ("See how it's going this season").
+
+### Read-mode Page
+`/about`: in the column, with no board and no chart. The title with the md MDL badge, a 16px `ink` lead, a link row, then sections of 24px section heads over 60ch, 16px relaxed `ink-2` prose; bulleted lists use `ink-3` markers and a semibold `ink` lead phrase per item. The voice is straight, and the limits ("Where it falls down") get a full section with the same weight as the strengths. A stat row of test-season figures and a disclosure close it.
+
+### Disclosure
+A native details/summary ruled with `line-soft` above and below: a 15px semibold `ink` summary row with the marker hidden and a 20px `ink-3` chevron that rotates 90° when open. Inside, 60ch 15px `ink-2` prose and a metrics table (12px `ink-3` header on a `line` rule, `line-soft` rows, figures in the 15px score face `ink-2`, the main row's name semibold `ink`), scrolling sideways below 22rem.
 
 ### Odds copy
 No disclaimer or gambling message. The bookmaker is named in plain text and the source credited once at the page foot (12px `ink-3`: aussportsbetting.com historical odds, BlueBet prices, margin removed). The no-odds Model is explained once, in a single line under the page heading.
@@ -503,8 +547,9 @@ Quiet on prediction surfaces (a small `ink-2` or `ink-3` tick or cross beside "M
 - **Do** show the Model as an unranked, `raised-2` row sorted among the tippers by points, and measure "off the lead" against the leading tipper.
 - **Do** keep the comp's tips hidden until a game locks, then show the tally ("5 of 6 on SYD").
 - **Do** drive every sample page from the same sample week so home, tips and ladder agree.
-- **Do** draw every chart at its measured width with 2px lines, one y-axis, a legend for two or more series and a "Show as table" view.
-- **Do** keep each entity's series colour on every chart (Model blue, bookies aqua, Elo orange), at most three series per all-pairs chart.
+- **Do** draw every chart at its measured width with 2px lines, one y-axis, a legend for two or more series (end labels in its place on `/elo`) and a "Show as table" view.
+- **Do** keep each entity's series colour on every chart (Model blue, bookies aqua, Elo orange), at most three series per all-pairs chart; on `/elo`, draw teams in their own clearance-checked colours, at most three lit.
+- **Do** count an exact 50-50 as no tip in every tally, and derive shown differences from the rounded figures shown.
 - **Do** write minus as U+2212 and show cents only when there are cents.
 - **Do** widen data pages on desktop to the wide container, keeping prose at 60ch and single charts and stat rows at 40rem.
 
@@ -515,7 +560,7 @@ Quiet on prediction surfaces (a small `ink-2` or `ink-3` tick or cross beside "M
 - **Don't** build card grids or stacks of bordered tiles; games are rows.
 - **Don't** show a number in the score slot of a live or awaiting game, or let a predicted score look like a result.
 - **Don't** use club logos, photography or bookmaker colours; teams are two colours and a code.
-- **Don't** use team colours outside badges and pitch bars.
+- **Don't** use team colours outside badges, pitch bars and the lit lines on `/elo`.
 - **Don't** add a light theme or a second accent; the chart series colours are data marks on chart pages, not accents.
 - **Don't** set text in a series colour, or use lime, amber or coral as a series colour.
 - **Don't** add a disclaimer, gambling message or bookmaker branding to odds pages; name the bookmaker in plain text and credit the source.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { ModelBadge } from "@/components/team-badge";
+import { SERIES } from "@/lib/odds";
 
 export const metadata: Metadata = { title: "How the Model works · rugbyleague-tipper" };
 
@@ -38,7 +39,7 @@ export default function AboutPage() {
   return (
     <main>
       <div className="pt-4">
-        <h1 className="flex items-center gap-2.5 font-display text-[30px] leading-none font-bold uppercase">
+        <h1 className="flex items-center gap-2.5 font-display text-[26px] leading-none font-bold uppercase">
           <ModelBadge size="md" />
           How the Model works
         </h1>
@@ -115,15 +116,21 @@ export default function AboutPage() {
         </p>
       </Section>
       <dl className="mt-4 grid max-w-[40rem] grid-cols-3 border-y border-line-soft">
-        {[
-          ["The Model", TEST_2026[0].accuracy, true],
-          ["Bookies’ favourite", TEST_2026[3].accuracy, false],
-          ["Elo", TEST_2026[4].accuracy, false],
-        ].map(([label, acc, main]) => (
-          <div key={label as string} className="py-3 pr-2">
-            <dt className="min-h-[2lh] text-[12px] leading-tight text-ink-3">{label as string}</dt>
+        {(
+          [
+            ["model", "The Model", TEST_2026[0].accuracy, true],
+            ["market", "Bookies’ favourite", TEST_2026[3].accuracy, false],
+            ["elo", "Elo", TEST_2026[4].accuracy, false],
+          ] as const
+        ).map(([k, label, acc, main]) => (
+          <div key={label} className="py-3 pr-2">
+            {/* The same comparison as /model and /odds, so the same series keys. */}
+            <dt className="flex min-h-[2lh] items-start gap-1.5 text-[12px] leading-tight text-ink-3">
+              <span className="mt-[0.45em] h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: SERIES[k].colour }} aria-hidden />
+              {label}
+            </dt>
             <dd className={`mt-1 font-display text-[30px] leading-none font-bold ${main ? "text-ink" : "text-ink-2"}`}>
-              {pct(acc as number)}
+              {pct(acc)}
             </dd>
             <dd className="mt-0.5 text-[12px] text-ink-3">of 2026 winners</dd>
           </div>
