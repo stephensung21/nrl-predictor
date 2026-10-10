@@ -33,8 +33,8 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | State of Origin and reserve-grade stats | ✅ | `scrape.py` (`--reserve` for reserve grade) |
 | Live team lists, every version kept | ✅ | Fetched by `predict.py`; each fetch saved to `data/raw/teamlists_live/` with a timestamp |
 | Historical pre-kickoff (Tuesday) lists | ✅ | `python src/teamlists.py` (Internet Archive), 2023–2026 |
-| Historical betting odds (aussportsbetting.com sheet) | 🔶 | `data/nrl_betting odds.xlsx`, downloaded by hand. Needed for retraining and, until live odds exist, for the with-odds model. An automatic download is still to do. |
-| Live odds (The Odds API, Betr) | 🔶 | `pipeline/fetch_odds.py`, run at the start of every live job and by `run.py --job odds`: Betr's head-to-head, line and total (Betr is BlueBet since the 2024 merger, the sheet's bookmaker), every snapshot kept in `odds_snapshots.csv`, impossible prices dropped, credits guarded. A game's first snapshot is its opening price when the sheet doesn't have it. Tested on a saved response; needs `ODDS_API_KEY` and a first real fetch to confirm Betr's NRL coverage. |
+| Historical betting odds (aussportsbetting.com sheet) | 🔶 | `data/nrl_betting odds.xlsx`, downloaded by hand. It only updates now and then, so the weekly predictions no longer depend on it (live odds below); still needed for closing prices (grading against the market), retraining and the yearly routine. An automatic download is still to do. |
+| Live odds (The Odds API, Betr) | 🔶 | `pipeline/fetch_odds.py`, run at the start of every live job and by `run.py --job odds`: Betr's head-to-head, line and total (Betr is BlueBet since the 2024 merger, the sheet's bookmaker), every snapshot kept in `odds_snapshots.csv`, impossible prices dropped, credits guarded. A game's first snapshot is its opening price when the sheet doesn't have it. Built and tested; the key works and Betr prices come through on the free plan (checked October 2026 on the EPL, as NRL is out of season). Still to confirm in the February trials: Betr lists NRL, and its first snapshot matches the sheet's opening price (see step 4). |
 | Elo, team rating, player ratings (RAPM), features | ✅ | Recomputed from the latest results by `features.py` and `predict.py` |
 
 **Predicting**
@@ -108,7 +108,7 @@ Each one is a single function that returns the real implementation once the back
 
 - **The model pipeline:** nothing publishes predictions. Every Model number on the site is from the 2026 replays or the test season, generated into files.
 - **The database:** no Supabase project, tables, row-level security or migrations exist yet.
-- **Live sources:** no Odds API fetcher, no automatic odds-sheet download, no Reddit API, no live scores.
+- **Live sources:** the Odds API fetcher exists but only feeds the pipeline's CSV records; no automatic odds-sheet download, no Reddit API, no live scores.
 - **Accounts:** sign-in is simulated, and nobody is really signed in. Tips, profiles and invites live only in the visitor's browser.
 - **Admin:** the page is open to anyone in the sample, and the admin flag always says yes.
 - **The margin-game draw** (random, excluding last round's teams; §3.5) is implemented as a function (`drawFeatured`), but nothing stores a draw. The sample's Round 10 game is simply the round's first game.
@@ -126,7 +126,7 @@ Each one is a single function that returns the real implementation once the back
 
 ### Next steps
 
-Step numbers are fixed (other sections refer to them). Steps 1–3 are done. The work is split across two branches that don't depend on each other until step 7: **`pipeline`** (Python, `pipeline/` and `src/`) and **`web-design`** (the site in `web/` and the database in `supabase/`). This plan is kept identical on both branches so they merge cleanly.
+Step numbers are fixed (other sections refer to them). Steps 1–3 are done and step 4 is mostly done. The `pipeline` and `web-design` branches were merged into `main` in October 2026 (PRs #4 and #5); backend work now continues on **`backend`** and the site on **`web-development`**, both from `main`.
 
 **Done**
 
@@ -134,14 +134,14 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done. The
 - ✅ **Step 2. Weekly grading** (`pipeline` branch): `pipeline/grade.py`, run by the results job, writes `graded.csv` and `season.md`. *Checked:* grading the final test's predictions as predictions of record reproduces every number in `reports/final_2026.md`. (The plan's original check, grading the replayed season, can't reach those totals: the final test used final team lists for all 213 games, and the Tuesday archive covers only 64.)
 - ✅ **Step 3. Tipping scoring outside the browser** (`web-design` branch): `supabase/migrations/20261010000000_tipping.sql`, with the website's rules moved to `web/lib/scoring.ts`; both pass the shared cases in `tests/tipping/cases.json`, and the lockout, hidden-tips and permission rules pass in PGlite (`npm test` in `web/`, 24 tests).
 
-**On `pipeline`**
+**Pipeline (`backend` branch)**
 
-- **Step 4. Odds:** download the aussportsbetting sheet in the results job, with the impossible-price check (note 4); then The Odds API fetcher, storing every snapshot and guarding credits (§1.2 step 4, §1.6). *Done when:* a week of snapshots is stored and the opening price for each game is chosen the way the model was trained. *Needs:* the aussportsbetting terms checked and an Odds API key.
+- 🔶 **Step 4. Odds.** *Built (October 2026):* the sheet only updates now and then, so the weekly opening prices come from The Odds API instead. The sheet's bookmaker since April 2024, BlueBet, took over Betr in July 2024 and now trades as Betr on BlueBet's platform, and The Odds API carries Betr (`betr_au`; BlueBet isn't listed). `pipeline/fetch_odds.py` fetches Betr's head-to-head, line and total at the start of every live job and in the Sunday-night odds job, keeps every snapshot in `data/pipeline/live/<season>/odds_snapshots.csv` (raw responses in `data/raw/odds_api/`), blanks impossible prices (note 4) and logs them as warnings, and skips while fewer than 50 credits are left. A game's first snapshot before kickoff is its opening price when the sheet doesn't have the game; the sheet's prices come first when it does. A refresh re-predicts a game when its first price arrives; a failed fetch is a warning and unpriced games get the no-odds prediction. Errors never carry the key (they go into the committed run log). *Checked:* `tests/test_odds.py` on a saved response, including a 2026 game priced from "live" odds predicting exactly as from the sheet; a real call with the key returned Betr's prices on the free plan (EPL, 1 credit; NRL is out of season). *Still to do:* (a) in the February trials, confirm Betr lists NRL and the team names map; (b) once the sheet has the same games, compare its BlueBet opening prices with our first snapshots, and change which snapshot counts as opening if they differ consistently; (c) download the sheet automatically in the results job, for closing prices and retraining (check the site's terms). *Needs:* `ODDS_API_KEY` in `.env` locally (done) and in GitHub secrets for step 8.
 - **Step 5. Weather** in the refresh job (note 3). Optional; measure its value on replays first.
 - **Step 8. GitHub Actions** `results.yml`, `predict.yml`, `refresh.yml`, `odds.yml` and `ci.yml` on the UTC schedule in §1.1, with `actions/cache` for the season's raw pages, the secrets in §1.5, a failure alert and the keep-alive commit. Can run before Supabase exists, with the results job committing `data/pipeline/live/`; publishing is added after step 7. *Done when:* a full week runs unattended, including a deliberately broken run that alerts and doesn't publish (milestone 4).
 - **Step 11a. The pipeline draws each round's margin game** with `drawFeatured`'s rule (fresh randomness) in the predict job; stored in `rounds` once step 7 exists.
 
-**On `web-design`**
+**Database and website**
 
 - **Step 6. Create the Supabase project and the rest of the migrations** in `supabase/migrations/`: the model tables and views in §2 (predictions, `prediction_of_record`, odds snapshots, Elo ratings, team lists, invites, pipeline runs) beside the tipping migration, with the remaining rule tests (postponed games, ladder ties). Name columns to match `web/lib/types.ts`. *Done when:* the migrations apply to an empty project and every rule test passes. *Needs:* a Supabase account.
 - **Step 9. Swap the sample modules for queries** through `lib/supabase.ts` (a server client for pages, a browser client for tipping) (`lib/sample.ts`, `sample-archive.ts`, `sample-odds.ts`, `sample-elo.ts`, `sample-news.ts`), keeping the types in `lib/types.ts`; remove the sample notes and state chips.
@@ -149,11 +149,11 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done. The
 - **Step 11b. The Reddit API** goes behind `NewsSource`. *Needs:* a Reddit app.
 - **Step 12. Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5). *Needs:* a Vercel account.
 
-**After merging both branches into `main`** (on a new branch from `main`)
+**Joining the two** (the branches are merged, so this can start once step 6 exists)
 
 - **Step 7. `pipeline/publish.py`:** upsert matches, team lists, odds snapshots, Elo ratings, predictions and run records into the step 6 tables; call the website's revalidation hook. Backfill 2026 so the site starts with a real season. *Done when:* a replayed round appears in the database and the views return it. Then add publishing to the step 8 workflows.
 
-Suggested order: step 4 while the accounts are set up, then merge both branches, then 6 → 7 → 8 → 9–12.
+Suggested order: step 8 next (it needs no new accounts and puts the odds fetch on a schedule before the trials), then 6 → 7 → 9–12, with step 4's checks in the February trials.
 
 **The 2027 season**
 
@@ -182,7 +182,7 @@ The wet-conditions flag (rain or a wet ground) is used by the total-points model
 
 **4. The odds sheet.**
 `data/nrl_betting odds.xlsx` comes from aussportsbetting.com's historical NRL results-and-odds download. It's the only source of the *opening* prices the with-odds model was trained on, and of closing prices for grading against the market.
-- *Recommendation:* download it in the Monday results job (confirm the direct file link and the site's terms first), and check whether it already lists the coming round's games with opening odds. If it does, it's the most consistent source of opening prices for the with-odds model until The Odds API is set up.
+- *Recommendation:* download it in the Monday results job (confirm the direct file link and the site's terms first). It doesn't reliably list the coming round in time, so the week's opening prices come from Betr through The Odds API (step 4); the sheet stays the source of closing prices and of the history for retraining.
 - `ingest.load_odds` stops on unknown team names, so a new team or renamed column fails loudly rather than silently.
 - Run the impossible-price check (implied probabilities summing to under 100%) on every download; the 2026 sheet had bad line and totals prices.
 
@@ -237,7 +237,7 @@ There is no always-on server. The model is the frozen bundle committed in `model
 |---|---|---|---|
 | Scheduled runs | GitHub Actions `results.yml` (Mon), `predict.yml` (Tue), `refresh.yml` (Wed–Sun), `odds.yml` (Sun night), `ci.yml`: install, restore the raw-page cache, call `pipeline/run.py`, alert on failure, commit records (also the keep-alive) | `pipeline`, step 8 | ❌ |
 | The weekly jobs | `pipeline/run.py`: scrape, round detection, predict, validate, grade, run log | `pipeline`, steps 1–2 | ✅ |
-| Data sources | Draw, results and team lists (`scrape.py`, `draw.py`); odds sheet download and The Odds API; weather (optional) | `pipeline`, steps 4–5 | 🔶 odds and weather to do |
+| Data sources | Draw, results and team lists (`scrape.py`, `draw.py`); Betr's live prices from The Odds API (`fetch_odds.py`); odds sheet download; weather (optional) | `backend`, steps 4–5 | 🔶 live odds built; sheet download and weather to do |
 | Interim storage | Run log, every prediction and the graded season as CSV in `data/pipeline/live/<season>/`, committed by the results job | `pipeline` | ✅ (until step 7) |
 | Database: tipping | `matches`, `profiles`, `rounds`, `tips`, scoring views, `ladder()`, row-level security | `web-design`, step 3 | ✅ tested locally |
 | Database: model data | `predictions`, `team_lists`, `odds_snapshots`, `elo_ratings`, `pipeline_runs`, `invites`; views `prediction_of_record`, `latest_odds`, `model_accuracy`; the Supabase project itself | `web-design`, step 6 | ❌ |
@@ -291,7 +291,7 @@ Freezing the prediction of record doesn't need a job at kickoff. It is a databas
 3. **Fetch team lists:** the named players plus reserves for each team, with an `announced_at` timestamp. Keep every version, so changes between Tuesday and kickoff are visible and features can be rebuilt as they were at any point. (`predict.py` already saves each fetch to `data/raw/teamlists_live/`.)
    - **The named 17** is the 17 lowest-numbered players who aren't reserves (`features.named_from_list`). Since 2026 the Tuesday squad lists a **six-man interchange** (jerseys 14–19) that is cut to four later in the week, so a Tuesday list has 19 non-reserves and jerseys 1–17 are the expected team. On final lists, late replacements keep higher numbers (e.g. 20), and the rule still finds the 17.
 4. **Fetch odds:** head-to-head, line and total from [The Odds API](https://the-odds-api.com) (NRL is `rugbyleague_nrl`). Store each fetch as a timestamped snapshot. The free plan is enough (see §1.6).
-   - **Match what the model was trained on.** The with-odds model learned from *opening* prices of one bookmaker in the aussportsbetting.com sheet (bet365 until April 2024, BlueBet since, with BlueBet indicator inputs). Use the same bookmaker if The Odds API carries it (check whether BlueBet is in its Australian list), and use the **first snapshot after odds open** as the opening price. Keep downloading the aussportsbetting sheet too, for retraining.
+   - **Match what the model was trained on.** The with-odds model learned from *opening* prices of one bookmaker in the aussportsbetting.com sheet (bet365 until April 2024, BlueBet since, with BlueBet indicator inputs). BlueBet now trades as Betr (merged 2024), which The Odds API carries as `betr_au`, so the pipeline fetches Betr and uses the **first snapshot after odds open** as the opening price (`fetch_odds.py`). Keep downloading the aussportsbetting sheet too, for closing prices and retraining.
    - **Without odds** (not yet open, or the fetch failed), publish the no-odds model's prediction for that game; `predict.py` already does this.
 5. **Update Elo** from all completed results, and write each team's pre-match and post-match rating per game.
 6. **Build features** for the upcoming round with the same leakage-safe code as training (`features.build_features` with the current team lists). Every result before the round updates Elo, the team rating and the player ratings (RAPM), so the features stay current without refitting the models.
@@ -561,7 +561,7 @@ nrl-predictor/
     grade.py                   # prediction of record, grading, season report (exists)
     replay.py                  # runs the weekly schedule over a past season, as a test (exists)
     common.py                  # paths and the run/prediction records (exists)
-    fetch_odds.py              # Odds API snapshots (to do, step 4)
+    fetch_odds.py              # Betr's prices from The Odds API, every snapshot kept (exists, step 4)
     publish.py                 # upsert to Supabase, call revalidation hook (to do, step 7)
   supabase/
     migrations/                # tables, views, row-level security policies (tipping part exists)
