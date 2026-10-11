@@ -189,6 +189,7 @@ Planned in detail in [PLAN_WEB.md §7](PLAN_WEB.md#7-agent-features-later):
 - **Game-by-game explanations (7.1):** each prediction's drivers, calculated in `predict.py` from the frozen models (exact for the linear half, SHAP for LightGBM). Plain code, no agent.
 - **Post-mortems of badly missed games (7.2):** the facts assembled by code (late changes, the market's move, conditions, in-game events), the main cause classified by code, and a short write-up by Claude. Never suggests a model change from one game.
 - **Model reviewer (7.3):** the one real agent loop. Every 6 rounds, it looks for patterns across many misses, proposes at most 2–3 changes with pass criteria set in advance, tests them on the backtest, and opens a pull request. Small or unclear gains go to "Already tried".
+- **Match briefs (7.4):** one structured fact pack per game (the prediction, its drivers, Elo, form, team news, the market, conditions, and later the result and post-mortem), assembled by code and frozen with the prediction. Every LLM text is written from a brief and checked against it, so new data sources are added as new sections, and a full match summary combining them all is one more prompt.
 
 ### Where not to use agents
 
