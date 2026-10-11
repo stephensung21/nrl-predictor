@@ -69,6 +69,16 @@ export type MatchElo = {
 /** Both teams' Elo around a game, from the same ratings the /elo page shows. */
 export function matchElo(m: { season: number; round: number; home: TeamName; away: TeamName }, neutral: boolean): MatchElo | undefined {
   const s = seasonOf(m.season);
+  return s ? matchEloFrom(s, teamView, m, neutral) : undefined;
+}
+
+/** The same, from a season's ratings and the teams' game-by-game views (the database's or the sample's). */
+export function matchEloFrom(
+  s: EloSeason,
+  views: (t: TeamName) => EloTeamView,
+  m: { season: number; round: number; home: TeamName; away: TeamName },
+  neutral: boolean,
+): MatchElo | undefined {
   if (!s || !(m.home in s.ratings) || !(m.away in s.ratings)) return undefined;
   // Ratings after each round before this one (round 1 goes in on the season-start rating).
   const before = s.rounds.findIndex((r) => r === `R${m.round}`);
@@ -81,7 +91,7 @@ export function matchElo(m: { season: number; round: number; home: TeamName; awa
   const side = (t: TeamName): MatchEloSide => {
     const rating = at(t);
     const played = before !== -1 && s.ratings[t][before] !== rating ? s.ratings[t][before] : undefined;
-    const form = teamView(t)
+    const form = views(t)
       .points.filter((p) => p.season < m.season || (p.season === m.season && p.label.startsWith("Round ") && Number(p.label.slice(6)) < m.round))
       .slice(-5)
       .reverse()
