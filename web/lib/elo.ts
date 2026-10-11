@@ -3,11 +3,12 @@
 
 import { ELO_PARAMS, ELO_SEASONS, ELO_TEAMS } from "./sample-elo";
 import type { TeamName } from "./teams";
+import type { EloSeason, EloTeamView } from "./types";
 
 export const SEASONS = ELO_SEASONS.map((s) => s.season);
 export const LATEST = ELO_SEASONS.at(-1)!.season;
 export const seasonOf = (n: number) => ELO_SEASONS.find((s) => s.season === n);
-export const teamView = (t: TeamName) => ELO_TEAMS[t];
+export const teamView = (t: TeamName): EloTeamView => ELO_TEAMS[t] ?? { points: [], swings: [] };
 export const HOME_ADVANTAGE = ELO_PARAMS.hfa;
 
 /** Win chance for a rating gap, before home advantage. */
@@ -20,7 +21,11 @@ export const CURRENT_ROUND = 10;
 
 /** The ratings table after a season's latest round, best first. */
 export function table(season: number): EloRow[] {
-  const s = seasonOf(season)!;
+  return tableOf(seasonOf(season)!);
+}
+
+/** The ratings table after a season's latest round, best first, from that season's data. */
+export function tableOf(s: EloSeason): EloRow[] {
   return (Object.keys(s.ratings) as TeamName[])
     .map((t) => {
       const r = s.ratings[t];

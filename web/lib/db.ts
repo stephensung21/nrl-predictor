@@ -17,7 +17,12 @@ export function siteDb(): Sql | null {
   if (client === undefined) {
     const url = process.env.SITE_DATABASE_URL;
     // The transaction pooler can't keep prepared statements; one connection is plenty per instance.
-    client = url ? postgres(url, { prepare: false, max: 1, idle_timeout: 20 }) : null;
+    client = url
+      ? postgres(url, {
+          prepare: false, max: 1, idle_timeout: 20,
+          onnotice: (n) => n.severity !== "DEBUG" && console.log(n), // a local PGlite server sends debug notices
+        })
+      : null;
   }
   return client;
 }

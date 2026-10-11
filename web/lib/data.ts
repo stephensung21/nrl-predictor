@@ -5,7 +5,7 @@
 import type { Sql } from "./db";
 import type {
   EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsRound, Prediction,
-  RoundData, SeasonGame,
+  RoundData, SeasonBet, SeasonGame,
 } from "./types";
 import type { TeamName } from "./teams";
 
@@ -150,19 +150,44 @@ export async function oddsRounds(sql: Sql, season: number): Promise<OddsRound[]>
   return [...byRound].map(([round, games]) => ({ round, games }));
 }
 
-/** The season's graded games for the scoreboards: the main model, the opening market and Elo. */
+/** The season's graded games for the model-vs-market scoreboard: the no-odds Model (independent of
+ * the bookies), the opening market and Elo. */
 export async function seasonGames(sql: Sql, season: number): Promise<SeasonGame[]> {
   const rows = await sql`
     select m.id, m.round, m.round_title, m.kickoff, m.home_team, m.away_team, g.margin_actual,
-           g.home_win_prob, g.p_open, g.elo_prob
+           p.no_odds_home_win_prob as home_win_prob, g.p_open, g.elo_prob
     from graded_games g join matches m on m.id = g.match_id
-    where m.season = ${season} order by m.kickoff, m.id`;
+    join prediction_of_record p on p.match_id = g.match_id
+    where m.season = ${season} and p.no_odds_home_win_prob is not null order by m.kickoff, m.id`;
   return rows.map((r) => ({
     matchId: String(r.id), round: r.round_title ?? `Round ${r.round}`, kickoff: iso(r.kickoff),
     home: r.home_team as TeamName, away: r.away_team as TeamName,
     homeWin: r.margin_actual > 0 ? 1 : r.margin_actual < 0 ? 0 : 0.5,
     model: r.home_win_prob, market: num(r.p_open), elo: num(r.elo_prob),
   }));
+}
+
+/** Flat bets on the no-odds Model's edges of more than 2% at the opening price, either side, draws
+ * left out (as web/scripts/build_odds_sample.py and src/betting.py). */
+export async function seasonBets(sql: Sql, season: number): Promise<SeasonBet[]> {
+  const rows = await sql`
+    select m.id, m.home_score, m.away_score, p.no_odds_home_win_prob as p, o.home_odds_open, o.away_odds_open
+    from matches m
+    join prediction_of_record p on p.match_id = m.id
+    join match_odds o on o.match_id = m.id
+    where m.season = ${season} and m.status = 'final' and m.home_score <> m.away_score
+      and p.no_odds_home_win_prob is not null
+    order by m.kickoff, m.id`;
+  const bets: SeasonBet[] = [];
+  for (const r of rows) {
+    const homeWon = r.home_score > r.away_score;
+    for (const [side, prob, price] of [["home", r.p, r.home_odds_open], ["away", 1 - r.p, r.away_odds_open]] as const) {
+      if (price == null || prob * price - 1 <= 0.02) continue;
+      const won = homeWon === (side === "home");
+      bets.push({ matchId: String(r.id), side, odds: price, won, profit: won ? Math.round((price - 1) * 100) / 100 : -1 });
+    }
+  }
+  return bets;
 }
 
 /** The model's record for a season (`model_accuracy`), with the bookies' favourite on the same games. */
