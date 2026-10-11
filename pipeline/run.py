@@ -10,7 +10,8 @@ without a price get the no-odds prediction. `--job odds` runs the fetch on its o
 - results (Monday): scrape the current season's finished games into the processed tables, then grade
   every finished game that has a prediction of record and write the season report.
 - predict (Tuesday, after team lists): work out which games are next (`draw.games_to_predict`),
-  fetch their team lists, predict with the frozen models, validate, and record the predictions.
+  fetch their team lists, draw the round's margin game if it hasn't been drawn (`margin_game`),
+  predict with the frozen models, validate, and record the predictions.
 - refresh (Wednesday to Sunday): the same, but only for games whose inputs changed since their last
   prediction (team list or opening price), or that have no prediction yet.
 
@@ -93,6 +94,27 @@ def fingerprints(fixtures, lists, neutral, odds, live_odds=None):
     return pd.Series(out, name="inputs")
 
 
+def margin_game(records, season, rnd, fixtures, now, run_id, rng=None):
+    """The round's margin game for the tipping comp, drawn once: by the first run that has the
+    round's fixtures, before any of them kicks off, and kept after that. It can't be any game
+    involving a team from the previous round's margin game (draw.draw_featured)."""
+    drawn = records.rounds()
+    mine = drawn[(drawn["season"] == season) & (drawn["round"] == rnd)]
+    if len(mine):
+        return int(mine["featured_match"].iloc[-1])
+    games = fixtures[fixtures["round"] == rnd]
+    if games.empty or (pd.to_datetime(games["start_time_utc"], utc=True) <= now).any():
+        return None  # nothing to draw from, or the round has started: too late to draw fairly
+    before = drawn[(drawn["season"] == season) & (drawn["round"] < rnd)].sort_values("round")
+    previous = tuple(before[["home_team", "away_team"]].iloc[-1]) if len(before) else None
+    pick, eligible = drawlib.draw_featured(games, previous, rng)
+    game = games[games["match_id"] == pick].iloc[0]
+    records.add_round({"season": season, "round": rnd, "featured_match": pick, "home_team": game["home_team"],
+                       "away_team": game["away_team"], "drawn_at": now.isoformat(),
+                       "eligible": ";".join(str(m) for m in eligible["match_id"]), "run_id": run_id})
+    return pick
+
+
 # ---------------------------------------------------------------- jobs
 
 def predict_job(season, now, replay, records, refresh, run, model_season):
@@ -112,6 +134,7 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
     ids = dict(zip(fixtures["url"].str.replace("https://www.nrl.com", "", regex=False), fixtures["match_id"]))
     neutral = drawlib.neutral_games(draw.assign(match_id=draw["match_id"].fillna(draw["url"].map(ids))))
     records.update_fixtures(fixtures.assign(neutral=fixtures["match_id"].isin(neutral)))
+    run["margin_game"] = margin_game(records, season, rnd, fixtures, now, run["id"])
     bundle = predict.load_bundle(model_season)
     run["model_version"] = bundle.get("version")
     live_odds = None if replay else fetch_odds.for_fixtures(fixtures, fetch_odds.game_prices(records.odds_snapshots()))

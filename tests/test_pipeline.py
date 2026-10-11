@@ -172,3 +172,45 @@ def test_no_draw_is_nothing_to_do_before_the_season_and_a_failure_during_it(tmp_
     with pytest.raises(RuntimeError, match="no 2027 draw"):
         run.run_job("predict", 2027, records=records)
     assert records.runs()[-1]["status"] == "failed"
+
+
+# ---------------------------------------------------------------- the margin game (step 11a)
+
+def round_games(pairs, round_=5, start="2027-04-03 08:00"):
+    return pd.DataFrame([{"match_id": 100 + i, "round": round_, "home_team": h, "away_team": a,
+                          "start_time_utc": T(start) + pd.Timedelta(hours=i)} for i, (h, a) in enumerate(pairs)])
+
+
+def test_the_margin_game_avoids_last_round_s_teams():
+    games = round_games([("Storm", "Broncos"), ("Eels", "Panthers"), ("Roosters", "Sharks")])
+    assert list(draw.eligible_for_draw(games, ("Broncos", "Panthers"))["match_id"]) == [102]
+    assert list(draw.eligible_for_draw(games, None)["match_id"]) == [100, 101, 102]
+    # Nothing qualifies: every game is eligible again.
+    assert list(draw.eligible_for_draw(games.iloc[:2], ("Storm", "Eels"))["match_id"]) == [100, 101]
+
+
+def test_the_draw_picks_every_eligible_game_and_nothing_else():
+    import random
+    games = round_games([("Storm", "Broncos"), ("Eels", "Panthers"), ("Roosters", "Sharks"), ("Titans", "Dragons")])
+    rng = random.Random(1)
+    picks = {draw.draw_featured(games, ("Storm", "Eels"), rng)[0] for _ in range(200)}
+    assert picks == {102, 103}
+
+
+def test_the_predict_job_draws_each_round_once_and_never_after_kickoff(tmp_path):
+    import random
+    import run
+    rec = Records(2027, replay=False, root=tmp_path)
+    r4 = round_games([("Storm", "Broncos"), ("Eels", "Panthers")], round_=4, start="2027-03-27 08:00")
+    r5 = round_games([("Broncos", "Raiders"), ("Eels", "Titans"), ("Roosters", "Sharks")])
+    tuesday = T("2027-03-23 07:15")
+    first = run.margin_game(rec, 2027, 4, r4, tuesday, "a", random.Random(3))
+    assert run.margin_game(rec, 2027, 4, r4, tuesday + pd.Timedelta(days=1), "b") == first  # kept, not redrawn
+    previous = r4[r4["match_id"] == first].iloc[0]
+    pick = run.margin_game(rec, 2027, 5, r5, T("2027-03-30 07:15"), "c", random.Random(3))
+    chosen = r5[r5["match_id"] == pick].iloc[0]
+    assert not {chosen["home_team"], chosen["away_team"]} & {previous["home_team"], previous["away_team"]}
+    assert list(rec.rounds()["round"]) == [4, 5]
+    # A round that has already started isn't drawn (its first game could have been tipped already).
+    r6 = round_games([("Storm", "Raiders")], round_=6, start="2027-04-10 08:00")
+    assert run.margin_game(rec, 2027, 6, r6, T("2027-04-10 09:00"), "d") is None

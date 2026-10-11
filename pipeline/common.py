@@ -22,6 +22,7 @@ from ingest import PROCESSED  # noqa: E402
 RECORDS = ROOT / "data" / "pipeline"
 FIXTURE_COLS = ["match_id", "season", "round", "round_title", "is_final", "start_time_utc", "venue", "venue_city",
                 "home_team", "away_team", "neutral", "url"]
+ROUND_COLS = ["season", "round", "featured_match", "home_team", "away_team", "drawn_at", "eligible", "run_id"]
 PREDICTION_COLS = ["run_id", "created_at", "match_id", "season", "round", "start_time_utc", "home_team",
                    "away_team", "home_win_prob", "margin", "total", "home_score", "away_score", "model",
                    "no_odds_home_win_prob", "market_open_home_prob", "model_version", "inputs"]
@@ -42,6 +43,7 @@ class Records:
         self.graded_file = self.dir / "graded.csv"
         self.odds_file = self.dir / "odds_snapshots.csv"
         self.fixtures_file = self.dir / "fixtures.csv"
+        self.rounds_file = self.dir / "rounds.csv"
 
     def add_run(self, record):
         with self.runs_file.open("a", encoding="utf-8") as f:
@@ -86,6 +88,16 @@ class Records:
         if not self.fixtures_file.exists():
             return pd.DataFrame(columns=FIXTURE_COLS)
         return pd.read_csv(self.fixtures_file)
+
+    def rounds(self):
+        """Each round's margin game, drawn once by the predict job (draw.draw_featured)."""
+        if not self.rounds_file.exists():
+            return pd.DataFrame(columns=ROUND_COLS)
+        return pd.read_csv(self.rounds_file)
+
+    def add_round(self, row):
+        pd.DataFrame([row], columns=ROUND_COLS).to_csv(self.rounds_file, mode="a", index=False,
+                                                       header=not self.rounds_file.exists())
 
     def update_fixtures(self, fixtures):
         new = fixtures.reindex(columns=FIXTURE_COLS)

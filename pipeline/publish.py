@@ -9,8 +9,8 @@ rebuilt from the repo. Nothing here touches the tippers' own data except the Mod
 
 - live (the default; run after each scheduled job): the season's matches (finished, and the coming
   games the predict job has seen), the odds sheet's prices and the live snapshots, team lists, Elo for
-  the season, model versions, the run log, every prediction and the graded games; then the Model's
-  tips for games not yet started.
+  the season, each round's margin game, model versions, the run log, every prediction and the graded
+  games; then the Model's tips (and its margin for the margin game) for games not yet started.
 - `--backfill SEASON`: a finished season from the final test's predictions
   (reports/predictions_2026.csv, from `train.py --final`), so the site starts with a real season.
   They used each game's final team list, so they're marked as a backfill, not a live record. Every
@@ -182,6 +182,15 @@ def elo_rows(odds, published, seasons=None):
     return pd.concat(sides, ignore_index=True)
 
 
+def round_rows(drawn, match_ids):
+    """Each round's margin game, as drawn by the predict job."""
+    if drawn.empty:
+        return pd.DataFrame()
+    d = drawn[drawn["featured_match"].isin(match_ids)].drop_duplicates(["season", "round"], keep="first")
+    return pd.DataFrame({"season": d["season"].astype(int), "round": d["round"].astype(int),
+                         "featured_match": d["featured_match"].astype("int64"), "drawn_at": ts(d["drawn_at"])})
+
+
 def run_rows(runs):
     rows = []
     for r in runs:
@@ -235,6 +244,7 @@ def live_tables(season, records):
         "odds_sheet": odds_sheet_rows(matches, odds),
         "odds_snapshots": snapshot_rows(records.odds_snapshots(), matches),
         "team_lists": team_list_rows(season, set(matches["id"])),
+        "rounds": round_rows(records.rounds(), set(matches["id"])),
         "elo_ratings": elo_rows(odds, set(matches["id"]), [season]),
         "pipeline_runs": run_rows(runs),
         "predictions": prediction_rows(preds),
@@ -287,7 +297,7 @@ def backfill_tables(season, predictions_file=None):
 
 KEYS = {"model_versions": ["version"], "matches": ["id"], "odds_sheet": ["match_id"],
         "odds_snapshots": ["match_id", "bookmaker", "captured_at"], "team_lists": ["match_id", "fetched_at", "player_id"],
-        "elo_ratings": ["team", "played_on"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
+        "elo_ratings": ["team", "played_on"], "rounds": ["season", "round"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
         "graded_games": ["match_id"]}
 
 
@@ -338,14 +348,17 @@ def model_tips(cur, season, started_too):
     return cur.rowcount
 
 
-def publish(tables, url, season, backfill=False):
-    """Write every table in one transaction; returns rows written per table."""
+def publish(tables, url, season, backfill=False, conn=None):
+    """Write every table in one transaction; returns rows written per table. Connects to `url`, or
+    uses an open connection `conn` (the tests reuse one)."""
+    if conn is None:
+        with psycopg.connect(url, prepare_threshold=None) as conn:
+            return publish(tables, url, season, backfill, conn)
     counts = {}
-    with psycopg.connect(url, prepare_threshold=None) as conn:
-        with conn.cursor() as cur:
-            for table, rows in tables.items():
-                counts[table] = upsert(cur, table, rows)
-            counts["model tips"] = model_tips(cur, season, started_too=backfill)
+    with conn.transaction(), conn.cursor() as cur:
+        for table, rows in tables.items():
+            counts[table] = upsert(cur, table, rows)
+        counts["model tips"] = model_tips(cur, season, started_too=backfill)
     return counts
 
 

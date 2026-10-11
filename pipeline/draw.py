@@ -7,6 +7,8 @@ matches, with each game's status worked out from the replay clock, so the same r
 over a finished season.
 """
 
+import secrets
+
 import pandas as pd
 
 from common import load_matches
@@ -69,6 +71,23 @@ def games_to_predict(draw, now):
     games = upcoming[upcoming["round"] == rnd]
     postponed = upcoming[(upcoming["round"] < current) & (upcoming["start_time_utc"] <= games["start_time_utc"].max())]
     return rnd, pd.concat([postponed, games]).sort_values("start_time_utc")
+
+
+def eligible_for_draw(games, previous):
+    """The games a round's margin game can be drawn from: those not involving either team in the
+    previous round's margin game, or every game if none qualify (PLAN_WEB.md §3.5; the same rule as
+    web/lib/rules.ts eligibleForDraw). `previous` is (home, away) or None."""
+    banned = set(previous or ())
+    ok = games[~games["home_team"].isin(banned) & ~games["away_team"].isin(banned)]
+    return ok if len(ok) else games
+
+
+def draw_featured(games, previous, rng=None):
+    """Draw the round's margin game at random from the eligible games. A fresh, unpredictable random
+    source unless `rng` (a random.Random, for tests) is given. Returns (match id, eligible games)."""
+    eligible = eligible_for_draw(games.sort_values(["start_time_utc", "match_id"]), previous)
+    pick = (rng or secrets.SystemRandom()).randrange(len(eligible))
+    return int(eligible["match_id"].iloc[pick]), eligible
 
 
 def neutral_games(draw, min_games=2):

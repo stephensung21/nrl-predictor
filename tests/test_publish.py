@@ -55,6 +55,7 @@ def db_url():
             for sql in MIGRATIONS:
                 c.execute(sql)
         yield url
+        close(url)
         with psycopg.connect(base, autocommit=True) as c:
             c.execute(f"drop database {name} with (force)")
         return
@@ -66,15 +67,37 @@ def db_url():
     try:
         line = server.stdout.readline()
         assert line.startswith("ready"), line
-        yield f"postgresql://postgres:postgres@127.0.0.1:{port}/postgres?sslmode=disable&gssencmode=disable"
+        url = f"postgresql://postgres:postgres@127.0.0.1:{port}/postgres?sslmode=disable&gssencmode=disable"
+        yield url
+        close(url)
     finally:
         server.terminate()
         server.wait(10)
 
 
+CONNECTIONS = {}
+
+
+def connection(url):
+    """One connection per test database, kept open for publishing and the checks: PGlite's socket
+    server copes badly with quick reconnects on Windows."""
+    if url not in CONNECTIONS:
+        CONNECTIONS[url] = psycopg.connect(url, prepare_threshold=None, autocommit=True)
+    return CONNECTIONS[url]
+
+
 def query(url, sql, params=None):
-    with psycopg.connect(url, prepare_threshold=None) as c:
-        return c.execute(sql, params).fetchall()
+    return connection(url).execute(sql, params).fetchall()
+
+
+def publish_to(url, tables, season, backfill=False):
+    return publish.publish(tables, url, season, backfill, conn=connection(url))
+
+
+def close(url):
+    conn = CONNECTIONS.pop(url, None)
+    if conn is not None:
+        conn.close()
 
 
 # ---------------------------------------------------------------- live records
@@ -94,6 +117,8 @@ def records(tmp_path, monkeypatch):
               "start_time_utc": soon.isoformat(), "venue": "AAMI Park", "venue_city": "Melbourne",
               "home_team": "Storm", "away_team": "Broncos", "neutral": False, "url": "/draw/x/"}
     rec.update_fixtures(pd.DataFrame([coming]))
+    rec.add_round({"season": 2026, "round": 30, "featured_match": 99, "home_team": "Storm", "away_team": "Broncos",
+                   "drawn_at": "2026-05-05T07:15:00+00:00", "eligible": "99", "run_id": "tue"})
 
     runs = [{"id": "tue", "job": "predict", "season": 2026, "mode": "live", "as_of": "2026-05-05T07:15:00+00:00",
              "started": "2026-05-05T07:15:01+00:00", "finished": "2026-05-05T07:16:00+00:00", "status": "ok",
@@ -141,8 +166,8 @@ def records(tmp_path, monkeypatch):
 
 def test_live_publishing_is_safe_to_rerun_and_the_views_read_it(db_url, records):
     rec, games = records
-    first = publish.publish(publish.live_tables(2026, rec), db_url, 2026)
-    second = publish.publish(publish.live_tables(2026, rec), db_url, 2026)
+    first = publish_to(db_url, publish.live_tables(2026, rec), 2026)
+    second = publish_to(db_url, publish.live_tables(2026, rec), 2026)
     assert first == second
     assert first["predictions"] == 9 and first["graded_games"] == 3 and first["team_lists"] == 17
     counts = query(db_url, "select (select count(*) from predictions), (select count(*) from pipeline_runs), "
@@ -157,9 +182,11 @@ def test_live_publishing_is_safe_to_rerun_and_the_views_read_it(db_url, records)
     odds = query(db_url, "select open_source, home_odds_open, away_odds_open, open_line from match_odds where match_id = 99")
     assert odds == [("live", 1.5, 2.6, -6.5)]
 
-    # The Model tips the coming game (Storm at 0.62), not the ones already played.
-    tips = query(db_url, "select t.match_id, t.team from tips t join profiles p on p.id = t.user_id where p.is_model")
-    assert tips == [(99, "Storm")]
+    # The Model tips the coming game (Storm at 0.62), not the ones already played, with a margin
+    # (Storm by 3) because it's the round's margin game, as drawn by the predict job.
+    assert query(db_url, "select season, round, featured_match from rounds") == [(2026, 30, 99)]
+    tips = query(db_url, "select t.match_id, t.team, t.margin from tips t join profiles p on p.id = t.user_id where p.is_model")
+    assert tips == [(99, "Storm", 3)]
 
     # The graded games add up to grade.metrics' numbers.
     from grade import metrics
@@ -171,7 +198,7 @@ def test_live_publishing_is_safe_to_rerun_and_the_views_read_it(db_url, records)
 
 def test_elo_is_the_engine_s_ratings(db_url, records):
     rec, _ = records
-    publish.publish(publish.live_tables(2026, rec), db_url, 2026)
+    publish_to(db_url, publish.live_tables(2026, rec), 2026)
     from elo import load_params, run_elo
     from ingest import load_odds
     odds = load_odds()
@@ -194,7 +221,7 @@ def test_backfill_gives_the_final_test_s_numbers(db_url):
     grade.metrics on the same predictions (which reproduces reports/final_2026.md, test_pipeline),
     and the Model's tipping record equals the graded tips."""
     tables = publish.backfill_tables(2026)
-    counts = publish.publish(tables, db_url, 2026, backfill=True)
+    counts = publish_to(db_url, tables, 2026, backfill=True)
     assert counts["predictions"] == 213 and counts["model tips"] == 213
 
     from grade import grade, metrics
