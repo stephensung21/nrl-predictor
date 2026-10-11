@@ -119,7 +119,8 @@ Each one is a single function that returns the real implementation once the back
 - **Live states the sample can't show:** live scores during games (§3.2 "Later") and the "Updated: Hughes out" refresh badge driven by real team-list changes (milestone 9).
 - **Odds history** on match pages (a chart of the market since opening, §3.3). It needs `odds_snapshots`.
 - **The r/nrl match thread link** on each match page (§3.6).
-- **Match previews** (LLM) and **what drove the prediction** (SHAP) on match pages (§3.1, "Later").
+- **Match previews** (LLM) and **what drove the prediction** on match pages (§7.1).
+- **Post-mortems** of badly missed games on match pages (§7.2).
 - **Tip reminders** before each round's first game (email, §3.5 extras).
 - **Notifications and push** (§5 "Later").
 
@@ -746,3 +747,67 @@ Planned: LLM-written match previews and round recaps, a weekly review of the mod
 | "Ask the model" chat | A website route on Vercel calling Claude with read-only SQL as its tool | The model's tables and views, through the `analyst` role | Nothing |
 
 Rules for all of them: agents read through the `analyst` role or the repo, never the service key; nothing about the tippers goes into a prompt; and anything that changes the model goes through a pull request and a backtest.
+
+### 7.1 Game-by-game explanations ⬜
+
+Every prediction says what drove it: "Storm 68%: the market had them at 62%; Hughes is back (+4 points); the Storm's line-up is stronger than usual (+2)". This is plain code in the pipeline, not an agent: the numbers have to be exact and reproducible.
+
+- **Where it's calculated:** `predict.py`, at the same time as the prediction, from the same frozen models. It must not be recomputed later from a newer model.
+- **How the ensemble is split up:** the main model is the 50/50 average of the linear model and LightGBM, so each half is explained separately and then averaged:
+  - **Linear half:** exact. Each feature's contribution is its coefficient × (its value − the training mean), on the scaled inputs.
+  - **LightGBM half:** SHAP values from LightGBM's own `pred_contrib`, averaged over the 5 seeds (as `evaluate.importance` does for the season summary).
+  - **Margin blend and Platt calibration** sit on top of both halves, so the contributions add up to the prediction **before calibration**, not to the final probability. The page shows them in points of margin (easy to read) and says the parts are approximate. Whatever is left over is shown as "calibration".
+- **Grouping:** about 20 features become 5–6 readable groups: the market (opening odds, BlueBet), team strength (Elo, team rating), line-up (RAPM total, defence, vs usual), star absences, context (rest, travel, finals) and conditions (wet). Each group is named in plain words with the players behind it where there are any ("Hughes, Munster out").
+- **Change since Tuesday:** when a refresh changes the prediction, the difference between the two explanations says why. This replaces the hand-written `updated_reason` ("Hughes out") with one taken from the numbers.
+- **Stored:** a new `prediction_drivers` table (run, match, model, group, feature, contribution in margin points and in log-odds), written with the prediction it explains.
+- **Shown:** on `/match/[id]` as a "What drove this" bar list, and passed to the match preview (`summaries.py`) so the text quotes the real drivers instead of guessing.
+- **Checks:** a test that the contributions plus the baseline give back the uncalibrated prediction for every model; and a replay of a 2026 round that gives the same drivers twice.
+
+### 7.2 Post-mortems of wrong predictions ⬜
+
+After each round is graded, every badly missed game gets a short post-mortem: what the model believed, what happened, and why it was wrong.
+
+**Which games count as wrong.** A wrong tip isn't enough: a 55% favourite loses 45% of the time, and explaining those would mostly explain noise. A game gets a post-mortem when the model was confident and lost (the winner had under 35%), or the margin was off by more than 2 standard deviations (about 30 points), or the market got it right and the model didn't (it tipped against the closing price and lost).
+
+**Step 1, the facts (plain code, `pipeline/postmortem.py`).** Everything the explanation may use, assembled from data the pipeline already keeps:
+- **The prediction's drivers** (7.1): what the model leaned on.
+- **What changed after the prediction:** the final 17 against the list the prediction used (late outs), and the opening price against the closing price (did the market also move, and which way?).
+- **Conditions:** the recorded wet flag and the weather (`weather` table) against what was assumed.
+- **What happened in the game:** the team stats (errors, penalties, completion rate, possession), players who left the field early (minutes well below their role's usual), sin bins and send-offs where the data has them.
+- **The market's view:** whether the closing price also had the loser favoured. If it did, the miss was shared, not the model's own.
+
+**Step 2, the classification (plain code).** Each miss gets one main cause, so they can be counted over time:
+
+| Cause | Test |
+|---|---|
+| Late team news | the final 17 differed from the list predicted on, and the line-up's driver moved enough to change the tip |
+| In-game events | a key player played well under his usual minutes, or a send-off or several sin bins |
+| Conditions | wet game not expected at prediction time |
+| Shared upset | the closing price also favoured the loser |
+| Model's own miss | none of the above, and the market got it right |
+| Variance | none of the above (a close game, or an outcome no input pointed to) |
+
+**Step 3, the write-up (Claude, like the recaps).** Claude turns the facts and the cause into 80–120 words, from those facts only: no outside knowledge, nothing invented about the game. Stored in `summaries` as a new kind, `match_postmortem`, with the cause as a separate column so it can be counted, and shown on the match page under the result.
+
+**What a post-mortem never does:** suggest a model change. One game can't show a flaw in the model, and acting on single games is how a model gets tuned to noise.
+
+### 7.3 From post-mortems to model changes (the agent loop) ⬜
+
+Model changes come from patterns across many games, never from one. This is the "results-and-formulas reviewer" in the table above, with post-mortems as one of its inputs.
+
+**Trigger:** every 6 rounds and at the end of the season, or sooner when the monitoring check (PLAN.md §7.7) flags drift. Not every round: a round is 8 games.
+
+**The loop:**
+1. **Look for patterns** (plain code first, so the agent reads statistics rather than stories): the share of each post-mortem cause against what the backtest would expect; the model's errors against each feature and each team (is there a feature it under-weights?); calibration by probability band; how the model does against the closing price, by month and by type of game.
+2. **Decide whether anything is systemic.** A pattern counts only if it holds across at least 40 or so games and is unlikely to be chance (for example a bootstrap interval excluding zero), or if it repeats a bias already measured in the backtest (like the star under-reaction, item 38).
+3. **Propose a change**, written down with its pass criteria before it runs: what changes, why the pattern points to it, and what backtest result would count as a meaningful gain.
+4. **Test it** with the experiment harness (`experiments.py`, `pipeline_backtest`) on the 2023–25 backtest, plus the live season so far as extra evidence.
+5. **Report:** a pull request with the change, the experiment report and the result against the criteria. If it doesn't pass, the idea goes to "Already tried" in IMPROVEMENTS.md and nothing changes.
+
+**Limits:**
+- **It never changes the live models.** You merge, then refreeze a new model version.
+- **A budget of 2–3 experiments per run,** each with criteria set before it runs. The backtest has already been used for about 50 or more comparisons; an agent free to try ideas until one wins would find one by chance.
+- **The current season is evidence, not the test.** A change adopted mid-season is judged on the seasons after it.
+- Usually the right outcome is **"no systemic problem: the misses are shared upsets and variance".** The report should say so plainly rather than find something to change.
+
+**Why this split.** The post-mortem is a fixed sequence (gather facts, classify, write), so it's a pipeline step with one Claude call, like the recaps. Only the reviewer needs to be an agent: it has to look at the patterns, decide what to test, edit code, run backtests and judge the result.
