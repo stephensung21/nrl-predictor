@@ -41,3 +41,8 @@ supabase/.temp/
 .impeccable/review/
 .impeccable/questions/
 .claude/settings.local.json
+
+# Agent skills installed locally (third-party tooling, reinstallable; not part of the project)
+.agents/
+.claude/skills/
+skills-lock.json
