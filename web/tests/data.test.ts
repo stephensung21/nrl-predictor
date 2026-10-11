@@ -11,6 +11,7 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   currentRound, eloSeason, eloTeamView, matchDetail, modelRecord, oddsRounds, roundData, seasonGames, summary,
+  upcomingEdges,
 } from "../lib/data";
 import type { Sql } from "../lib/db";
 
@@ -52,6 +53,13 @@ const SEED = `
   insert into summaries (kind, season, round, match_id, body, llm_model, prompt_version)
     values ('match_preview', 2027, 2, 3, 'Storm by a bit.', 'claude-opus-5-5', 'v1'),
            ('round_recap', 2027, 1, null, 'Two from two.', 'claude-opus-5-5', 'v1');
+  insert into weather (match_id, kind, fetched_at, source, roofed, temp_c, rain_mm, rain_chance, wind_kmh, gust_kmh, wind_dir, weather_code, conditions) values
+    (1, 'forecast', '2027-03-05 06:00+00', 'forecast', false, 22, 0, 10, 12, 20, 180, 1, 'Mainly clear'),
+    (1, 'observed', '2027-03-07 06:00+00', 'archive', false, 21.4, 3.2, null, 15, 30, 200, 61, 'Slight rain'),
+    (3, 'forecast', '2027-03-11 06:00+00', 'forecast', false, 26, 0.4, 70, 9, 18, 90, 80, 'Rain showers');
+  insert into odds_snapshots (match_id, bookmaker, captured_at, home_odds, away_odds) values
+    (3, 'betr_au', '2027-03-10 08:00+00', 2.6, 1.5),
+    (3, 'betr_au', '2027-03-11 08:00+00', 3.2, 1.36);
 `;
 
 let db: PGlite;
@@ -130,6 +138,29 @@ describe("the site's data layer", () => {
     const v = await eloTeamView(sql, "Storm");
     expect(v.points.map((p) => [p.label, p.text])).toEqual([["Round 1", "Beat Broncos 24–16"], ["Finals", "Beat Eels 30–10"]]);
     expect(v.swings).toEqual([0, 1]);
+  });
+
+  it("puts each game's weather on it: observed once known, else the forecast", async () => {
+    const [done] = (await roundData(sql, 2027, 1))!.matches;
+    expect(done.weather).toMatchObject({ kind: "observed", rainMm: 3.2, conditions: "Slight rain", rainChance: null });
+    const [next, unknown] = (await roundData(sql, 2027, 2))!.matches;
+    expect(next.weather).toMatchObject({ kind: "forecast", rainChance: 70, windDir: 90, fetchedAt: "2027-03-11T06:00:00.000Z" });
+    expect(unknown.weather).toBeUndefined();
+  });
+
+  it("gives coming games' fair odds against Betr's latest price, and paper trading's bet", async () => {
+    const edges = await upcomingEdges(sql, new Date("2027-03-12T00:00:00Z"));
+    expect(edges.map((e) => e.matchId)).toEqual(["3", "4"]);
+    const [priced, unpriced] = edges;
+    expect(priced).toMatchObject({ round: 2, home: "Broncos", homeProb: 0.35, homeOdds: 3.2, awayOdds: 1.36 });
+    expect(priced.fairHome).toBeCloseTo(1 / 0.35, 12);
+    expect(priced.homeEdge).toBeCloseTo(0.35 * 3.2 - 1, 12);
+    expect(priced.bet).toMatchObject({ side: "home", team: "Broncos" });
+    expect(priced.bet!.edge).toBeCloseTo(0.12, 12);
+    expect(unpriced).toMatchObject({ priceAt: null, homeEdge: null, bet: null });
+    // Before the second snapshot, the first price: no side 2% better, so no bet.
+    const earlier = await upcomingEdges(sql, new Date("2027-03-10T12:00:00Z"));
+    expect(earlier[0]).toMatchObject({ homeOdds: 2.6, bet: null });
   });
 
   it("finds a game's preview and a round's recap", async () => {

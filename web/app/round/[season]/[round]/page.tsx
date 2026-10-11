@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GameRow } from "@/components/game-row";
+import { GameRow, WeatherCredit } from "@/components/game-row";
 import { RecapPanel, RoundHeading, StepLink } from "@/components/home-sections";
 import { SampleNote } from "@/components/sample-note";
 import { emptyCopy } from "@/lib/copy";
@@ -109,6 +109,7 @@ function LiveRoundPage({ live }: { live: LiveRound }) {
           <GameRow key={g.match.id} game={g} />
         ))}
       </ul>
+      <WeatherCredit games={view.games} />
     </main>
   );
 }

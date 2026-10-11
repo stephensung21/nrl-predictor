@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { EloSection, HeadToHead, MatchHeading, MatchTabs, TeamLists, TipLine, VoiceList, type MatchTab } from "@/components/match-sections";
+import {
+  EloSection, HeadToHead, MatchHeading, MatchTabs, PreviewSection, TeamLists, TipLine, VoiceList, WeatherLine, type MatchTab,
+} from "@/components/match-sections";
 import { SampleNote } from "@/components/sample-note";
 import { matchElo } from "@/lib/elo";
 import { CURRENT_ROUND, findSampleMatch, sampleRoundView, verdictFor, voicesFor } from "@/lib/match";
@@ -83,8 +85,11 @@ function LiveMatchPage({ id, live, query }: { id: string; live: LiveMatch; query
   return (
     <main>
       <MatchHeading game={game} verdict={verdict} voices={voices} />
+      <WeatherLine match={game.match} />
       <VoiceList game={game} voices={voices} />
       <TipLine game={game} />
+      {/* A preview is for before the game; once it's final the result says it all. */}
+      {live.preview && game.status !== "final" && <PreviewSection preview={live.preview} />}
       <MatchTabs id={id} tab={tab} query={qs} />
       {tab === "teams" ? (
         <TeamLists game={game} detail={live.detail} before={game.status === "upcoming"} />

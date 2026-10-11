@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Check, RefreshCw, X } from "lucide-react";
+import { Check, CloudRain, RefreshCw, Wind, X } from "lucide-react";
 import type { Game } from "@/lib/round";
 import { team, type TeamName } from "@/lib/teams";
+import { weatherFlag } from "@/lib/weather";
 import { LocalTime } from "./local-time";
 import { PitchBar } from "./pitch-bar";
 import { TeamBadge } from "./team-badge";
@@ -95,6 +96,8 @@ export function GameRow({ game }: { game: Game }) {
   const upcoming = game.status === "upcoming";
   const inPlay = game.status === "live" || game.status === "awaiting";
   const shown = (actual: number | undefined, predicted: number) => (final ? actual! : upcoming ? predicted : null);
+  const weather = weatherFlag(match.weather);
+  const WeatherIcon = weather?.kind === "wind" ? Wind : CloudRain;
   return (
     <li>
       <Link
@@ -126,7 +129,7 @@ export function GameRow({ game }: { game: Game }) {
           </div>
         </div>
 
-        {(final || inPlay || game.featured || prediction.updated || prediction.model === "no odds") && (
+        {(final || inPlay || game.featured || prediction.updated || prediction.model === "no odds" || weather) && (
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-medium text-ink-3">
             {(final || inPlay) && (
               <span>
@@ -141,9 +144,28 @@ export function GameRow({ game }: { game: Game }) {
               </span>
             )}
             {prediction.model === "no odds" && <span>No odds yet: model without odds</span>}
+            {weather && (
+              <span className="flex items-center gap-1">
+                <WeatherIcon className="size-3" strokeWidth={2.5} aria-hidden />
+                {weather.text}
+              </span>
+            )}
           </div>
         )}
       </Link>
     </li>
+  );
+}
+
+/** Open-Meteo's credit (CC BY 4.0), under a list of games when any row shows its weather. */
+export function WeatherCredit({ games }: { games: Game[] }) {
+  if (!games.some((g) => weatherFlag(g.match.weather))) return null;
+  return (
+    <p className="mt-2 text-[12px] text-ink-3">
+      Weather:{" "}
+      <a href="https://open-meteo.com/" className="whitespace-nowrap underline decoration-line underline-offset-2 hover:text-ink-2">
+        Open-Meteo
+      </a>
+    </p>
   );
 }

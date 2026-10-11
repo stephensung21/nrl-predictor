@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, Check, ChevronLeft, X } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, Cloud, CloudRain, House, Wind, X } from "lucide-react";
 import { lineColours, type MatchElo } from "@/lib/elo";
 import { ordinal, type Game } from "@/lib/round";
 import type { Verdict, Voice } from "@/lib/match";
-import type { ListedPlayer, MatchDetail } from "@/lib/types";
+import type { Preview } from "@/lib/source";
+import type { ListedPlayer, Match, MatchDetail } from "@/lib/types";
+import { weatherFlag, weatherParts } from "@/lib/weather";
 import { team, type TeamName } from "@/lib/teams";
 import { EloMatchChart } from "./elo-charts";
 import { LocalTime } from "./local-time";
@@ -84,6 +86,57 @@ export function MatchHeading({ game, verdict, voices }: { game: Game; verdict: V
         </>
       )}
     </div>
+  );
+}
+
+/* ---------- Weather (live data only) ---------- */
+
+/** The game's weather: the latest forecast before kickoff, what it was afterwards. Open-Meteo is CC BY 4.0, so it's credited here. */
+export function WeatherLine({ match }: { match: Match }) {
+  const w = match.weather;
+  if (!w) return null;
+  const flag = weatherFlag(w);
+  const Icon = w.roofed ? House : flag?.kind === "rain" ? CloudRain : flag?.kind === "wind" ? Wind : Cloud;
+  return (
+    <p className="mt-3 flex gap-2 text-[13px] leading-snug text-ink-2">
+      <Icon className="mt-px size-4 shrink-0 text-ink-3" strokeWidth={2} aria-hidden />
+      <span>
+        <span className="font-semibold text-ink">{w.kind === "forecast" ? "Forecast" : "On the day"}: </span>
+        {weatherParts(w).join(" · ")}
+        <span className="text-ink-3">
+          {" · "}
+          {w.kind === "forecast" && !w.roofed && (
+            <>
+              as of <LocalTime iso={w.fetchedAt} />,{" "}
+            </>
+          )}
+          <a href="https://open-meteo.com/" className="whitespace-nowrap underline decoration-line underline-offset-2 hover:text-ink-2">
+            Open-Meteo
+          </a>
+        </span>
+      </span>
+    </p>
+  );
+}
+
+/* ---------- Claude's preview (live data only) ---------- */
+
+export function PreviewSection({ preview }: { preview: Preview }) {
+  return (
+    <section aria-labelledby="preview" className="mt-6">
+      <h2 id="preview" className="text-[16px] font-semibold text-ink">
+        Preview
+      </h2>
+      <p className="mt-0.5 text-[13px] text-ink-3">
+        Written by Claude from the Model&rsquo;s numbers, <LocalTime iso={preview.writtenAt} />.
+        {preview.stale && " The prediction has changed since, so the numbers above are the current ones."}
+      </p>
+      <div className="mt-2 max-w-[60ch] space-y-3 text-[15px] leading-relaxed text-ink-2">
+        {preview.body.split(/\n\s*\n/).map((para, i) => (
+          <p key={i}>{para.trim()}</p>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -1,4 +1,4 @@
-import { GameRow } from "@/components/game-row";
+import { GameRow, WeatherCredit } from "@/components/game-row";
 import {
   EmptyState,
   FeaturedGame,
@@ -113,6 +113,7 @@ function LiveHomePage({ live }: { live: LiveHome }) {
           <GameRow key={g.match.id} game={g} />
         ))}
       </ul>
+      <WeatherCredit games={others} />
       {live.record && <ModelRecordStrip record={live.record} />}
     </main>
   );

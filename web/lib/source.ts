@@ -4,12 +4,13 @@
 
 import {
   currentRound, eloSeason, eloTeamView, matchDetail, modelRecord, oddsRounds, roundData, seasonBets, seasonGames, summary,
+  upcomingEdges,
 } from "./data";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
 import { ODDS_ROUNDS, SEASON_BETS, SEASON_GAMES } from "./sample-odds";
 import type { TeamName } from "./teams";
-import type { EloSeason, EloTeamView, MatchDetail, ModelRecord, OddsRound, RoundData, SeasonBet, SeasonGame } from "./types";
+import type { Edge, EloSeason, EloTeamView, MatchDetail, ModelRecord, OddsRound, RoundData, SeasonBet, SeasonGame } from "./types";
 
 export type EloSource = {
   live: boolean;
@@ -39,18 +40,25 @@ export type OddsSource = {
   rounds: OddsRound[];
   games: SeasonGame[];
   bets: SeasonBet[];
+  /** Games still to kick off, with the Model's fair odds and Betr's price; live only. */
+  upcoming: Edge[];
 };
 
 export async function oddsSource(): Promise<OddsSource> {
   const sql = siteDb();
-  if (!sql) return { live: false, season: 2026, rounds: ODDS_ROUNDS, games: SEASON_GAMES, bets: SEASON_BETS };
+  if (!sql) return { live: false, season: 2026, rounds: ODDS_ROUNDS, games: SEASON_GAMES, bets: SEASON_BETS, upcoming: [] };
   const [latest] = await sql`select max(m.season) as season from graded_games g join matches m on m.id = g.match_id`;
   const season = latest?.season ?? new Date().getFullYear();
-  const [rounds, games, bets] = await Promise.all([oddsRounds(sql, season), seasonGames(sql, season), seasonBets(sql, season)]);
-  return { live: true, season, rounds, games, bets };
+  const [rounds, games, bets, upcoming] = await Promise.all([
+    oddsRounds(sql, season), seasonGames(sql, season), seasonBets(sql, season), upcomingEdges(sql),
+  ]);
+  return { live: true, season, rounds, games, bets, upcoming };
 }
 
-export type LiveMatch = { round: RoundData; detail: MatchDetail; elo: MatchElo | undefined };
+/** A game's Claude-written preview; `stale` when the prediction changed after it was written. */
+export type Preview = { body: string; writtenAt: string; stale: boolean };
+
+export type LiveMatch = { round: RoundData; detail: MatchDetail; elo: MatchElo | undefined; preview: Preview | null };
 
 /** A game from the database with its round, detail and Elo: null for an unknown or unpredicted game,
  * undefined when there's no database (the page uses the sample). */
@@ -70,7 +78,13 @@ export async function liveMatch(id: string): Promise<LiveMatch | null | undefine
     ? matchEloFrom(season, (t) => views.get(t) ?? { points: [], swings: [] },
         { season: m.season, round: m.round, home: m.home_team, away: m.away_team }, m.neutral)
     : undefined;
-  return { round, detail, elo };
+  const written = await summary(sql, "match_preview", m.season, m.round, id);
+  const [p] = await sql`select created_at from prediction_of_record where match_id = ${id}`;
+  const preview = written && {
+    body: written.body, writtenAt: written.writtenAt,
+    stale: p != null && new Date(p.created_at) > new Date(written.writtenAt),
+  };
+  return { round, detail, elo, preview };
 }
 
 export type LiveRound = { round: RoundData; rounds: number[]; recap: string | null };
