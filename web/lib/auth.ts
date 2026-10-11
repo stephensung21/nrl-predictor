@@ -209,7 +209,11 @@ export class SupabaseAuthStore implements AuthStore {
   async startSignIn(method: SignInMethod, opts: { intent: Intent; returnTo: string }) {
     const redirectTo = callbackUrl(opts.intent, opts.returnTo);
     if (method.provider === "google") {
-      const { error } = await this.sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+      // Always ask which Google account, so nobody joins with the wrong one by accident.
+      const { error } = await this.sb.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo, queryParams: { prompt: "select_account" } },
+      });
       if (error) throw new Error("Couldn’t reach Google. Try again.");
       return "redirecting" as const;
     }

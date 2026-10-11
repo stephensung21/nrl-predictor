@@ -303,7 +303,19 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
       <p ref={heading} tabIndex={-1} className="mb-5 flex items-start gap-2 text-[14px] text-ink-2 outline-none">
         <Check className="mt-0.5 size-4 shrink-0 text-lime" strokeWidth={3} aria-hidden />
         <span>
-          Signed in as <span className="font-semibold text-ink">{session.email}</span>. Three quick things:
+          Signed in as <span className="font-semibold text-ink">{session.email}</span>.{" "}
+          <button
+            type="button"
+            className="font-semibold text-ink underline decoration-line"
+            onClick={async () => {
+              // Wrong account: sign out and come back here to pick another. The invite stays unused.
+              await store.signOut();
+              window.location.reload();
+            }}
+          >
+            Not you?
+          </button>{" "}
+          Three quick things:
         </span>
       </p>
       <ProfileFields
