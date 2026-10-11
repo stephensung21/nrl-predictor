@@ -19,7 +19,7 @@ All results are out of sample: each season is predicted by a model built only on
 | Elo only | 0.638 | 0.658 |
 | Always the home team | 0.683 | 0.694 |
 
-The model's margins are within 0.1 points of the market's line (2026 mean absolute error: 15.27 points for the model, 15.20 for the closing line). Its totals beat the closing total (10.90 vs 11.06). The 2026 test was run once, with every setting fixed beforehand. A small simplification to LightGBM's inputs came after it (item 47 in the improvement log), so the backtest column is the current model and the 2026 column the one tested.
+The model's margins are within 0.1 points of the market's line (2026 mean absolute error: 15.27 points for the model, 15.20 for the closing line). Its totals beat the closing total (10.90 vs 11.06). The 2026 test was run once, with every setting fixed beforehand. A small simplification to LightGBM's inputs came after it (item 47 in the improvement log), so the backtest column is the current setting and the 2026 column the model as tested. The frozen 2027 models are refitted with the new setting before Round 1.
 
 Full reports: [backtest](reports/backtest.md) · [2026 final test](reports/final_2026.md) · [betting simulation](reports/betting.md) ([2026](reports/betting_2026.md)) · [every experiment tried](reports/experiments/)
 

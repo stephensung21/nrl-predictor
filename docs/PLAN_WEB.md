@@ -41,7 +41,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 | Step | Status | Where / notes |
 |---|---|---|
-| Pre-season model freeze | ✅ | `python src/train.py --freeze` → `models/2027/` (version `2027.1`, trained on 2021–2026). Refrozen 12 October 2026 after item 47 (two LightGBM inputs dropped). Rerun before Round 1 if more 2026 data or settings change. |
+| Pre-season model freeze | ✅ | `python src/train.py --freeze` → `models/2027/` (version `2027.1`, trained on 2021–2026). **Needs refreezing before Round 1:** item 47 (12 October 2026) dropped two LightGBM inputs, and the frozen models still use the old set. Rerun again if more 2026 data arrives. |
 | Predict a round from current team lists | ✅ | `python src/predict.py --round N` (live) |
 | Validation before publishing | ✅ | `predict.validate`: missing inputs, probabilities, 17 named per team, duplicate teams; margin/probability disagreement is a warning |
 | Replay a past round as a test | ✅ | `predict.py --replay --season 2026 --round N`; reproduces the backtest exactly; slow test in `tests/test_predict.py` |
