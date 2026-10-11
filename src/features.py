@@ -149,7 +149,7 @@ TEAM_BASE = {
     "Dolphins": "Redcliffe", "Titans": "Gold Coast", "Sea Eagles": "Sydney", "Storm": "Melbourne",
     "Knights": "Newcastle", "Cowboys": "Townsville", "Eels": "Sydney", "Panthers": "Penrith",
     "Rabbitohs": "Sydney", "Dragons": "Sydney", "Roosters": "Sydney", "Warriors": "Auckland",
-    "Wests Tigers": "Sydney",
+    "Wests Tigers": "Sydney", "Bears": "Perth",
 }
 WARRIORS_BASES = [(pd.Timestamp("2022-01-01", tz="UTC"), "Gosford"), (pd.Timestamp("2022-07-01", tz="UTC"), "Redcliffe")]
 ORIGIN_REP_DAYS = 365         # an "Origin representative" played Origin within this many days
@@ -906,7 +906,7 @@ def ladder_features(m):
     points of the team currently 8th. Finals games get 0 for both (ladder no longer matters)."""
     rows = []
     for season, g in m.sort_values("start_time_utc").groupby("season"):
-        teams = [t for t in TEAM_BASE if not (t == "Dolphins" and season < 2023)]
+        teams = [t for t in TEAM_BASE if not (t == "Dolphins" and season < 2023) and not (t == "Bears" and season < 2027)]
         rounds = REGULAR_ROUNDS[season]
         regular = g[~g["is_final"].astype(bool)]
         for rnd, games in regular.groupby("round"):

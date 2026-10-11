@@ -1,6 +1,7 @@
 # Tests on every push and pull request: the Python tests (without the slow end-to-end ones, which
-# rebuild the features; run those locally with `pytest`) and the website's tests, which include the
-# tipping rules in SQL (web/, `npm test`).
+# rebuild the features; run those locally with `pytest`), with a Postgres service for publishing
+# (tests/test_publish.py), and the website's tests, which include the tipping rules in SQL (web/,
+# `npm test`).
 name: ci
 
 on:
@@ -12,6 +13,17 @@ jobs:
   python:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

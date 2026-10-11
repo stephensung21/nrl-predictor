@@ -5,8 +5,9 @@ import { EloSeasonChart, EloTeamChart, SeasonPicker } from "@/components/elo-cha
 import { TableView } from "@/components/charts";
 import { SampleNote } from "@/components/sample-note";
 import { TeamBadge } from "@/components/team-badge";
-import { chanceForGap, CURRENT_ROUND, HOME_ADVANTAGE, LATEST, lineColours, SEASONS, seasonOf, table, teamView } from "@/lib/elo";
+import { chanceForGap, CURRENT_ROUND, HOME_ADVANTAGE, lineColours, tableOf } from "@/lib/elo";
 import { tippers, YOU_ID } from "@/lib/sample";
+import { eloSource } from "@/lib/source";
 import { TEAMS, type TeamName } from "@/lib/teams";
 
 export const metadata: Metadata = { title: "Elo ratings · rugbyleague-tipper" };
@@ -20,17 +21,20 @@ const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(Mat
 
 export default async function EloPage({ searchParams }: Props) {
   const q = await searchParams;
-  const season = SEASONS.includes(Number(q.season)) ? Number(q.season) : LATEST;
-  const s = seasonOf(season)!;
-  const yours = tippers.find((t) => t.id === YOU_ID)?.favTeam;
-  const pickedTeam = q.team && q.team in TEAMS ? (q.team as TeamName) : (yours ?? "Broncos");
-  const rows = table(season);
-  const current = season === LATEST;
+  const src = await eloSource();
+  const season = src.seasons.includes(Number(q.season)) ? Number(q.season) : src.latest;
+  const s = (await src.season(season))!;
+  // The viewer's favourite team comes with sign-in (step 10); until then only the sample has one.
+  const yours = src.live ? undefined : tippers.find((t) => t.id === YOU_ID)?.favTeam;
+  const rows = tableOf(s);
+  const pickedTeam = q.team && q.team in TEAMS ? (q.team as TeamName) : (yours ?? rows[0].team);
+  // The latest season counts as current until its finals: after the Grand Final it's a finished season.
+  const current = season === src.latest && s.lastRound !== "F";
   const lastLabel = s.lastRound === "F" ? "the Grand Final" : `Round ${s.lastRound.slice(1)}`;
   const gap100 = Math.round(chanceForGap(100) * 100);
   const initial = [...new Set([yours, rows[0].team, q.team ? pickedTeam : undefined].filter(Boolean) as TeamName[])].slice(-3);
   const byRank = rows.map((r) => r.team);
-  const tv = teamView(pickedTeam);
+  const tv = await src.teamView(pickedTeam);
 
   return (
     <main className={WIDE}>
@@ -41,7 +45,7 @@ export default async function EloPage({ searchParams }: Props) {
             {current ? `After ${lastLabel}, ${season}` : `${season}, final ratings after ${lastLabel}`}
           </p>
         </div>
-        <SeasonPicker seasons={SEASONS} value={season} team={pickedTeam} />
+        <SeasonPicker seasons={src.seasons} value={season} team={pickedTeam} />
       </div>
 
       <p className="mt-3 max-w-[60ch] text-[14px] leading-snug text-ink-2">
@@ -135,8 +139,10 @@ export default async function EloPage({ searchParams }: Props) {
       <section id="team" aria-labelledby="team-view" className="mt-10 scroll-mt-20 md:max-w-[40rem]">
         <h2 id="team-view" className="flex items-center gap-2.5 font-display text-[24px] leading-none font-bold uppercase">
           <TeamBadge name={pickedTeam} size="md" />
-          {pickedTeam} since {tv.points[0].season}
+          {tv.points.length ? `${pickedTeam} since ${tv.points[0].season}` : pickedTeam}
         </h2>
+        {!tv.points.length && <p className="mt-1.5 text-[14px] text-ink-2">No games rated yet.</p>}
+        {tv.points.length > 0 && <>
         <p className="mt-1.5 text-[13px] text-ink-3">Game by game. Tap a team in the table to switch. Numbered: the biggest rises and falls.</p>
         <EloTeamChart name={pickedTeam} points={tv.points} swings={tv.swings} colour={lineColours([pickedTeam])[pickedTeam]} />
         <ol className="mt-2 border-t border-line-soft">
@@ -160,12 +166,15 @@ export default async function EloPage({ searchParams }: Props) {
             rows: tv.points.map((p) => [p.season, p.label, p.text, signed(p.change), Math.round(p.rating)]),
           }}
         />
+        </>}
       </section>
 
-      <SampleNote>
-        Real results since 2009, rated with the project&rsquo;s own Elo settings. Round {CURRENT_ROUND} of {LATEST} is the
-        sample&rsquo;s current round, so {LATEST} runs to Round {CURRENT_ROUND - 1}.
-      </SampleNote>
+      {!src.live && (
+        <SampleNote>
+          Real results since 2009, rated with the project&rsquo;s own Elo settings. Round {CURRENT_ROUND} of {src.latest} is the
+          sample&rsquo;s current round, so {src.latest} runs to Round {CURRENT_ROUND - 1}.
+        </SampleNote>
+      )}
     </main>
   );
 }

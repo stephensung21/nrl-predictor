@@ -21,3 +21,6 @@ data/pipeline/replay/
 
 # Local secrets (ODDS_API_KEY for pipeline/fetch_odds.py)
 .env
+
+# Encrypted tipping backups (pipeline/backup.py); kept as workflow artifacts, not in the repo
+backups/

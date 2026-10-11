@@ -57,8 +57,8 @@ def test_impossible_prices_are_blanked_and_named():
 
 def test_an_unknown_team_stops_the_run():
     events = json.loads(json.dumps(SAMPLE[:1]))
-    events[0]["away_team"] = "Perth Bears"
-    with pytest.raises(ValueError, match="Perth Bears"):
+    events[0]["away_team"] = "Adelaide Jets"
+    with pytest.raises(ValueError, match="Adelaide Jets"):
         fetch_odds.parse(events, "2027-03-02T00:00:00+00:00")
 
 

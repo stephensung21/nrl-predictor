@@ -16,13 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 PARAMS_FILE = ROOT / "data" / "processed" / "elo_params.json"
 
 
-def run_elo(games, k=30, hfa=45, neutral_hfa=0, regress=0.3, mov=True):
+def run_elo(games, k=30, hfa=45, neutral_hfa=0, regress=0.3, mov=True, after=False):
     """games: sorted DataFrame with season, home_team, away_team, home_score, away_score, neutral.
 
-    Returns DataFrame (same index) with elo_home, elo_away (pre-match) and elo_prob (home win).
+    Returns DataFrame (same index) with elo_home, elo_away (pre-match) and elo_prob (home win); with
+    `after`, also elo_home_after and elo_away_after (the same as before for a game not yet played).
     """
     ratings, season_of = {}, None
-    out = np.empty((len(games), 3))
+    out = np.empty((len(games), 5))
     for i, g in enumerate(games.itertuples(index=False)):
         if g.season != season_of:  # off-season: pull every rating partway back to 1500
             ratings = {t: r + regress * (1500 - r) for t, r in ratings.items()}
@@ -30,7 +31,7 @@ def run_elo(games, k=30, hfa=45, neutral_hfa=0, regress=0.3, mov=True):
         rh, ra = ratings.get(g.home_team, 1500.0), ratings.get(g.away_team, 1500.0)
         adv = neutral_hfa if g.neutral else hfa
         p = 1 / (1 + 10 ** ((ra - rh - adv) / 400))
-        out[i] = (rh, ra, p)
+        out[i] = (rh, ra, p, rh, ra)
 
         if pd.isna(g.home_score) or pd.isna(g.away_score):
             continue
@@ -43,7 +44,9 @@ def run_elo(games, k=30, hfa=45, neutral_hfa=0, regress=0.3, mov=True):
         delta = k * mult * (actual - p)
         ratings[g.home_team] = rh + delta
         ratings[g.away_team] = ra - delta
-    return pd.DataFrame(out, index=games.index, columns=["elo_home", "elo_away", "elo_prob"])
+        out[i, 3:] = (rh + delta, ra - delta)
+    cols = ["elo_home", "elo_away", "elo_prob", "elo_home_after", "elo_away_after"]
+    return pd.DataFrame(out if after else out[:, :3], index=games.index, columns=cols if after else cols[:3])
 
 
 def log_loss(y, p):

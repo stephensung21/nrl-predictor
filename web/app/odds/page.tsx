@@ -5,11 +5,10 @@ import { BIG_GAP, gapOf, OddsGameRow, TrackKey } from "@/components/odds-section
 import { SampleNote } from "@/components/sample-note";
 import { Calibration, ProfitChart, TipsVsMarketChart } from "@/components/season-charts";
 import { calibration, profitCurve, SERIES, tipsCorrect, tipsVsMarket } from "@/lib/odds";
-import { ODDS_ROUNDS } from "@/lib/sample-odds";
+import { oddsSource, type OddsSource } from "@/lib/source";
 
 export const metadata: Metadata = { title: "Model vs market · rugbyleague-tipper" };
 
-const CURRENT = ODDS_ROUNDS.at(-1)!.round;
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
 /** Data pages get a wider column on desktop (DESIGN_BRIEF.md). */
@@ -18,6 +17,7 @@ const WIDE = "md:relative md:left-1/2 md:w-[min(60rem,calc(100vw-4rem))] md:-tra
 export default async function OddsPage({ searchParams }: Props) {
   const q = await searchParams;
   const tab = q.tab === "season" ? "season" : "round";
+  const src = await oddsSource();
 
   return (
     <main className={WIDE}>
@@ -48,24 +48,34 @@ export default async function OddsPage({ searchParams }: Props) {
         ))}
       </nav>
 
-      {tab === "round" ? <RoundTab q={q} /> : <SeasonTab />}
+      {tab === "round" ? <RoundTab q={q} src={src} /> : <SeasonTab src={src} />}
 
       <p className="mt-8 text-[12px] leading-relaxed text-ink-3">
-        Odds: aussportsbetting.com historical NRL odds ({ODDS_ROUNDS[0].games.find((g) => g.bookmaker)?.bookmaker ?? "BlueBet"} prices),
-        with the bookmaker&rsquo;s margin removed.
+        Odds:{" "}
+        <a href="https://www.aussportsbetting.com/data/" className="underline hover:text-ink-2">
+          aussportsbetting.com
+        </a>{" "}
+        historical NRL odds{src.live ? " and Betr's live prices from The Odds API" : ""} (
+        {src.rounds[0]?.games.find((g) => g.bookmaker)?.bookmaker ?? "BlueBet"} prices), with the bookmaker&rsquo;s margin removed.
       </p>
     </main>
   );
 }
 
-function RoundTab({ q }: { q: Record<string, string | undefined> }) {
+function RoundTab({ q, src }: { q: Record<string, string | undefined>; src: OddsSource }) {
+  const rounds = src.rounds;
+  if (!rounds.length) {
+    return <p className="pt-6 text-[15px] text-ink-2">No graded rounds yet this season.</p>;
+  }
+  const CURRENT = rounds.at(-1)!.round;
   const n = Number(q.round);
-  const round = ODDS_ROUNDS.find((r) => r.round === n) ?? ODDS_ROUNDS.at(-1)!;
-  // The current sample round is viewed on Tuesday (opening prices only) unless you pick full time.
-  const current = round.round === CURRENT;
+  const round = rounds.find((r) => r.round === n) ?? rounds.at(-1)!;
+  // The sample's current round is viewed on Tuesday (opening prices only) unless you pick full time;
+  // live, every round shown here is finished.
+  const current = !src.live && round.round === CURRENT;
   const graded = !current || q.state === "recap";
-  const prev = ODDS_ROUNDS.find((r) => r.round === round.round - 1);
-  const next = ODDS_ROUNDS.find((r) => r.round === round.round + 1);
+  const prev = rounds.filter((r) => r.round < round.round).at(-1);
+  const next = rounds.find((r) => r.round > round.round);
   const href = (r: number) => `/odds?round=${r}`;
 
   const priced = round.games.filter((g) => g.openHomeProb != null);
@@ -121,10 +131,14 @@ function RoundTab({ q }: { q: Record<string, string | undefined> }) {
   );
 }
 
-function SeasonTab() {
-  const tips = tipsCorrect();
-  const vs = tipsVsMarket();
-  const profit = profitCurve();
+function SeasonTab({ src }: { src: OddsSource }) {
+  const tips = tipsCorrect(src.games);
+  if (!tips.games) {
+    return <p className="pt-6 text-[15px] text-ink-2">No graded games yet this season.</p>;
+  }
+  const vs = tipsVsMarket(src.games);
+  const profit = profitCurve(src.bets);
+  const cal = { model: calibration("model", src.games), market: calibration("market", src.games) };
   // Label the x-axis at the start of every sixth round, and the finals.
   const starts = vs
     .map((d, i) => ({ i, text: d.round, prev: vs[i - 1]?.round }))
@@ -134,8 +148,10 @@ function SeasonTab() {
   const pctOf = (n: number) => Math.round((n / tips.games) * 100);
 
   return (
-    <section aria-label="2026 season" className="pt-4">
-      <h2 className="font-display text-[24px] leading-none font-bold uppercase">2026 test season</h2>
+    <section aria-label={`${src.season} season`} className="pt-4">
+      <h2 className="font-display text-[24px] leading-none font-bold uppercase">
+        {src.season} {src.live ? "season" : "test season"}
+      </h2>
       <p className="mt-1 text-[13px] text-ink-3">
         {tips.games} games (draws left out). The Model never saw any of them while it was being built.
       </p>
@@ -179,11 +195,11 @@ function SeasonTab() {
             When it says 70%, do they win 70%?
           </h3>
           <p className="mt-1 text-[13px] leading-snug text-ink-3">
-            Favourites grouped by the chance they were given, {calibration("model").map((b) => b.n).join(", ")} games for the Model and{" "}
-            {calibration("market").map((b) => b.n).join(", ")} for the bookies. On the diagonal is perfectly calibrated.
+            Favourites grouped by the chance they were given, {cal.model.map((b) => b.n).join(", ")} games for the Model and{" "}
+            {cal.market.map((b) => b.n).join(", ")} for the bookies. On the diagonal is perfectly calibrated.
           </p>
           <Calibration
-            bins={{ model: calibration("model"), market: calibration("market") }}
+            bins={cal}
             series={[
               { key: "model", label: SERIES.model.label, colour: SERIES.model.colour },
               { key: "market", label: "Bookies’ opening price", colour: SERIES.market.colour },

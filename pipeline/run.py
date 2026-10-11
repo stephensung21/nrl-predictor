@@ -7,10 +7,15 @@ sheet doesn't have it. A failed fetch is a warning in the run record, not a fail
 without a price get the no-odds prediction. `--job odds` runs the fetch on its own, on Sunday night
 (after the round's last game, when the next round's markets open) so opening prices are caught early.
 
+After every live job except odds, the weather for the site (fetch_weather.py): forecasts for the coming
+games, and what the weather was for games just finished. Not a model input; a failure is a warning.
+
 - results (Monday): scrape the current season's finished games into the processed tables, then grade
-  every finished game that has a prediction of record and write the season report.
+  every finished game that has a prediction of record and write the season report, and the paper
+  trading record at live prices (paper.py).
 - predict (Tuesday, after team lists): work out which games are next (`draw.games_to_predict`),
-  fetch their team lists, predict with the frozen models, validate, and record the predictions.
+  fetch their team lists, draw the round's margin game if it hasn't been drawn (`margin_game`),
+  predict with the frozen models, validate, and record the predictions.
 - refresh (Wednesday to Sunday): the same, but only for games whose inputs changed since their last
   prediction (team list or opening price), or that have no prediction yet.
 
@@ -42,7 +47,10 @@ from common import Records, load_matches
 import config
 import draw as drawlib
 import fetch_odds
+import fetch_sheet
+import fetch_weather
 import grade as gradelib
+import paper
 import predict
 from features import PRE_KICKOFF_FILE
 from ingest import join_odds_to_matches, load_odds
@@ -93,6 +101,27 @@ def fingerprints(fixtures, lists, neutral, odds, live_odds=None):
     return pd.Series(out, name="inputs")
 
 
+def margin_game(records, season, rnd, fixtures, now, run_id, rng=None):
+    """The round's margin game for the tipping comp, drawn once: by the first run that has the
+    round's fixtures, before any of them kicks off, and kept after that. It can't be any game
+    involving a team from the previous round's margin game (draw.draw_featured)."""
+    drawn = records.rounds()
+    mine = drawn[(drawn["season"] == season) & (drawn["round"] == rnd)]
+    if len(mine):
+        return int(mine["featured_match"].iloc[-1])
+    games = fixtures[fixtures["round"] == rnd]
+    if games.empty or (pd.to_datetime(games["start_time_utc"], utc=True) <= now).any():
+        return None  # nothing to draw from, or the round has started: too late to draw fairly
+    before = drawn[(drawn["season"] == season) & (drawn["round"] < rnd)].sort_values("round")
+    previous = tuple(before[["home_team", "away_team"]].iloc[-1]) if len(before) else None
+    pick, eligible = drawlib.draw_featured(games, previous, rng)
+    game = games[games["match_id"] == pick].iloc[0]
+    records.add_round({"season": season, "round": rnd, "featured_match": pick, "home_team": game["home_team"],
+                       "away_team": game["away_team"], "drawn_at": now.isoformat(),
+                       "eligible": ";".join(str(m) for m in eligible["match_id"]), "run_id": run_id})
+    return pick
+
+
 # ---------------------------------------------------------------- jobs
 
 def predict_job(season, now, replay, records, refresh, run, model_season):
@@ -111,6 +140,8 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
     # Games not scraped yet get their match id from the match centre, keyed by the draw's link.
     ids = dict(zip(fixtures["url"].str.replace("https://www.nrl.com", "", regex=False), fixtures["match_id"]))
     neutral = drawlib.neutral_games(draw.assign(match_id=draw["match_id"].fillna(draw["url"].map(ids))))
+    records.update_fixtures(fixtures.assign(neutral=fixtures["match_id"].isin(neutral)))
+    run["margin_game"] = margin_game(records, season, rnd, fixtures, now, run["id"])
     bundle = predict.load_bundle(model_season)
     run["model_version"] = bundle.get("version")
     live_odds = None if replay else fetch_odds.for_fixtures(fixtures, fetch_odds.game_prices(records.odds_snapshots()))
@@ -145,6 +176,11 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
 def results_job(season, now, replay, records, run):
     if not replay:
         import scrape
+        try:
+            run["odds_sheet"] = fetch_sheet.update()
+        except Exception as ex:  # the copy in the checkout is still used
+            run["odds_sheet"] = {"status": "failed", "error": f"{type(ex).__name__}: {ex}"}
+            run.setdefault("warnings", []).append(f"odds sheet download failed: {run['odds_sheet']['error']}")
         scrape.fetch_season(season)  # only fetches games not already cached
         scrape.fetch_origin(season)
         scrape.build_tables([season], merge=True)
@@ -162,6 +198,11 @@ def results_job(season, now, replay, records, run):
                                            encoding="utf-8")
     run["games"] = int(len(graded))
     print(gradelib.metrics(graded).round(4).to_string())
+    if not replay:  # live prices exist only for live seasons
+        seen = pd.concat([matches[matches["season"] == season], records.fixtures()], ignore_index=True)
+        bets = paper.write(records, season, seen.drop_duplicates("match_id", keep="last"),
+                           records.odds_snapshots(), gradelib.prediction_of_record(records.predictions()))
+        run["paper_bets"] = int(bets["profit"].notna().sum())
     return graded
 
 
@@ -175,6 +216,16 @@ def odds_step(records, now, run):
         run.setdefault("warnings", []).append(f"odds fetch failed: {run['odds']['error']}")
     for issue in run["odds"].get("issues", []):
         run.setdefault("warnings", []).append(f"impossible price dropped: {issue}")
+
+
+def weather_step(records, now, run):
+    """Forecasts and observed weather for the site (fetch_weather.py), after a live job. Not a model
+    input; a failure is only a warning."""
+    try:
+        run["weather"] = fetch_weather.record_weather(records, now)
+    except Exception as ex:
+        run["weather"] = {"status": "failed", "error": f"{type(ex).__name__}: {ex}"}
+        run.setdefault("warnings", []).append(f"weather fetch failed: {run['weather']['error']}")
 
 
 def run_job(job, season, as_of=None, model_season=None, records=None, fail=False):
@@ -211,6 +262,8 @@ def run_job(job, season, as_of=None, model_season=None, records=None, fail=False
         run.update(status="failed", notes=str(ex) or type(ex).__name__, trace=traceback.format_exc(limit=5))
         raise
     finally:
+        if not replay and job != "odds":  # after the job, so the fixtures it just saw get a forecast
+            weather_step(records, now, run)
         run["finished"] = pd.Timestamp.now(tz="UTC").isoformat()
         records.add_run(run)
     return run

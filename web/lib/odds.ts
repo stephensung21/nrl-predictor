@@ -2,6 +2,7 @@
 // favourite and Elo did across the 2026 test season. Real data, no sampling.
 
 import { SEASON_BETS, SEASON_GAMES } from "./sample-odds";
+import type { SeasonBet, SeasonGame } from "./types";
 
 /** Fixed series colours for this page, validated all-pairs on the ground (dataviz validator). */
 export const SERIES = {
@@ -10,11 +11,13 @@ export const SERIES = {
   elo: { label: "Elo", colour: "#d95926" },
 } as const;
 
-const decided = SEASON_GAMES.filter((g) => g.homeWin != null && g.homeWin !== 0.5 && g.market != null && g.elo != null);
+/** Games every forecaster priced and that weren't drawn. */
+const decidedOf = (games: SeasonGame[]) => games.filter((g) => g.homeWin != null && g.homeWin !== 0.5 && g.market != null && g.elo != null);
 /** A forecaster's tip is right when it favoured the winner; an exact 50-50 is no tip (as the reports count it). */
 const right = (p: number, homeWin: number) => (p === 0.5 ? false : p > 0.5 ? homeWin === 1 : homeWin === 0);
 
-export function tipsCorrect() {
+export function tipsCorrect(games: SeasonGame[] = SEASON_GAMES) {
+  const decided = decidedOf(games);
   const count = (k: "model" | "market" | "elo") => decided.filter((g) => right(g[k]!, g.homeWin!)).length;
   return { games: decided.length, model: count("model"), market: count("market"), elo: count("elo") };
 }
@@ -23,7 +26,8 @@ export function tipsCorrect() {
  * Running correct tips relative to the bookies' favourite, game by game: indexing both to
  * the market keeps one axis and shows the gap, which is the whole story (the totals are close).
  */
-export function tipsVsMarket() {
+export function tipsVsMarket(games: SeasonGame[] = SEASON_GAMES) {
+  const decided = decidedOf(games);
   let model = 0;
   let elo = 0;
   return decided.map((g, i) => {
@@ -40,7 +44,8 @@ export type CalibrationBin = { lo: number; hi: number; n: number; predicted: num
  * Calibration from the favourite's side: each game counts once, at the chance given to
  * whichever team was favoured. A well-calibrated forecaster's 70% favourites win about 70%.
  */
-export function calibration(k: "model" | "market"): CalibrationBin[] {
+export function calibration(k: "model" | "market", games: SeasonGame[] = SEASON_GAMES): CalibrationBin[] {
+  const decided = decidedOf(games);
   // 70%+ is one group: split finer, its top bin held only 8-13 games, too few to read.
   const edges = [0.5, 0.6, 0.7, 1.0001];
   return edges.slice(0, -1).map((lo, i) => {
@@ -65,17 +70,17 @@ export function calibration(k: "model" | "market"): CalibrationBin[] {
 export const STAKE = 10;
 
 /** Running profit of flat $10 bets on the Model's 2%+ edges at the opening price. */
-export function profitCurve() {
+export function profitCurve(bets: SeasonBet[] = SEASON_BETS) {
   let total = 0;
-  const points = SEASON_BETS.map((b, i) => {
+  const points = bets.map((b, i) => {
     total += b.profit * STAKE;
     return { x: i + 1, profit: Math.round(total * 100) / 100 };
   });
   return {
     points,
-    bets: SEASON_BETS.length,
-    won: SEASON_BETS.filter((b) => b.won).length,
-    staked: SEASON_BETS.length * STAKE,
+    bets: bets.length,
+    won: bets.filter((b) => b.won).length,
+    staked: bets.length * STAKE,
     profit: Math.round(total * 100) / 100,
   };
 }

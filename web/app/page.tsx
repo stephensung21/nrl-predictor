@@ -10,6 +10,7 @@ import {
 import { SampleBar, type SampleState } from "@/components/sample-bar";
 import { ladderBefore } from "@/lib/ladder";
 import { buildRound } from "@/lib/round";
+import { liveHome, type LiveHome } from "@/lib/source";
 import {
   margins,
   modelRecord,
@@ -27,6 +28,8 @@ const STATES: SampleState[] = ["recap", "open", "live", "pending", "offseason", 
 
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams;
+  const live = await liveHome(new Date());
+  if (live) return <LiveHomePage live={live} />;
   const state: SampleState = STATES.includes(params.state as SampleState) ? (params.state as SampleState) : "open";
   const signedIn = params.as !== "guest";
 
@@ -82,6 +85,35 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </ul>
       <ModelRecordStrip record={modelRecord} />
       <SampleBar state={state} signedIn={signedIn} />
+    </main>
+  );
+}
+
+/** The home page from the database. The tipping strip and the viewer's tips come with sign-in (step 10). */
+function LiveHomePage({ live }: { live: LiveHome }) {
+  if (live.kind === "offseason") {
+    return (
+      <main>
+        <EmptyState kind="offseason" />
+        {live.record && <ModelRecordStrip record={live.record} />}
+      </main>
+    );
+  }
+  const view = buildRound({ data: live.round, now: new Date(), tips: [], tippers: [], ladderBefore: [] });
+  const others = view.games.filter((g) => !g.featured);
+  const done = view.games.every((g) => g.status === "final");
+  return (
+    <main>
+      <RoundHeading view={view} />
+      {done && live.recap && <p className="mt-2 max-w-[60ch] text-[15px] leading-relaxed text-ink-2">{live.recap}</p>}
+      <FeaturedGame game={view.featured} />
+      <h2 className="sr-only">Other games</h2>
+      <ul className="mt-2 divide-y divide-line-soft">
+        {others.map((g) => (
+          <GameRow key={g.match.id} game={g} />
+        ))}
+      </ul>
+      {live.record && <ModelRecordStrip record={live.record} />}
     </main>
   );
 }

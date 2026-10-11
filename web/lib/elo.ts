@@ -3,11 +3,12 @@
 
 import { ELO_PARAMS, ELO_SEASONS, ELO_TEAMS } from "./sample-elo";
 import type { TeamName } from "./teams";
+import type { EloSeason, EloTeamView } from "./types";
 
 export const SEASONS = ELO_SEASONS.map((s) => s.season);
 export const LATEST = ELO_SEASONS.at(-1)!.season;
 export const seasonOf = (n: number) => ELO_SEASONS.find((s) => s.season === n);
-export const teamView = (t: TeamName) => ELO_TEAMS[t];
+export const teamView = (t: TeamName): EloTeamView => ELO_TEAMS[t] ?? { points: [], swings: [] };
 export const HOME_ADVANTAGE = ELO_PARAMS.hfa;
 
 /** Win chance for a rating gap, before home advantage. */
@@ -20,7 +21,11 @@ export const CURRENT_ROUND = 10;
 
 /** The ratings table after a season's latest round, best first. */
 export function table(season: number): EloRow[] {
-  const s = seasonOf(season)!;
+  return tableOf(seasonOf(season)!);
+}
+
+/** The ratings table after a season's latest round, best first, from that season's data. */
+export function tableOf(s: EloSeason): EloRow[] {
   return (Object.keys(s.ratings) as TeamName[])
     .map((t) => {
       const r = s.ratings[t];
@@ -64,6 +69,16 @@ export type MatchElo = {
 /** Both teams' Elo around a game, from the same ratings the /elo page shows. */
 export function matchElo(m: { season: number; round: number; home: TeamName; away: TeamName }, neutral: boolean): MatchElo | undefined {
   const s = seasonOf(m.season);
+  return s ? matchEloFrom(s, teamView, m, neutral) : undefined;
+}
+
+/** The same, from a season's ratings and the teams' game-by-game views (the database's or the sample's). */
+export function matchEloFrom(
+  s: EloSeason,
+  views: (t: TeamName) => EloTeamView,
+  m: { season: number; round: number; home: TeamName; away: TeamName },
+  neutral: boolean,
+): MatchElo | undefined {
   if (!s || !(m.home in s.ratings) || !(m.away in s.ratings)) return undefined;
   // Ratings after each round before this one (round 1 goes in on the season-start rating).
   const before = s.rounds.findIndex((r) => r === `R${m.round}`);
@@ -76,7 +91,7 @@ export function matchElo(m: { season: number; round: number; home: TeamName; awa
   const side = (t: TeamName): MatchEloSide => {
     const rating = at(t);
     const played = before !== -1 && s.ratings[t][before] !== rating ? s.ratings[t][before] : undefined;
-    const form = teamView(t)
+    const form = views(t)
       .points.filter((p) => p.season < m.season || (p.season === m.season && p.label.startsWith("Round ") && Number(p.label.slice(6)) < m.round))
       .slice(-5)
       .reverse()
