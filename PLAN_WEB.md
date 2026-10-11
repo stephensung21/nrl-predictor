@@ -65,7 +65,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | GitHub Actions workflows on the weekly schedule | 🔶 | `.github/workflows/`: `results.yml`, `predict.yml`, `refresh.yml`, `odds.yml`, each calling `pipeline-job.yml`; `ci.yml` for tests. On `main`, with `ODDS_API_KEY` set as a GitHub secret; every workflow was run by hand on 11 October 2026, and the deliberate-failure alert test worked (step 8). Still to come: a full in-season week unattended. |
 | Run log, alerts on failure | ✅ | Every pipeline run is logged to `runs.jsonl` (job, clock, status, round, games, model version, commit, errors); a failed run exits non-zero, which fails the workflow: GitHub emails, and `ALERT_WEBHOOK_URL` (Discord or Slack, optional) gets the reason. `run.py --fail` (the workflows' "fail" box) fails on purpose to test it. |
 | Supabase schema, row-level security, publishing | ✅ | The migrations (tipping, model data, Perth Bears, weather) are tested locally in PGlite with Supabase's default permissions reproduced, and applied to the live project `nrl-predictor` (11 October 2026, step 6). `SUPABASE_DB_URL` is set locally and in GitHub, so every scheduled run publishes (step 7); 2026 is backfilled. |
-| Website and tipping comp | 🔶 | Every planned page designed and built, on sample data and browser stand-ins (see Website status below); not connected to the pipeline, Supabase or live sources, not deployed |
+| Website and tipping comp | 🔶 | Every planned page designed and built (see Website status below). The model pages read the database when `SITE_DATABASE_URL` is set (step 9); sign-in, tips and the admin page have live Supabase stores (step 10, `live-tipping` branch, not yet tried against the live project). Ladder and `/model` still on sample data; not deployed |
 
 ### Website status (October 2026)
 
@@ -80,14 +80,14 @@ Every planned page is designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and buil
 | `/` home (round, tipping strip, recap) | ✅ | Real 2026 Round 10 replay predictions and results (frozen); invented tippers and tips | 🔶 Model data live when `SITE_DATABASE_URL` is set (the round in play, margin game, record, off-season); tipping strip and tips with step 10 | `prediction_of_record`, `matches`, the viewer's `tips`, `ladder` |
 | `/round/[season]/[round]` | ✅ | Real replays of rounds 3, 5, 10 (frozen); invented tips | 🔶 Live for any predicted round (games, results, the Model's score, the Claude recap); the tippers' recap with step 10 | Same views, any round |
 | `/match/[id]` | ✅ | Real replay data: no-odds model, opening price, Elo (both teams going in, the season so far, last five games, the change from the result), Tuesday and final team lists, head to head (frozen; rounds 3, 5, 10 only) | 🔶 Live for any predicted game (checked equal to the sample on Round 10); tips with step 10 | `predictions`, `odds_snapshots`, `elo_ratings`, `team_lists`, `matches` |
-| `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | ❌ Stand-in | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
+| `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | 🔶 Built (step 10): with Supabase configured, the round in play from the model's data, your tips in `tips` (`SupabaseTipStore`), the comp's tally and your auto-tips after lockout; "No round to tip" in the off-season. Not yet tried live | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
 | `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ❌ | `round_scores` view and `ladder()` function (written and tested, step 3) |
 | `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ✅ Live (the latest graded season; equal to the sample on 2026: 134/133/133 tips, 122 bets, +24.05 units) | `match_odds_probs`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
 | `/elo` | ✅ | Real ratings 2009–2026 from `src/elo.py` (asserted equal); 2026 to Round 9 | ✅ Live (every season in `elo_ratings`) | `elo_ratings` |
 | `/model` | ✅ | Real 2026 test-season tips to Round 9; invented tippers for the comp comparison | ❌ Frozen | `prediction_of_record`, `model_accuracy`, `ladder` |
 | `/about` | ✅ | Figures from `reports/final_2026.md` and `reports/backtest.md` | n/a | Update by hand after each season's test |
-| `/join/[code]`, `/sign-in`, `/auth/callback`, `/account` | ✅ | Browser stand-in (`BrowserAuthStore`): fake Google and email sign-in, profile in the browser; sample invites | ❌ Stand-in | Supabase auth (Google, email link), `profiles`, `invites` via `createAuthStore()` |
-| `/tipping/admin` | ✅ | Browser stand-in (`BrowserAdminStore`): invites, tippers and pipeline runs invented; real Round 10–11 fixtures | ❌ Stand-in | `invites`, `profiles` (admin flag), `rounds` (stored draw), `pipeline_runs` via `createAdminStore()` |
+| `/join/[code]`, `/sign-in`, `/auth/callback`, `/account` | ✅ | Browser stand-in (`BrowserAuthStore`): fake Google and email sign-in, profile in the browser; sample invites | 🔶 Built (step 10): Supabase auth, **Google only** for now, `join_comp()` and `check_invite()`, deleting through `/api/account`. Not yet tried live | Supabase auth (Google, email link), `profiles`, `invites` via `createAuthStore()` |
+| `/tipping/admin` | ✅ | Browser stand-in (`BrowserAdminStore`): invites, tippers and pipeline runs invented; real Round 10–11 fixtures | 🔶 Built (step 10): invites, tippers with their "still to tip" counts (`admin_tip_counts()`), removing a tipper (`/api/admin/tipper`), the margin game from `rounds`, the latest runs. Not yet tried live | `invites`, `profiles` (admin flag), `rounds` (stored draw), `pipeline_runs` via `createAdminStore()` |
 | `/news` | ✅ | One saved snapshot of r/nrl's RSS feed (10 Oct 2026): real titles, links, times and linked sites; flairs guessed from titles | ❌ Frozen | Reddit API (OAuth app, cached) via `createNewsSource()`, with real flair |
 | Not-found page | ✅ | n/a | n/a | n/a |
 
@@ -99,18 +99,18 @@ Each one is a single function that returns the real implementation once the back
 |---|---|---|---|
 | Row shapes | `web/lib/types.ts` | `lib/sample*.ts` modules, generated by `web/scripts/build_sample.py`, `build_odds_sample.py`, `build_elo_sample.py`, `build_news_sample.py` | Server-side Supabase queries returning the same types |
 | `TipStore` | `web/lib/tip-store.ts` | Browser storage | Supabase `tips`, with lockout and hidden tips in row-level security |
-| `AuthStore` | `web/lib/auth.ts` | Browser storage, mock redirect through `/auth/callback` | Supabase auth. Its header lists the work: `shouldCreateUser: false` and a before-user-created hook so signing in never creates an account, a security-definer invite check, redeeming an invite in the same transaction, a service-key route for account deletion, and stripping Google's name and avatar |
+| `AuthStore` | `web/lib/auth.ts` | Browser storage, mock redirect through `/auth/callback` | Built as `SupabaseAuthStore` (step 10): joining only through `join_comp()`, `check_invite()`, `/api/account` for deletion. A Google sign-in without an invite makes a sign-in but no profile, and is signed straight out (no before-user-created hook). Still to do: stripping Google's name and avatar |
 | `AdminStore` | `web/lib/admin.ts`, `web/lib/invites.ts` | Browser storage and a fixed sample clock | Supabase tables, the database clock, the `profiles` admin flag, and the stored margin-game draw |
 | `NewsSource` | `web/lib/news.ts` | Saved RSS snapshot | Reddit API: real flair, NSFW and removed posts hidden, cached about 10 minutes |
 | Tipping rules | `web/lib/ladder.ts`, `web/lib/rules.ts` | Computed in the browser | SQL scoring functions and views ported from these, sharing their test cases |
 
 #### Not connected yet
 
-- **The model pipeline:** `publish.py` writes everything to the database, and `/`, `/round`, `/match`, `/odds` and `/elo` read it when `SITE_DATABASE_URL` is set (step 9). Without it, and on the pages not yet converted (`/model`, `/tipping`, `/tipping/ladder`, `/tipping/admin`, which need the tippers: step 10), the site shows the sample.
-- **The database:** the Supabase project exists and holds the model's data (2021–2026 games, Elo since 2009, the 2026 predictions and grades), published by every scheduled run. The site isn't pointed at it yet (`SITE_DATABASE_URL`, step 12), and no tippers or tips are in it.
+- **The model pipeline:** `publish.py` writes everything to the database, and `/`, `/round`, `/match`, `/odds` and `/elo` read it when `SITE_DATABASE_URL` is set (step 9). `/tipping` and `/tipping/admin` are converted too (step 10, with Supabase configured). Without it, and on the pages not yet converted (`/model` and `/tipping/ladder`, which need the tippers' scores), the site shows the sample.
+- **The database:** the Supabase project exists and holds the model's data (2021–2026 games, Elo since 2009, the 2026 predictions and grades), published by every scheduled run. The site isn't pointed at it yet (the `analyst` password and `SITE_DATABASE_URL`), the step 10 migration (`20261014000000_live_tipping.sql`) isn't pushed, and no tippers or tips are in it.
 - **Live sources:** the Odds API fetcher and the odds-sheet download feed the pipeline (and through it the database); no Reddit API, no live scores.
-- **Accounts:** sign-in is simulated, and nobody is really signed in. Tips, profiles and invites live only in the visitor's browser.
-- **Admin:** the page is open to anyone in the sample, and the admin flag always says yes.
+- **Accounts:** with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` set (they are, in `web/.env.local`), sign-in is real Supabase auth with Google, and tips, profiles and invites are in the database (step 10). Nobody has joined yet: the first invite has to be made in the SQL editor (see "Trying step 10" below). Without those settings the site keeps the browser stand-ins.
+- **Admin:** live, the page is only for a profile with `is_admin`; in the sample it's open to anyone and the admin flag always says yes.
 - **The margin-game draw** (random, excluding last round's teams; §3.5) is made by the pipeline's predict job and published to `rounds` (step 11a), but the site still shows the sample's Round 10 game (simply the round's first game) until step 9.
 - **Deployment:** the site isn't on Vercel. `noindex` and `robots.txt` are in place.
 
@@ -160,9 +160,17 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done and 
 - 🔶 **Step 9. The pages read the database.** *Built (October 2026, `extras` branch):* `web/lib/data.ts` reads the model's data into the row shapes in `lib/types.ts` (rounds, match detail, model vs market, season scoreboard and bets, model record, Elo by season and by team, previews and recaps); `web/lib/source.ts` gives each page the database's data when `SITE_DATABASE_URL` is set, the sample otherwise, and the sample notes show only on sample data. **Design change:** model data is read server-side straight from Postgres (postgres.js over Supabase's transaction pooler, as the read-only `analyst` role, which sees nothing about the tippers) rather than through Supabase's JavaScript client: it's testable here against the same Postgres as everything else and reads the views as they are. Tips and sign-in stay on Supabase's client (step 10), so row-level security applies per tipper. Converted: `/`, `/round`, `/match`, `/odds`, `/elo`. *Checked:* `web/tests/data.test.ts` against PGlite as `analyst`, and against the whole 2026 backfill (`TEST_SITE_DATABASE_URL`); the pages rendered against a local database holding the backfill, and `/odds` and the match page's Elo give exactly the sample's numbers; without a database every page renders the sample as before. *Still to do:* `/model` (built on the tippers' ladder) with step 10; odds history on match pages; the coming round on `/odds` (live, it shows finished rounds).
 - 🔶 **Step 10. Implement the live stores.** *Built (October 2026, `live-tipping` branch), not yet tried against the live project:* `SupabaseTipStore`, `SupabaseAuthStore` and `SupabaseAdminStore`, each returned by its `create…()` function when `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set (the sample stores otherwise). `lib/supabase.ts` and `lib/supabase-server.ts` hold the clients, with the session in cookies (`@supabase/ssr`) and `middleware.ts` refreshing it. **Sign-in is Google only for now** (decided October 2026: email links need custom SMTP); `EMAIL_SIGN_IN` in `lib/auth.ts` turns email back on. The `/tipping` page reads the round in play from the model's data and the tips from Supabase as the viewer, so row-level security decides what they see; the auto-tip lock comes from the season's first kickoff (`autoTipLocked()`). Server routes hold the service key for the two deletions: `/api/account` (your own account) and `/api/admin/tipper` (admin only, never yourself or the Model). New migration `20261014000000_live_tipping.sql`: `admin_tip_counts()` for the admin's "still to tip" list (counts, not picks), and invites stay used after their tipper leaves (judged on `used_at`). *Checked:* `npm test` (50 tests, including the new function and the departed-tipper case), the publish tests, type-check, lint and a sample-mode build. *Still to do:* push the new migration; try the whole flow on `localhost:3000` against the live project; `/tipping/ladder` and `/model` from `ladder()` and `round_scores`; strip the name and avatar Google writes into the sign-in's metadata (a trigger on `auth.users`).
 - **Step 11b. The Reddit API** goes behind `NewsSource`. *Needs:* a Reddit app.
-- **Step 12. Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5). *Needs:* a Vercel account.
+- **Step 12. Deploy to Vercel** with `noindex` and `robots.txt`, the revalidation endpoint and the environment variables in §1.5 (milestone 5). The Vercel account exists (October 2026); the repo isn't imported yet. *Needs:* the site's environment variables (Supabase setup step 6).
 
-**Setting up Supabase: steps only you can do** (no Docker needed). ✅ Steps 1–5 done on 11 October 2026; `ANTHROPIC_API_KEY` (step 9) is in the local `.env`; add it to GitHub secrets too. Lessons from doing them:
+**Setting up Supabase: steps only you can do** (no Docker needed). Where they stand (11 October 2026):
+- ✅ Steps 1–5: project `nrl-predictor` (ref `szukyfanuvjajjezxuar`), migrations pushed, `SUPABASE_DB_URL` locally and in GitHub, 2026 loaded. The spare project made by mistake is deleted.
+- ✅ Step 7, Google: OAuth client made in Google Cloud and the Google provider turned on; `http://localhost:3000` added to the redirect URLs. **Email links: not set up, by choice** (Google only for now, so no custom SMTP).
+- ✅ Step 9: `ANTHROPIC_API_KEY` in GitHub secrets and the local `.env`.
+- ❌ Step 6: the `analyst` password and `SITE_DATABASE_URL`; the service-role key for the server routes.
+- ❌ Step 8: make yourself the admin (after joining).
+- ❌ Step 10: `BACKUP_PASSPHRASE` (not confirmed added).
+
+Lessons from doing them:
 - `npx supabase login` and `link` need a real terminal: from Claude Code's `!` prompt the login fails ("non-TTY"). Run them in a separate PowerShell window; the login is saved for later commands.
 - The Connect panel shows the *direct* connection first (`db.<ref>.supabase.co`, user `postgres`). It doesn't resolve from here or from GitHub. Use the session pooler: user `postgres.<ref>`, host `aws-0-ap-southeast-2.pooler.supabase.com:5432`.
 - After a few wrong passwords the pooler blocks all new connections for about 10 minutes (`ECIRCUITBREAKER`). Test a new password with a single connection, not a retry loop.
@@ -214,7 +222,30 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done and 
 - 🔶 **Step 4c, the odds sheet download** (above, build status). Built, but on GitHub's runners the site answers `403 Forbidden` (first seen 11 October 2026, in the results run's `odds_sheet` entry in `runs.jsonl`). Options: send a browser-like user agent, if the terms allow automated downloads at all; download it by hand or from your computer before the yearly routine; or drop the automatic download. It only matters for closing prices, grading against the market and retraining, not for the weekly predictions. Tie this to the open question on the sheet's terms.
 - 🔶 **Step 13, the Perth Bears:** in `ingest.TEAM_MAP`/`TEAM_STATE`, `features.TEAM_BASE` (Perth; left out of seasons before 2027, and the features are identical with and without them), the `teams` table (migration `20261012000000_perth_bears.sql`) and `web/lib/teams.ts` (red and black, PER). Assumes nrl.com calls them "Bears" and the odds sheet "Perth Bears": check both when the 2027 draw is out. Still to do in step 13: `REGULAR_ROUNDS[2027]` once the draw is known, the final 2026 data and the `2027.1` freeze.
 
-Suggested order: step 8's setup and Supabase steps 1–5 are done (11 October 2026); next, `BACKUP_PASSPHRASE` (Supabase step 10) and the sign-in settings (step 7), then step 10 (sign-in and tips, best with the Supabase project or Docker to try it on) and 12, with step 4's checks and step 8's unattended week in the February trials.
+**Trying step 10 on your computer** (in this order):
+1. Push the new migration: `npx supabase db push` in a PowerShell window at the repo root (it lists `20261014000000_live_tipping.sql`).
+2. In the SQL editor: `alter role analyst login password '<letters and digits>';`, then in `web/.env.local` uncomment `SITE_DATABASE_URL` and put that password in it (transaction pooler, port 6543, user `analyst.szukyfanuvjajjezxuar`).
+3. The first invite, made in the Model's name since nobody can make one before there's an admin: `insert into invites (code, created_by) values ('FIRST27', '00000000-0000-4000-8000-00000000a0de');`
+4. `npm run dev` in `web/`, open `http://localhost:3000/join/FIRST27`, *Continue with Google*, fill in name, team and auto-tip. If the Google app is in "Testing", add your Gmail as a test user first.
+5. `update profiles set is_admin = true where display_name = '<you>';`, then try the admin page's invites. Off-season, `/tipping` says "No round to tip".
+6. Optional: `SUPABASE_SERVICE_ROLE_KEY` (the secret key) in `web/.env.local`, to try deleting an account and removing a tipper.
+
+**What's still to do** (11 October 2026):
+
+*You:*
+- The step 10 trial above (migration push, `analyst` password, first invite, join, admin flag).
+- `BACKUP_PASSPHRASE` as a GitHub secret, if not done (also in your password manager).
+- The odds sheet decision (open question below; making the repo private is the simplest).
+- At deploy: import the repo into Vercel and add its variables (Supabase setup step 6), then add the Vercel address to Supabase's Site URL and redirect URLs, and to the Google OAuth client if it asks.
+- Optional: a Reddit app (step 11b).
+
+*Me (Claude):*
+- Step 10, the rest: fix whatever the trial finds; the ladder (`/tipping/ladder`) and `/model` from `ladder()` and `round_scores`; the tippers' parts of `/` and `/round`; strip Google's name and avatar from `auth.users` metadata; merge `live-tipping` into `main`.
+- Step 12: deploy with you (environment variables, `REVALIDATE_URL` and `REVALIDATE_SECRET`).
+- Step 5's website half: weather on match pages and round cards.
+- Step 4c: the odds sheet's 403 on GitHub.
+- Step 11b: the Reddit API, once there's an app.
+- Step 13 when the 2027 draw is out, and step 14 in February.
 
 **Open questions**
 
