@@ -2,12 +2,14 @@
 // sample modules otherwise. Pages ask here, so they work the same either way and say which they show.
 // Server code only.
 
-import { eloSeason, eloTeamView, matchDetail, oddsRounds, roundData, seasonBets, seasonGames } from "./data";
+import {
+  currentRound, eloSeason, eloTeamView, matchDetail, modelRecord, oddsRounds, roundData, seasonBets, seasonGames, summary,
+} from "./data";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
 import { ODDS_ROUNDS, SEASON_BETS, SEASON_GAMES } from "./sample-odds";
 import type { TeamName } from "./teams";
-import type { EloSeason, EloTeamView, MatchDetail, OddsRound, RoundData, SeasonBet, SeasonGame } from "./types";
+import type { EloSeason, EloTeamView, MatchDetail, ModelRecord, OddsRound, RoundData, SeasonBet, SeasonGame } from "./types";
 
 export type EloSource = {
   live: boolean;
@@ -69,4 +71,46 @@ export async function liveMatch(id: string): Promise<LiveMatch | null | undefine
         { season: m.season, round: m.round, home: m.home_team, away: m.away_team }, m.neutral)
     : undefined;
   return { round, detail, elo };
+}
+
+export type LiveRound = { round: RoundData; rounds: number[]; recap: string | null };
+
+/** A round from the database with the season's predicted rounds (for the steppers) and its recap,
+ * if one was written: null for a round with no predictions, undefined when there's no database. */
+export async function liveRound(season: number, round: number): Promise<LiveRound | null | undefined> {
+  const sql = siteDb();
+  if (!sql) return undefined;
+  const data = await roundData(sql, season, round);
+  if (!data) return null;
+  const rounds = (await sql`
+    select distinct m.round from matches m join prediction_of_record p on p.match_id = m.id
+    where m.season = ${season} order by m.round`).map((r) => r.round as number);
+  const recap = await summary(sql, "round_recap", season, round);
+  return { round: data, rounds, recap: recap?.body ?? null };
+}
+
+export type LiveHome =
+  | { kind: "offseason"; record: ModelRecord | null }
+  | { kind: "round"; round: RoundData; record: ModelRecord | null; recap: string | null };
+
+/** What the home page shows from the database: the round in play, or the off-season once the
+ * latest season's last game is a week gone. Undefined when there's no database. */
+export async function liveHome(now: Date): Promise<LiveHome | undefined> {
+  const sql = siteDb();
+  if (!sql) return undefined;
+  const [latest] = await sql`
+    select max(m.season) as season from matches m join prediction_of_record p on p.match_id = m.id`;
+  const season: number | null = latest?.season ?? null;
+  if (season == null) return { kind: "offseason", record: null };
+  const record = await modelRecord(sql, season);
+  const [state] = await sql`
+    select count(*) filter (where status not in ('final', 'cancelled'))::int as open, max(kickoff) as last
+    from matches where season = ${season}`;
+  const week = 7 * 24 * 3600 * 1000;
+  if (state.open === 0 && now.getTime() - new Date(state.last).getTime() > week) return { kind: "offseason", record };
+  const round = await currentRound(sql, season);
+  const data = round == null ? null : await roundData(sql, season, round);
+  if (!data) return { kind: "offseason", record };
+  const recap = await summary(sql, "round_recap", season, data.round);
+  return { kind: "round", round: data, record, recap: recap?.body ?? null };
 }
