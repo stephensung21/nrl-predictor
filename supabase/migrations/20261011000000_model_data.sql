@@ -189,6 +189,8 @@ create table elo_ratings (
   is_home boolean not null,
   match_id bigint references matches (id),
   win_prob double precision not null,      -- this team's chance from the ratings (home advantage in)
+  points_for int not null,
+  points_against int not null,
   rating_before double precision not null,
   rating_after double precision not null,
   primary key (team, played_on)

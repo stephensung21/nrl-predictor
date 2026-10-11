@@ -177,7 +177,9 @@ def elo_rows(odds, published, seasons=None):
         sides.append(pd.DataFrame({
             "team": e[side], "season": e["season"].astype(int), "played_on": e["date"].dt.date,
             "round_label": label, "opponent": e[other], "is_home": side == "home_team",
-            "match_id": match_id.where(match_id.isin(published)).astype("Int64"), "win_prob": prob, "rating_before": e[before],
+            "match_id": match_id.where(match_id.isin(published)).astype("Int64"), "win_prob": prob,
+            "points_for": e[side.replace("team", "score")].astype(int),
+            "points_against": e[other.replace("team", "score")].astype(int), "rating_before": e[before],
             "rating_after": e[after]}))
     return pd.concat(sides, ignore_index=True)
 
