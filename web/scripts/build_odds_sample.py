@@ -5,7 +5,7 @@ Run from the repo root:  python web/scripts/build_odds_sample.py
 
 All real 2026 data, nothing invented:
 - Round tab: for each sample game, the no-odds Model's win chance, margin and total against
-  the bookies' opening and closing price, line and total (data/nrl_betting odds.xlsx, via
+  the bookies' opening and closing price, line and total (data/nrl_betting_odds.xlsx, via
   src/ingest.py: margin removed proportionally).
 - Season tab: every game of the 2026 test season (reports/predictions_2026.csv): the
   no-odds Model, the opening market and Elo, plus the head-to-head bets the 2026 betting

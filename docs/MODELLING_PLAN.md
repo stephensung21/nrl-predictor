@@ -3,7 +3,7 @@
 This plan covers the traditional machine-learning stage: a **logistic and ridge regression** main model and a **LightGBM** challenger. It builds on [PLAN.md](PLAN.md) and uses three data sources:
 
 - `data/processed/*.csv`, scraped from nrl.com by `src/scrape.py`: matches, team stats and player stats for 2021–2026.
-- `data/nrl_betting odds.xlsx`, the aussportsbetting.com dataset: results and odds for 2009–2026.
+- `data/nrl_betting_odds.xlsx`, the aussportsbetting.com dataset: results and odds for 2009–2026.
 
 ---
 

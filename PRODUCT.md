@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Next.js (App Router, TypeScript) on Vercel, Tailwind CSS, Recharts for charts, Supabase (Postgres, auth, row-level security) for data and sign-in. Decided in [PLAN_WEB.md](PLAN_WEB.md). No `web/` app exists yet.
+Next.js (App Router, TypeScript) on Vercel, Tailwind CSS, Recharts for charts, Supabase (Postgres, auth, row-level security) for data and sign-in. Decided in [PLAN_WEB.md](docs/PLAN_WEB.md). No `web/` app exists yet.
 
 ## Users
 
@@ -51,7 +51,7 @@ The opponent in this comp is a real, tested model, not a pundit. The Model tips 
 
 ## Brand Commitments
 
-[DESIGN_BRIEF.md](DESIGN_BRIEF.md) is **binding** for look, feel and voice. Later design work builds inside it and only fills in details it leaves open (the exact accent, fonts, spacing). Where it and PLAN_WEB.md disagree on look or feel, the brief wins. Summary of what it fixes:
+[DESIGN_BRIEF.md](docs/DESIGN_BRIEF.md) is **binding** for look, feel and voice. Later design work builds inside it and only fills in details it leaves open (the exact accent, fonts, spacing). Where it and PLAN_WEB.md disagree on look or feel, the brief wins. Summary of what it fixes:
 
 - **Name:** rugbyleague-tipper, shown as a wordmark with a small "personal project" tag. No logo.
 - **Voice:** clean data editorial (FiveThirtyEight, The Athletic) with a mates' footy-comp voice. Trash talk appears in only four places: the ladder, the round recap, the home tipping strip, and empty and error states. It is generated from results with templates. Predictions, odds, Elo and about pages stay straight.
