@@ -117,6 +117,11 @@ def records(tmp_path, monkeypatch):
               "start_time_utc": soon.isoformat(), "venue": "AAMI Park", "venue_city": "Melbourne",
               "home_team": "Storm", "away_team": "Broncos", "neutral": False, "url": "/draw/x/"}
     rec.update_fixtures(pd.DataFrame([coming]))
+    rec.add_summaries(pd.DataFrame([
+        {"kind": "match_preview", "season": 2026, "round": 30, "match_id": 99, "body": "Storm by a bit.",
+         "llm_model": "claude-opus-5-5", "prompt_version": "v1", "run_id": None, "created_at": "2026-05-05T08:00:00+00:00"},
+        {"kind": "round_recap", "season": 2026, "round": 10, "match_id": None, "body": "Two from three.",
+         "llm_model": "claude-opus-5-5", "prompt_version": "v1", "run_id": "tue", "created_at": "2026-05-11T01:00:00+00:00"}]))
     rec.add_round({"season": 2026, "round": 30, "featured_match": 99, "home_team": "Storm", "away_team": "Broncos",
                    "drawn_at": "2026-05-05T07:15:00+00:00", "eligible": "99", "run_id": "tue"})
 
@@ -173,6 +178,10 @@ def test_live_publishing_is_safe_to_rerun_and_the_views_read_it(db_url, records)
     counts = query(db_url, "select (select count(*) from predictions), (select count(*) from pipeline_runs), "
                            "(select count(*) from matches where id = 99), (select count(*) from odds_snapshots)")
     assert counts == [(9, 4, 1, 1)]
+
+    # Previews and recaps (a recap has no match, which the key treats as a value, not a gap).
+    assert query(db_url, "select kind, match_id, body from summaries order by kind") == [
+        ("match_preview", 99, "Storm by a bit."), ("round_recap", None, "Two from three.")]
 
     # The prediction of record is Wednesday's, not the one made after kickoff.
     record = query(db_url, "select match_id, run_id, home_win_prob from prediction_of_record order by match_id")

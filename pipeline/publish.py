@@ -191,6 +191,19 @@ def round_rows(drawn, match_ids):
                          "featured_match": d["featured_match"].astype("int64"), "drawn_at": ts(d["drawn_at"])})
 
 
+def summary_rows(summaries, match_ids, run_ids):
+    """The latest text for each kind and subject (summaries.py)."""
+    if summaries.empty:
+        return pd.DataFrame()
+    s = summaries[summaries["match_id"].isna() | summaries["match_id"].isin(match_ids)]
+    s = s.drop_duplicates(["kind", "season", "round", "match_id"], keep="last")
+    return pd.DataFrame({
+        "kind": s["kind"], "season": s["season"].astype(int), "round": s["round"].astype("Int64"),
+        "match_id": s["match_id"].astype("Int64"), "body": s["body"], "llm_model": s["llm_model"],
+        "prompt_version": s["prompt_version"], "run_id": s["run_id"].where(s["run_id"].isin(run_ids)),
+        "created_at": ts(s["created_at"])})
+
+
 def run_rows(runs):
     rows = []
     for r in runs:
@@ -249,6 +262,7 @@ def live_tables(season, records):
         "pipeline_runs": run_rows(runs),
         "predictions": prediction_rows(preds),
         "graded_games": graded_rows(graded) if graded is not None else pd.DataFrame(),
+        "summaries": summary_rows(records.summaries(), set(matches["id"]), {r["id"] for r in runs}),
     }
 
 
@@ -297,7 +311,8 @@ def backfill_tables(season, predictions_file=None):
 
 KEYS = {"model_versions": ["version"], "matches": ["id"], "odds_sheet": ["match_id"],
         "odds_snapshots": ["match_id", "bookmaker", "captured_at"], "team_lists": ["match_id", "fetched_at", "player_id"],
-        "elo_ratings": ["team", "played_on"], "rounds": ["season", "round"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
+        "elo_ratings": ["team", "played_on"], "rounds": ["season", "round"],
+        "summaries": ["kind", "season", "round", "match_id"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
         "graded_games": ["match_id"]}
 
 

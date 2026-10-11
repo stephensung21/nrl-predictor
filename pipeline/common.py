@@ -44,6 +44,7 @@ class Records:
         self.odds_file = self.dir / "odds_snapshots.csv"
         self.fixtures_file = self.dir / "fixtures.csv"
         self.rounds_file = self.dir / "rounds.csv"
+        self.summaries_file = self.dir / "summaries.csv"
 
     def add_run(self, record):
         with self.runs_file.open("a", encoding="utf-8") as f:
@@ -98,6 +99,15 @@ class Records:
     def add_round(self, row):
         pd.DataFrame([row], columns=ROUND_COLS).to_csv(self.rounds_file, mode="a", index=False,
                                                        header=not self.rounds_file.exists())
+
+    def summaries(self):
+        """LLM-written previews and recaps (summaries.py), every version kept."""
+        if not self.summaries_file.exists():
+            return pd.DataFrame(columns=["kind", "season", "round", "match_id", "body"])
+        return pd.read_csv(self.summaries_file, dtype={"body": str})
+
+    def add_summaries(self, rows):
+        rows.to_csv(self.summaries_file, mode="a", header=not self.summaries_file.exists(), index=False)
 
     def update_fixtures(self, fixtures):
         new = fixtures.reindex(columns=FIXTURE_COLS)
