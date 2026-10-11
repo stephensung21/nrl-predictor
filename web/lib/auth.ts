@@ -232,10 +232,15 @@ export class SupabaseAuthStore implements AuthStore {
 
   async completeSignIn(params: URLSearchParams) {
     const next = safeNext(params.get("next"));
-    const code = params.get("code");
-    if (!code) return { next: "/sign-in?link-failed=1" };
-    const { error } = await this.sb.auth.exchangeCodeForSession(code);
-    if (error) return { next: "/sign-in?link-failed=1" };
+    // The client exchanges the one-time code in the address by itself as it starts, and getSession
+    // waits for that. Exchanging it again would fail (each code works once), so only do it when
+    // there's still no session.
+    if (!(await this.session())) {
+      const code = params.get("code");
+      if (!code) return { next: "/sign-in?link-failed=1" };
+      const { error } = await this.sb.auth.exchangeCodeForSession(code);
+      if (error && !(await this.session())) return { next: "/sign-in?link-failed=1" };
+    }
     if (params.get("intent") === "sign-in" && !(await this.profile())) {
       await this.signOut();
       return { next: "/sign-in?no-account=1" };

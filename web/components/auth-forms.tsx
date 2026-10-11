@@ -391,7 +391,11 @@ export function AuthCallback() {
   const store = useMemo(() => createAuthStore(), []);
   const router = useRouter();
   const params = useSearchParams();
+  // Once only: React runs effects twice in development, and a sign-in code works once.
+  const started = useRef(false);
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     store.completeSignIn(new URLSearchParams(params.toString())).then(({ next }) => router.replace(next));
   }, [store, params, router]);
   return <p className="pt-10 text-[15px] text-ink-3">Signing you in…</p>;
