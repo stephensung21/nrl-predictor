@@ -202,6 +202,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Weekly refitting of the model weights and/or the calibration | +0.002 to +0.009 (worse), clearly worse late in the season (item 24) |
 | No odds in the models; the market as a separate expert in a learned blend (Footy Tipper) | +0.008 vs the with-odds ensemble (clearly worse) (item 39) |
 | Shin margin removal (benchmark and input) | ±0.001, no difference (items 26, 42) |
+| Weather at kickoff (Open-Meteo rain, wind, temperature) as model features, or instead of the recorded wet flag | total MAE −0.01 to +0.05, win −0.002, not clear (item 45) |
 
 ---
 
@@ -603,6 +604,28 @@ Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use
 - **Simulating possible line-ups** to average over late changes: Footy Tipper's elaborate simulator didn't beat a simple normal approximation of the margin.
 - **Tipping-comp metrics** (chance of beating a field of favourite-tippers): only if the goal becomes a pub tipping comp.
 - **Weekly automation:** scheduled predictions, versioned models and alerts, once `predict.py` exists.
+
+### 45. Weather at kickoff ❌ as features; 🔶 a forecast for the live wet flag
+
+`src/weather.py` gets each game's weather from Open-Meteo (free, no key): rain in the 2 hours either side of kickoff, wind over the first 2 hours, temperature at kickoff (roofed venues: no rain or wind). It's the reanalysis for every game since 2020, and, from 2024, the forecasts issued 1–7 days before kickoff. The nrl.com weather is missing for almost all of 2023–24, but the two agree where both exist (games recorded as rainy: 2.8 mm on average, others 0.2 mm). `python src/experiments.py --only weather` → `reports/experiments_weather.md`.
+
+**A. As model features (2023–25 backtest, ensembles):** no gain.
+- Rain amount or a rain flag *instead of* the recorded wet flag: total MAE +0.02 to +0.05 (not clear). The recorded flag also counts slippery and wet grounds, which the rain alone doesn't see.
+- Rain added to the totals model: ±0.01.
+- Rain, wind and temperature in the totals model, or in LightGBM only: win −0.0016, margin −0.01, total ±0.02, none clear.
+
+**B. What the live jobs know (2024–25):** the live jobs set the wet flag to 0, because the weather isn't known when they predict. Against that:
+
+| Fed to the model | With-odds total MAE | No-odds total MAE |
+|---|---|---|
+| Wet flag 0 (live now) | 11.08 | 11.10 |
+| Current model, flag as recorded on the day (the backtest) | −0.13 | −0.11 |
+| Current model, flag from the Tuesday forecast (1 mm+) | −0.10 | −0.07 |
+| Current model, flag from the forecast the day before | −0.09 | −0.06 |
+| Rain-amount model, Tuesday forecast | −0.09 | −0.09 |
+| Rain-amount model, forecast the day before | −0.11 | −0.13 (clear) |
+
+So the live totals lose about 0.1 points of MAE to the unknown weather, and a forecast wins back most of it, even Tuesday's. Win and margin don't use the flag and are unchanged. **Not adopted:** totals only, about 1% of their error, mostly not statistically clear, and the model features themselves didn't help. If the totals ever matter (betting on them, or a tipping question), the cheap change is filling the current wet flag from Open-Meteo's forecast in the predict and refresh jobs; the model stays as it is.
 
 ---
 

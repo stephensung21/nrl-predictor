@@ -37,6 +37,8 @@ Usage:
                                                   model and the opening market disagree, and who was right)
     python src/experiments.py --only pre_kickoff -> reports/experiments_pre_kickoff.md (the main models fed
                                                   pre-kickoff team lists instead of the final named 17)
+    python src/experiments.py --only weather  ->  reports/experiments_weather.md (Open-Meteo weather at
+                                                  kickoff; as it was, and as forecast on game day and Tuesday)
 """
 
 import argparse
@@ -57,6 +59,7 @@ from sklearn.preprocessing import SplineTransformer, StandardScaler
 
 import config
 import models
+import weather
 from elo import run_elo, tune as tune_elo
 from features import SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
 from ingest import PROCESSED, join_odds_to_matches, load_odds
@@ -1562,6 +1565,131 @@ def pre_kickoff_experiments():
 
 # ---------------------------------------------------------------- main
 
+# ---------------------------------------------------------------- 45. weather (PLAN_WEB.md step 5)
+
+WEATHER = ["rain", "rain_flag", "wind", "temp"]
+TUESDAY = pd.Timedelta(hours=7, minutes=15)  # the predict job: Tuesday 07:15 UTC (pipeline-job cron)
+
+
+def tuesday_lead(kickoff):
+    """Which previous-runs forecast the Tuesday prediction would have: the one issued N whole days
+    before kickoff, N = days from the last Tuesday 07:15 UTC before kickoff, rounded up (1-7)."""
+    week = kickoff.dt.normalize() - pd.to_timedelta((kickoff.dt.dayofweek - 1) % 7, unit="D") + TUESDAY
+    week = week.where(week < kickoff, week - pd.Timedelta(days=7))
+    return np.clip(np.ceil((kickoff - week) / pd.Timedelta(days=1)), 1, 7).astype(int)
+
+
+def with_weather(df, w, source="archive"):
+    """df with the weather inputs from one source (archive, dayN, or 'tuesday': each game's lead)."""
+    if source == "tuesday":
+        lead = tuesday_lead(pd.to_datetime(df["start_time_utc"], utc=True))
+        parts = {n: weather.features(w, f"day{n}") for n in range(1, 8)}
+        f = pd.DataFrame([parts[n].loc[mid] if mid in parts[n].index else pd.Series(index=WEATHER, dtype=float)
+                          for mid, n in zip(df["match_id"], lead)], index=df.index)
+    else:
+        f = weather.features(w, source).reindex(df["match_id"]).set_index(df.index)
+    return df.drop(columns=WEATHER, errors="ignore").join(f[WEATHER])
+
+
+def weather_experiments():
+    """Item 45: weather at kickoff from Open-Meteo (weather.py) instead of, or as well as, the recorded
+    wet-conditions flag, then the same models fed what a forecast would have said on game day and on
+    Tuesday (2024-2025, the seasons with archived forecasts)."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    w = weather.load()
+    df = with_weather(load(), w)
+    assert df[WEATHER].notna().all().all(), "games without archive weather"
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    total = LINEAR_FEATURES["total"]
+    no_wet = [f for f in total if f != "wet_conditions"]
+    sets = {
+        "W1 + rain (mm) in totals": {**LINEAR_FEATURES, "total": total + ["rain"]},
+        "W2 rain (mm) instead of the recorded wet flag": {**LINEAR_FEATURES, "total": no_wet + ["rain"]},
+        "W3 rain flag (1 mm+) instead of the recorded wet flag": {**LINEAR_FEATURES, "total": no_wet + ["rain_flag"]},
+        "W4 + rain, wind and temperature in totals": {**LINEAR_FEATURES, "total": total + ["rain", "wind", "temp"]},
+    }
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        variants = {name: pipeline_backtest(df, LINEAR_FEATURES=s) for name, s in sets.items()}
+        variants["W5 rain, wind and temperature in LightGBM only"] = pipeline_backtest(
+            df, LGB_COMPACT_EXTRA=LGB_COMPACT_EXTRA + ["rain", "wind", "temp"])
+
+        # Forecast-fed: fit each season's models as the backtest does, then predict that season from
+        # what was known in advance. The current model is fed wet_conditions = 0, as the live jobs do.
+        forecast = {}
+        for season in (2024, 2025):
+            train = df[df["season"] < season]
+            calib = list(range(config.FIRST_SEASON + 1, season))
+            rows = df[df["season"] == season]
+            for name, s in [("current", LINEAR_FEATURES)] + [(n, sets[n]) for n in sets if n[:2] in ("W2", "W3")]:
+                with config.override(LINEAR_FEATURES=s):
+                    cfg, _, _ = models.develop(train, calib)
+                    bundle = models.fit_models(train, cfg, calib)
+                feeds = {"recorded": rows} if name == "current" else {}
+                if name == "current":
+                    feeds["wet flag 0 (live)"] = rows.assign(wet_conditions=0)
+                    for feed, src in (("wet flag from the 1-day forecast", "day1"), ("wet flag from the Tuesday forecast", "tuesday")):
+                        fc = with_weather(rows, w, src)
+                        feeds[feed] = rows.assign(wet_conditions=fc["rain_flag"].fillna(0).astype(int))
+                else:
+                    feeds.update({"game day (1-day forecast)": with_weather(rows, w, "day1"),
+                                  "Tuesday forecast": with_weather(rows, w, "tuesday")})
+                for feed, frame in feeds.items():
+                    p = models.predict_models(bundle, frame.fillna({c: 0 for c in WEATHER}))
+                    p.index = frame["match_id"].to_numpy()
+                    forecast.setdefault((name, feed), []).append(p)
+        forecast = {k: pd.concat(v) for k, v in forecast.items()}
+    finally:
+        builtins.print = quiet
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    for name, preds in variants.items():
+        compare_pipelines(name, test, preds, base, models=("ensemble",))
+    part_a = pd.DataFrame(RESULTS)
+    RESULTS.clear()
+
+    live = forecast[("current", "wet flag 0 (live)")]
+    t2 = test.loc[live.index]
+    for (name, feed), preds in forecast.items():
+        if feed == "wet flag 0 (live)":
+            continue
+        label = f"current model, {feed}" if name == "current" else f"{name[:2]}, {feed}"
+        for v in VARIANTS:
+            for t in ("total", "margin", "home_win"):
+                col = f"{v}|ensemble|{t}"
+                record(label, v, t, t2, preds[col], live[col])
+    part_b = pd.DataFrame(RESULTS)
+    days = tuesday_lead(pd.to_datetime(test.loc[live.index, "start_time_utc"], utc=True)).value_counts().sort_index()
+    rain_corr = test[["total", "rain", "wet_conditions"]].corr().loc["total"]
+
+    report = ["# Weather at kickoff (2023–2025 backtest)", "",
+              "The recorded weather (nrl.com) is missing for almost all of 2023 and 2024, so the current "
+              "wet-conditions flag (totals model) there comes from the ground conditions alone. These "
+              "experiments use Open-Meteo's weather for every game instead (`src/weather.py`): rain in the "
+              "2 hours either side of kickoff, wind over the first 2 hours, temperature at kickoff; roofed "
+              "venues get no rain or wind. Results are for the main ensembles; `diff` is new minus current "
+              "(negative = better), with a paired bootstrap 95% interval.", "",
+              "## A. Weather as it was (reanalysis)", "",
+              "The most a game-day refresh could gain: the weather that actually happened. Correlation with "
+              f"the match total: rain {rain_corr['rain']:.3f}, recorded wet flag {rain_corr['wet_conditions']:.3f}.", "",
+              md_table(part_a.set_index("experiment")), "",
+              "## B. What the live jobs would know (2024–2025)", "",
+              "Each season's models fitted as in the backtest, then fed what is known in advance. The "
+              "baseline is the current model as the live jobs run it: wet flag 0, because the weather "
+              "isn't known when they predict. `current model, recorded` is the current backtest "
+              "(the flag as recorded on the day), the gap the live jobs leave; the next two rows keep the "
+              "current model and set its flag from the forecast (1 mm or more). The W2/W3 rows are those "
+              "models fed Open-Meteo's archived forecasts: issued 1 day before kickoff (a game-day "
+              "refresh), or the one the Tuesday prediction (07:15 UTC) would have had. Tuesday's lead "
+              "(days): " + ", ".join(f"{d}: {n} games" for d, n in days.items()) + ".", "",
+              md_table(part_b.set_index("experiment")), ""]
+    (REPORTS / "experiments_weather.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments_weather.md")
+
+
 def main():
     warnings.filterwarnings("ignore")
     df = load()
@@ -1686,7 +1814,7 @@ if __name__ == "__main__":
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
                                            "calibration", "weekly2", "blend", "shin",
-                                           "disagreement", "pre_kickoff"],
+                                           "disagreement", "pre_kickoff", "weather"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -1701,4 +1829,5 @@ if __name__ == "__main__":
                                                   "Origin-based star absences"),
      "calibration": calibration_experiments, "weekly2": weekly2_experiments,
      "blend": blend_experiments, "shin": shin_experiments,
-     "disagreement": disagreement_experiments, "pre_kickoff": pre_kickoff_experiments}.get(args.only, main)()
+     "disagreement": disagreement_experiments, "pre_kickoff": pre_kickoff_experiments,
+     "weather": weather_experiments}.get(args.only, main)()
