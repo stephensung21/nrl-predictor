@@ -1,6 +1,6 @@
 # rugbyleague-tipper (website)
 
-The Next.js site from [PLAN_WEB.md](../PLAN_WEB.md) §3, designed to [DESIGN_BRIEF.md](../DESIGN_BRIEF.md).
+The Next.js site from [PLAN_WEB.md](../docs/PLAN_WEB.md) §3, designed to [DESIGN_BRIEF.md](../docs/DESIGN_BRIEF.md).
 
 ```
 npm install

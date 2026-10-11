@@ -3,7 +3,7 @@ Download aussportsbetting.com's NRL results-and-odds sheet (PLAN_WEB.md step 4, 
 the closing prices grading uses and the history for retraining. Run at the start of the live results
 job; a failed download is a warning and the copy already in the checkout is used.
 
-The new file replaces data/nrl_betting odds.xlsx only if it passes the checks: it parses with
+The new file replaces data/nrl_betting_odds.xlsx only if it passes the checks: it parses with
 ingest.load_odds (which stops on an unknown team name), it has at least as many games as the current
 copy, and its newest game is no older. Prices whose implied probabilities add to under 100% (the 2026
 sheet had some bad line and total prices) are counted and reported, not changed.

@@ -13,6 +13,7 @@ from features import FEATURE_GROUPS
 from ingest import PROCESSED, ROOT  # noqa: F401  (re-exported for the other modules)
 
 REPORTS = ROOT / "reports"
+EXPERIMENTS = REPORTS / "experiments"  # one report per idea tried (experiments.py)
 PARAMS_OUT = REPORTS / "params.json"
 FINAL_LOCK = REPORTS / "final.lock"
 MODELS_DIR = ROOT / "models"  # frozen model bundles for predict.py (train.py --freeze)

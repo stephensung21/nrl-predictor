@@ -80,7 +80,7 @@ Regularised plus-minus: each player is rated by how the team's margin changes wi
 
 ## 4. Improve and stabilise LightGBM ✅ (adopted)
 
-Reopened once the ensemble became the main model, since LightGBM is half of it. After the score fix (item 34), LightGBM moved by up to ±0.006 just from re-tuning on slightly different data. `python src/experiments.py --only lightgbm` (`reports/experiments_lightgbm.md`) compared five variants on accuracy and stability:
+Reopened once the ensemble became the main model, since LightGBM is half of it. After the score fix (item 34), LightGBM moved by up to ±0.006 just from re-tuning on slightly different data. `python src/experiments.py --only lightgbm` (`reports/experiments/experiments_lightgbm.md`) compared five variants on accuracy and stability:
 
 - **Stability:** with Optuna on the full ~50 features, a different random seed moved each game's win probability by about **3 percentage points** on average. Fixed settings averaged over 5 seeds: **0.4–0.6 points**, about six times more stable.
 - **Accuracy:** a compact feature set was the biggest gain (the full set overfit). LightGBM alone improved from 0.640 to **0.630** with odds and from 0.638 to 0.634 without. The with-odds ensemble went from 0.628 to **0.6245**, margin 13.61 → 13.51, and **total clearly better** (10.85 → 10.78). The no-odds ensemble was about unchanged on win (0.6281 → 0.6279).
@@ -224,7 +224,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 
 ### 13. Rerun the 2025-only rejections on the backtest ✅
 
-Results are in `reports/experiments.md` (`python src/experiments.py`):
+Results are in `reports/experiments/experiments.md` (`python src/experiments.py`):
 - **Win probability from the predicted margin: reversed.** On its own it was −0.005 for the with-odds model; blended with the logistic model −0.005 [−0.010, +0.0005]. That's a near miss, adopted as part of item 22.
 - ❌ Market as a fixed starting point with learned adjustments: −0.0003, no difference.
 - ❌ Recency weighting (half-life 1 or 2 seasons): −0.002 to +0.001, no difference.
@@ -253,7 +253,7 @@ Each team's recent stats relative to what its opponents usually allow (and conce
 
 ### 18. More context features 🔶 (four groups tested, none adopted)
 
-Tested in the full pipeline backtest (`python src/experiments.py --only context2` and `--only ladder`; `reports/experiments_context2.md`, `reports/experiments_ladder.md`), each group added to the linear models (and so LightGBM's compact set) or to LightGBM only. Results for the main ensembles, change against current:
+Tested in the full pipeline backtest (`python src/experiments.py --only context2` and `--only ladder`; `reports/experiments/experiments_context2.md`, `reports/experiments/experiments_ladder.md`), each group added to the linear models (and so LightGBM's compact set) or to LightGBM only. Results for the main ensembles, change against current:
 
 | Group | Features | Result |
 |---|---|---|
@@ -274,7 +274,7 @@ Ratings built from the stats that matter for each position (run metres for forwa
 
 ### 20. Other model types (GAM, Explainable Boosting Machine) ❌
 
-Tested with `python src/experiments.py --only gam` (`reports/experiments_gam.md`): a GAM (cubic splines per feature, then penalised logistic / ridge, penalty tuned by CV) on the linear features and on the compact features, and InterpretML's Explainable Boosting Machine (settings fixed in advance; additive only, or up to 5 interactions) on the compact features. Each was compared alone, replacing LightGBM in the ensemble, and as a third ensemble member.
+Tested with `python src/experiments.py --only gam` (`reports/experiments/experiments_gam.md`): a GAM (cubic splines per feature, then penalised logistic / ridge, penalty tuned by CV) on the linear features and on the compact features, and InterpretML's Explainable Boosting Machine (settings fixed in advance; additive only, or up to 5 interactions) on the compact features. Each was compared alone, replacing LightGBM in the ensemble, and as a third ensemble member.
 - **No combination was clearly better** than the current ensemble on win, margin or total.
 - The GAM on the linear features scores almost exactly like the linear model (0.6253 vs 0.6243 with odds): **the relationships are essentially linear**, so there's no curvature to exploit. The compact-feature GAM was clearly worse alone.
 - The EBM with interactions was the best non-linear model alone (0.628, better than LightGBM), but in the ensemble it moved win log loss by only 0.001–0.003 (best: no-odds 0.6279 → 0.6246 replacing LightGBM, interval −0.010 to +0.004).
@@ -296,7 +296,7 @@ The two near misses (items 13 and 15) tested together: `team_margin` in the line
 ### 23. Second review: findings ✅
 
 From a second pass over the pipeline (October 2026):
-- **The final model is overconfident** (calibration slope 0.81–0.86 in 2024–25 for the with-odds ensemble; 1.0 would be perfect). ❌ **Recalibrating the final probability** (`python src/experiments.py --only calibration`, `reports/experiments_calibration.md`), fitted for each season on earlier seasons' out-of-sample backtest predictions: slope-only shrinking −0.0009 to −0.0014 on 2024–25 (not clear), slope and intercept slightly worse. Not adopted: **most of the overconfidence came from the bookmaker change** (item 35), and once that was fixed recalibration added only 0.0002.
+- **The final model is overconfident** (calibration slope 0.81–0.86 in 2024–25 for the with-odds ensemble; 1.0 would be perfect). ❌ **Recalibrating the final probability** (`python src/experiments.py --only calibration`, `reports/experiments/experiments_calibration.md`), fitted for each season on earlier seasons' out-of-sample backtest predictions: slope-only shrinking −0.0009 to −0.0014 on 2024–25 (not clear), slope and intercept slightly worse. Not adopted: **most of the overconfidence came from the bookmaker change** (item 35), and once that was fixed recalibration added only 0.0002.
 - **The market underrates home teams slightly:** its calibration intercept is +0.10 in logit terms (about 2–3 percentage points). The with-odds model already learns this through its intercept.
 - **Robust training for margin and total** was tested and not adopted (see "Already tried").
 
@@ -307,8 +307,8 @@ From a second pass over the pipeline (October 2026):
   - Building it found two bugs before they could publish anything: Tuesday lists were dropped for games with no final line-up yet (fixed; validation now fails if any model input is missing), and odds rows were dropped for games already played earlier on the same day (fixed). The named 17 is now the 17 lowest-numbered non-reserves (`features.named_from_list`), which handles both Tuesday squads (six-man interchange since 2026) and final lists with late replacements.
   - Still to do: fair odds and edges against live prices (The Odds API), and the scheduled jobs and publishing (PLAN_WEB.md).
 - ✅ **Two prediction snapshots:** the Tuesday-list predictions were tested in item 40 (almost no accuracy lost).
-- ❌ **Weekly refitting** (`python src/experiments.py --only weekly`, `reports/experiments_weekly.md`): each season's settings kept, but the models refitted before every round with that season's games so far. Main ensembles: win +0.001 to +0.002, margin about 0, total −0.02 to −0.03, none clear; **from round 19 it's worse** (with-odds win +0.006, clear). The calibration comes from complete earlier seasons, so in-season refits drift away from it. Not adopted. (`models.fit_predict_frames` now fits and predicts on any rows; results unchanged.)
-- ❌ **Weekly refitting with weekly calibration** (`python src/experiments.py --only weekly2`, `reports/experiments_weekly_calibration.md`): the model weights refitted every round, and the final win probability also recalibrated every round on all earlier out-of-sample predictions (earlier backtest seasons and this season's earlier rounds). Win log loss against the current once-a-season fit:
+- ❌ **Weekly refitting** (`python src/experiments.py --only weekly`, `reports/experiments/experiments_weekly.md`): each season's settings kept, but the models refitted before every round with that season's games so far. Main ensembles: win +0.001 to +0.002, margin about 0, total −0.02 to −0.03, none clear; **from round 19 it's worse** (with-odds win +0.006, clear). The calibration comes from complete earlier seasons, so in-season refits drift away from it. Not adopted. (`models.fit_predict_frames` now fits and predicts on any rows; results unchanged.)
+- ❌ **Weekly refitting with weekly calibration** (`python src/experiments.py --only weekly2`, `reports/experiments/experiments_weekly_calibration.md`): the model weights refitted every round, and the final win probability also recalibrated every round on all earlier out-of-sample predictions (earlier backtest seasons and this season's earlier rounds). Win log loss against the current once-a-season fit:
 
   | Set-up | With-odds ensemble | No-odds ensemble | With-odds ensemble, rounds 19+ |
   |---|---|---|---|
@@ -333,7 +333,7 @@ The opening and closing probabilities split the bookmaker's margin proportionall
 
 `team_total_ratings` in `features.py` (`team_total` in `features.csv`): the totals counterpart of `team_margin`, a ridge regression of each match total since 2009 on a "total tendency" per team (attack plus defence, which is all a total depends on), refitted weekly on earlier games with the team margin rating's settings (two-year half-life).
 
-Tested with `python src/experiments.py --only team_total` (`reports/experiments_team_total.md`) in the full pipeline backtest. Total MAE, change against current:
+Tested with `python src/experiments.py --only team_total` (`reports/experiments/experiments_team_total.md`) in the full pipeline backtest. Total MAE, change against current:
 
 | Added to | Linear totals (with odds / no odds) | Main ensemble totals (with odds / no odds) |
 |---|---|---|
@@ -352,7 +352,7 @@ The idea: RAPM starts every new player at average, but players moving up have a 
 - `diff_reserve_newcomers`: reserve-grade fantasy points per 80 minutes relative to the position group, shrunk for few games.
 - `diff_reserve_rapm_newcomers`: a reserve-grade plus-minus, the same method as the NRL RAPM (ridge on capped reserve margins, players weighted by minutes, penalty 300), with a one-year half-life, refitted before each NRL round; interchange newcomers count half. All settings were decided before testing.
 
-**Results** (`python src/experiments.py --only reserve` → `reports/experiments_reserve.md`; full pipeline backtest, main ensembles, change against current):
+**Results** (`python src/experiments.py --only reserve` → `reports/experiments/experiments_reserve.md`; full pipeline backtest, main ensembles, change against current):
 
 | Version | Win log loss (with odds / no odds) | Margin MAE (with odds / no odds) |
 |---|---|---|
@@ -449,7 +449,7 @@ Done; every prediction is unchanged (backtest predictions, `params.json` and the
 
 **Question:** do teams play measurably differently with and without their stars, and does the model account for it?
 
-**Analysis** (seasons up to 2025; each player's games at a club with vs without him, team margin relative to an expectation; `reports/experiments_stars.md`, `experiments_key_absence.md`, `experiments_origin_stars.md`):
+**Analysis** (seasons up to 2025; each player's games at a club with vs without him, team margin relative to an expectation; `reports/experiments/experiments_stars.md`, `experiments_key_absence.md`, `experiments_origin_stars.md`):
 
 | Group | Games without | vs line-up-blind team rating | vs opening line | vs current model (2023–25) |
 |---|---|---|---|---|
@@ -503,7 +503,7 @@ How well the general rules recognise the reference list: S1 counts 58% of their 
 
 ### 39. No odds in the models; the market as a separate expert in a learned blend ❌
 
-`python src/experiments.py --only blend`, `reports/experiments_blend.md`.
+`python src/experiments.py --only blend`, `reports/experiments/experiments_blend.md`.
 
 **Setup.**
 - **Experts:** the no-odds models (linear win; the linear margin turned into a win probability; LightGBM win; Elo) and, separately, the opening market (log-odds, proportional margin removal; the opening line and total for margin and total). No odds go into any model.
@@ -545,7 +545,7 @@ Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use
 
 **Features.** `python src/features.py --pre-kickoff` writes `features_pre_kickoff.csv`, describing each game that has a list by that list (team ratings, rookies, RAPM, star absences). History still comes from the teams that actually played; games without a list, and the default build, are unchanged (checked).
 
-**Test** (`python src/experiments.py --only pre_kickoff`, `reports/experiments_pre_kickoff.md`). The main models, trained exactly as in the backtest and the 2026 final run (on final named 17s), predict each game twice: from its final 17 (the pipeline's own predictions, checked) and from its Tuesday list.
+**Test** (`python src/experiments.py --only pre_kickoff`, `reports/experiments/experiments_pre_kickoff.md`). The main models, trained exactly as in the backtest and the 2026 final run (on final named 17s), predict each game twice: from its final 17 (the pipeline's own predictions, checked) and from its Tuesday list.
 
 | 2023–25 backtest, 344 games with a list | Win log loss | Head-to-head ROI at opening (2% edge) | Closing price moved towards the bet |
 |---|---|---|---|
@@ -564,7 +564,7 @@ Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use
 
 ### 41. Disagreement analysis ✅
 
-`python src/experiments.py --only disagreement`, `reports/experiments_disagreement.md`. The with-odds ensemble's out-of-sample predictions against the opening market, grouped by how much they disagree (model log-odds minus opening log-odds).
+`python src/experiments.py --only disagreement`, `reports/experiments/experiments_disagreement.md`. The with-odds ensemble's out-of-sample predictions against the opening market, grouped by how much they disagree (model log-odds minus opening log-odds).
 
 | Disagreement | Games (backtest / 2026) | Model vs opening log loss, backtest | 2026 | Closing price moved towards the model, backtest | 2026 |
 |---|---|---|---|---|---|
@@ -580,7 +580,7 @@ Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use
 
 ### 42. Shin margin removal ❌
 
-`python src/experiments.py --only shin`, `reports/experiments_shin.md`. `ingest.shin_prob` (exact two-outcome Shin solution; it moves a little more probability onto favourites, e.g. 79.0% → 80.6% at prices 1.20 / 4.50).
+`python src/experiments.py --only shin`, `reports/experiments/experiments_shin.md`. `ingest.shin_prob` (exact two-outcome Shin solution; it moves a little more probability onto favourites, e.g. 79.0% → 80.6% at prices 1.20 / 4.50).
 - **As the market benchmark:** no difference. Opening −0.0008 (2021–25), closing −0.0011, Odds Portal average −0.0001; every interval spans 0.
 - **As the with-odds models' input** (full pipeline backtest): ensemble win +0.0001, margin +0.0001, total +0.001. The models already learn how to scale the opening log-odds, so the margin-removal method doesn't matter.
 - Not adopted; the Shin probabilities stay available in the odds table (`p_open_shin`, `p_close_shin`, `p_avg_shin`).
@@ -607,7 +607,7 @@ Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use
 
 ### 45. Weather at kickoff ❌ as features; 🔶 a forecast for the live wet flag
 
-`src/weather.py` gets each game's weather from Open-Meteo (free, no key): rain in the 2 hours either side of kickoff, wind over the first 2 hours, temperature at kickoff (roofed venues: no rain or wind). It's the reanalysis for every game since 2020, and, from 2024, the forecasts issued 1–7 days before kickoff. The nrl.com weather is missing for almost all of 2023–24, but the two agree where both exist (games recorded as rainy: 2.8 mm on average, others 0.2 mm). `python src/experiments.py --only weather` → `reports/experiments_weather.md`.
+`src/weather.py` gets each game's weather from Open-Meteo (free, no key): rain in the 2 hours either side of kickoff, wind over the first 2 hours, temperature at kickoff (roofed venues: no rain or wind). It's the reanalysis for every game since 2020, and, from 2024, the forecasts issued 1–7 days before kickoff. The nrl.com weather is missing for almost all of 2023–24, but the two agree where both exist (games recorded as rainy: 2.8 mm on average, others 0.2 mm). `python src/experiments.py --only weather` → `reports/experiments/experiments_weather.md`.
 
 **A. As model features (2023–25 backtest, ensembles):** no gain.
 - Rain amount or a rain flag *instead of* the recorded wet flag: total MAE +0.02 to +0.05 (not clear). The recorded flag also counts slippery and wet grounds, which the rain alone doesn't see.

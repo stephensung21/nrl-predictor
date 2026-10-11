@@ -1,0 +1,16 @@
+[project]
+name = "nrl-predictor"
+version = "0.1.0"
+description = "NRL match predictions (win probability, margin, total) from Elo, player ratings and team lists, benchmarked against the bookmakers."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+# The pinned dependencies live in requirements.txt: the frozen models (models/<season>/) need those
+# exact versions to load and predict identically. The code runs as scripts (src/, pipeline/), not as
+# an installed package.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: end-to-end checks that rebuild the features (the leakage test); skip with -m \"not slow\"",
+]

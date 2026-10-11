@@ -13,7 +13,7 @@ import pandas as pd
 from scipy.optimize import brentq
 
 ROOT = Path(__file__).resolve().parents[1]
-ODDS_FILE = ROOT / "data" / "nrl_betting odds.xlsx"
+ODDS_FILE = ROOT / "data" / "nrl_betting_odds.xlsx"
 PROCESSED = ROOT / "data" / "processed"
 
 TEAM_MAP = {

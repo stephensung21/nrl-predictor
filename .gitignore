@@ -1,27 +1,43 @@
+# Python
 .venv/
 __pycache__/
-NRL-Data/
-data/raw/
+*.pyc
+.pytest_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+
+# Local secrets (see .env.example)
+.env
+.env.*
+!.env.example
+
+# Scraped pages and API responses (src/scrape.py, pipeline/). Rebuildable, and large.
+data/raw/
+NRL-Data/
 
 # Regenerable outputs: rebuilt by `python src/features.py`, `python src/train.py [--backtest]`
 # and `python src/betting.py`. The scraped tables, odds sheet, params.json and Markdown reports
 # stay committed.
 data/processed/features.csv
-reports/*.csv
 data/processed/features_pre_kickoff.csv
+reports/*.csv
 reports/predictions/
-
-# Impeccable review screenshots (regenerated each review)
-.impeccable/review/
-.impeccable/questions/
 
 # Pipeline replays of past seasons (pipeline/replay.py); live records in data/pipeline/live/ are committed
 data/pipeline/replay/
 
-# Local secrets (ODDS_API_KEY for pipeline/fetch_odds.py)
-.env
-
 # Encrypted tipping backups (pipeline/backup.py); kept as workflow artifacts, not in the repo
 backups/
+
+# Tool state
 supabase/.temp/
+.impeccable/review/
+.impeccable/questions/
+.claude/settings.local.json

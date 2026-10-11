@@ -15,29 +15,29 @@ blend). The team margin rating and the margin blend were adopted into the pipeli
 so LightGBM's predictions in reports/backtest_predictions.csv now come from the newer setup.
 
 Usage:
-    python src/experiments.py                 ->  reports/experiments.md
-    python src/experiments.py --only robust   ->  reports/experiments_robust.md (robust margin/total
+    python src/experiments.py                 ->  reports/experiments/experiments.md
+    python src/experiments.py --only robust   ->  reports/experiments/experiments_robust.md (robust margin/total
                                                   training against the current pipeline)
-    python src/experiments.py --only lightgbm ->  reports/experiments_lightgbm.md (LightGBM accuracy
+    python src/experiments.py --only lightgbm ->  reports/experiments/experiments_lightgbm.md (LightGBM accuracy
                                                   and stability, and the main ensembles)
-    python src/experiments.py --only gam      ->  reports/experiments_gam.md (GAM and Explainable
+    python src/experiments.py --only gam      ->  reports/experiments/experiments_gam.md (GAM and Explainable
                                                   Boosting Machine, alone and in the ensemble)
-    python src/experiments.py --only reserve  ->  reports/experiments_reserve.md (reserve-grade
+    python src/experiments.py --only reserve  ->  reports/experiments/experiments_reserve.md (reserve-grade
                                                   newcomer ratings in the full pipeline backtest)
-    python src/experiments.py --only team_total -> reports/experiments_team_total.md (team total
+    python src/experiments.py --only team_total -> reports/experiments/experiments_team_total.md (team total
                                                   rating for the totals models)
-    python src/experiments.py --only weekly   ->  reports/experiments_weekly.md (refitting the models
+    python src/experiments.py --only weekly   ->  reports/experiments/experiments_weekly.md (refitting the models
                                                   before every round instead of once a season)
-    python src/experiments.py --only context2 ->  reports/experiments_context2.md (kickoff slot, travel
+    python src/experiments.py --only context2 ->  reports/experiments/experiments_context2.md (kickoff slot, travel
                                                   distance, Origin representatives, ladder/motivation)
-    python src/experiments.py --only blend    ->  reports/experiments_blend.md (no odds in the models;
+    python src/experiments.py --only blend    ->  reports/experiments/experiments_blend.md (no odds in the models;
                                                   the market as a separate expert in a learned blend)
-    python src/experiments.py --only shin     ->  reports/experiments_shin.md (Shin margin removal)
-    python src/experiments.py --only disagreement -> reports/experiments_disagreement.md (where the
+    python src/experiments.py --only shin     ->  reports/experiments/experiments_shin.md (Shin margin removal)
+    python src/experiments.py --only disagreement -> reports/experiments/experiments_disagreement.md (where the
                                                   model and the opening market disagree, and who was right)
-    python src/experiments.py --only pre_kickoff -> reports/experiments_pre_kickoff.md (the main models fed
+    python src/experiments.py --only pre_kickoff -> reports/experiments/experiments_pre_kickoff.md (the main models fed
                                                   pre-kickoff team lists instead of the final named 17)
-    python src/experiments.py --only weather  ->  reports/experiments_weather.md (Open-Meteo weather at
+    python src/experiments.py --only weather  ->  reports/experiments/experiments_weather.md (Open-Meteo weather at
                                                   kickoff; as it was, and as forecast on game day and Tuesday)
 """
 
@@ -64,7 +64,7 @@ from elo import run_elo, tune as tune_elo
 from features import SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
 from ingest import PROCESSED, join_odds_to_matches, load_odds
 from config import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FIRST_SEASON, LGB_COMPACT_EXTRA, LGB_SEEDS,
-                    LINEAR_FEATURES, REPORTS, TARGETS, VARIANT_LABEL, VARIANTS)
+                    EXPERIMENTS, LINEAR_FEATURES, REPORTS, TARGETS, VARIANT_LABEL, VARIANTS)
 from models import cv_lgb, lgb_base, linear, linear_predict, platt, tune_lgb
 from reports import md_table
 
@@ -465,8 +465,8 @@ def robust_targets():
               "margin-blended win probability, which changes through the margin prediction. `diff` is new minus "
               "current (negative = better), with a paired bootstrap 95% interval.", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_robust.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_robust.md")
+    (EXPERIMENTS / "experiments_robust.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_robust.md")
 
 
 # ---------------------------------------------------------------- 8. LightGBM accuracy and stability
@@ -532,7 +532,7 @@ def lightgbm_experiments():
     """Compare LightGBM variants on accuracy (LightGBM alone, and the main ensemble = average with the
     linear model) and stability (how much the pooled result moves when only the randomness changes).
     Run before adoption, the baseline was the previous Optuna setup; after adoption it is the pipeline's
-    fixed-settings LightGBM (reports/experiments_lightgbm.md records the run that led to adoption)."""
+    fixed-settings LightGBM (reports/experiments/experiments_lightgbm.md records the run that led to adoption)."""
     warnings.filterwarnings("ignore")
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     df = load()
@@ -590,10 +590,10 @@ def lightgbm_experiments():
               "Run 2 changes only the randomness: the Optuna sampler seed for the current setup, or a "
               "different set of 5 bagging seeds for the fixed settings.", "",
               md_table(stab.set_index("model")), ""]
-    (REPORTS / "experiments_lightgbm.md").write_text("\n".join(report), encoding="utf-8")
+    (EXPERIMENTS / "experiments_lightgbm.md").write_text("\n".join(report), encoding="utf-8")
     print(md_table(table.set_index("model")))
     print(md_table(stab.set_index("model")))
-    print("wrote reports/experiments_lightgbm.md")
+    print("wrote reports/experiments/experiments_lightgbm.md")
 
 
 # ---------------------------------------------------------------- 9. GAM and Explainable Boosting Machine
@@ -698,9 +698,9 @@ def gam_experiments():
               md_table(table.set_index("model")), "",
               "## Against the current ensemble (paired bootstrap; negative = better)", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_gam.md").write_text("\n".join(report), encoding="utf-8")
+    (EXPERIMENTS / "experiments_gam.md").write_text("\n".join(report), encoding="utf-8")
     print(md_table(table.set_index("model")))
-    print("wrote reports/experiments_gam.md")
+    print("wrote reports/experiments/experiments_gam.md")
 
 
 # ---------------------------------------------------------------- 10. full-pipeline variants
@@ -772,8 +772,8 @@ def reserve_experiments():
               "instead of fantasy points. `diff` is new minus current (negative = better), with a paired "
               "bootstrap 95% interval.", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_reserve.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_reserve.md")
+    (EXPERIMENTS / "experiments_reserve.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_reserve.md")
 
 
 # ---------------------------------------------------------------- 12. team total rating
@@ -813,9 +813,9 @@ def team_total_experiments():
               f"(negative = better), with a paired bootstrap 95% interval. Correlation of `team_total` with the "
               f"actual total over the backtest games: {corr:.3f}.", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_team_total.md").write_text("\n".join(report), encoding="utf-8")
+    (EXPERIMENTS / "experiments_team_total.md").write_text("\n".join(report), encoding="utf-8")
     print(f"  corr(team_total, total) = {corr:.3f}")
-    print("wrote reports/experiments_team_total.md")
+    print("wrote reports/experiments/experiments_team_total.md")
 
 
 # ---------------------------------------------------------------- 13. weekly refitting
@@ -871,8 +871,8 @@ def weekly_experiments():
               "complete earlier seasons. `diff` is weekly minus current (negative = better), with a paired "
               "bootstrap 95% interval; the last rows split the win model by part of the season.", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_weekly.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_weekly.md")
+    (EXPERIMENTS / "experiments_weekly.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_weekly.md")
 
 
 # ---------------------------------------------------------------- 14. more context features
@@ -917,8 +917,8 @@ def context2_experiments(groups=CONTEXT2_GROUPS, label="14", out="experiments_co
               "Results are for the main ensembles. `diff` is new minus current (negative = better), with a "
               "paired bootstrap 95% interval.", "", *lines, "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / out).write_text("\n".join(report), encoding="utf-8")
-    print(f"wrote reports/{out}")
+    (EXPERIMENTS / out).write_text("\n".join(report), encoding="utf-8")
+    print(f"wrote reports/experiments/{out}")
 
 
 STAR_GROUPS = {
@@ -1006,8 +1006,8 @@ def calibration_experiments():
               "pipeline backtest; 2025 (all BlueBet, with part of 2024 in training) is where it can show.", "",
               "`diff` is new minus current (negative = better), with a paired bootstrap 95% interval.", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_calibration.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_calibration.md")
+    (EXPERIMENTS / "experiments_calibration.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_calibration.md")
 
 
 # ---------------------------------------------------------------- 20. weekly refit with weekly calibration
@@ -1072,8 +1072,8 @@ def weekly2_experiments():
               "refitting the weights. `diff` is the set-up minus A (negative = better), with a paired bootstrap "
               "95% interval; round 19+ rows cover the late season.", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_weekly_calibration.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_weekly_calibration.md")
+    (EXPERIMENTS / "experiments_weekly_calibration.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_weekly_calibration.md")
 
 
 # ---------------------------------------------------------------- 39. learned blend, market as a separate expert
@@ -1276,8 +1276,8 @@ def blend_experiments():
               "## Head-to-head betting at opening prices (2% minimum edge)", "",
               "Flat 1-unit bets as in `betting.py`. CLV is the move in the closing price's implied probability in "
               "the bet's favour, where closing prices are reliable (mostly 2023).", "", md_table(bet_table), ""]
-    (REPORTS / "experiments_blend.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_blend.md")
+    (EXPERIMENTS / "experiments_blend.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_blend.md")
 
 
 # ---------------------------------------------------------------- 42. Shin margin removal
@@ -1335,8 +1335,8 @@ def shin_experiments():
               "The opening log-odds (and the BlueBet interaction) computed with Shin's method, rerun through the "
               "full backtest. `diff` is new minus current (negative = better).", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_shin.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_shin.md")
+    (EXPERIMENTS / "experiments_shin.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_shin.md")
 
 
 # ---------------------------------------------------------------- 41. disagreement analysis
@@ -1409,8 +1409,8 @@ def disagreement_experiments():
                    f"### What drives it (ridge on standardised features, R² = {r2_all:.2f})", "",
                    "`R² lost` is how much of the disagreement this feature explains on its own share.", "",
                    md_table(drivers), "", "### The 15 biggest disagreements", "", md_table(top_table), ""]
-    (REPORTS / "experiments_disagreement.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_disagreement.md")
+    (EXPERIMENTS / "experiments_disagreement.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_disagreement.md")
 
 
 # ---------------------------------------------------------------- 40. pre-kickoff team lists
@@ -1558,9 +1558,9 @@ def pre_kickoff_experiments():
               *sections,
               "## Paired comparisons (log loss; negative = the pre-kickoff version better)", "",
               md_table(res.set_index("experiment")), ""]
-    (REPORTS / "experiments_pre_kickoff.md").write_text("\n".join(report), encoding="utf-8")
+    (EXPERIMENTS / "experiments_pre_kickoff.md").write_text("\n".join(report), encoding="utf-8")
     preds.to_csv(REPORTS / "pre_kickoff_predictions.csv")
-    print("wrote reports/experiments_pre_kickoff.md")
+    print("wrote reports/experiments/experiments_pre_kickoff.md")
 
 
 # ---------------------------------------------------------------- main
@@ -1686,8 +1686,8 @@ def weather_experiments():
               "refresh), or the one the Tuesday prediction (07:15 UTC) would have had. Tuesday's lead "
               "(days): " + ", ".join(f"{d}: {n} games" for d, n in days.items()) + ".", "",
               md_table(part_b.set_index("experiment")), ""]
-    (REPORTS / "experiments_weather.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments_weather.md")
+    (EXPERIMENTS / "experiments_weather.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_weather.md")
 
 
 def main():
@@ -1805,8 +1805,8 @@ def main():
               "total (pushes excluded). The market is 50% on both by construction, so `vs_50pct` < 0 means "
               "the model priced these markets better than a coin flip. Break-even hit rate at $1.91 is 52.4%.", "",
               md_table(prob.set_index("model")), ""]
-    (REPORTS / "experiments.md").write_text("\n".join(report), encoding="utf-8")
-    print("wrote reports/experiments.md")
+    (EXPERIMENTS / "experiments.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments.md")
 
 
 if __name__ == "__main__":
