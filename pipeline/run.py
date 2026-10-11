@@ -44,6 +44,7 @@ from common import Records, load_matches
 import config
 import draw as drawlib
 import fetch_odds
+import fetch_sheet
 import grade as gradelib
 import paper
 import predict
@@ -171,6 +172,11 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
 def results_job(season, now, replay, records, run):
     if not replay:
         import scrape
+        try:
+            run["odds_sheet"] = fetch_sheet.update()
+        except Exception as ex:  # the copy in the checkout is still used
+            run["odds_sheet"] = {"status": "failed", "error": f"{type(ex).__name__}: {ex}"}
+            run.setdefault("warnings", []).append(f"odds sheet download failed: {run['odds_sheet']['error']}")
         scrape.fetch_season(season)  # only fetches games not already cached
         scrape.fetch_origin(season)
         scrape.build_tables([season], merge=True)
