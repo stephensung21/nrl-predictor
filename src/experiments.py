@@ -39,6 +39,9 @@ Usage:
                                                   pre-kickoff team lists instead of the final named 17)
     python src/experiments.py --only weather  ->  reports/experiments/experiments_weather.md (Open-Meteo weather at
                                                   kickoff; as it was, and as forecast on game day and Tuesday)
+    python src/experiments.py --only correlation -> reports/experiments/experiments_correlation.md (overlap
+                                                  between inputs, and features correlated with the main
+                                                  models' backtest errors; needs features.py --experimental)
 """
 
 import argparse
@@ -1690,6 +1693,168 @@ def weather_experiments():
     print("wrote reports/experiments/experiments_weather.md")
 
 
+# ---------------------------------------------------------------- 46. correlation audit
+
+def vif(X):
+    """Variance inflation factor of each column: 1 / (1 - R^2) of that column on all the others."""
+    X = (X - X.mean()) / X.std()
+    out = {}
+    for c in X.columns:
+        others = X.drop(columns=c).to_numpy()
+        A = np.column_stack([np.ones(len(X)), others])
+        coef = np.linalg.lstsq(A, X[c].to_numpy(), rcond=None)[0]
+        r2 = 1 - np.var(X[c].to_numpy() - A @ coef) / np.var(X[c].to_numpy())
+        out[c] = 1 / max(1 - r2, 1e-12)
+    return pd.Series(out)
+
+
+def bh(p):
+    """Benjamini-Hochberg q-values (false discovery rate)."""
+    p = np.asarray(p, float)
+    order = np.argsort(p)
+    q = p[order] * len(p) / np.arange(1, len(p) + 1)
+    q = np.minimum.accumulate(q[::-1])[::-1].clip(max=1)
+    out = np.empty_like(q)
+    out[order] = q
+    return out
+
+
+def corr_p(r, n):
+    """Two-sided p-value of a Pearson correlation (t test)."""
+    t = r * np.sqrt((n - 2) / np.maximum(1 - r * r, 1e-12))
+    return 2 * student_t.sf(np.abs(t), n - 2)
+
+
+# The audit's leads (section C), each added to the linear win and margin models in the full backtest.
+# team_total, the totals lead, was already tested in the full backtest (item 27: no clear gain).
+CORRELATION_GROUPS = {
+    "rookies": (["diff_rookies"], ("home_win", "margin")),
+    "impact-based (RAPM) stars out": (["diff_rapm_stars_out"], ("home_win", "margin")),
+    "Origin spine stars out": (["diff_origin_stars_out_spine"], ("home_win", "margin")),
+}
+
+
+def correlation_audit():
+    """Which features overlap, and which unused ones line up with what the main models get wrong.
+
+    A. Collinearity of the linear models' inputs (2021-2025 training rows): correlations and VIFs.
+    B. Redundant pairs among every candidate feature (|r| >= 0.8).
+    C. Residual screen: each feature's correlation with the main ensembles' out-of-sample errors on
+       the 2023-2025 backtest (reports/backtest_predictions.csv), next to its correlation with the
+       raw outcome. Correlating with the outcome but not the error means the model already has the
+       information. q-values control the false discovery rate over every test in the screen.
+    No models are fitted, so nothing here changes the pipeline; a lead still needs a backtest gain.
+    """
+    df = load()
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    groups = config.FEATURE_GROUPS
+    candidates = [f for g in groups.values() for f in g if f in df.columns]
+    candidates = list(dict.fromkeys(candidates))
+    missing = [f for g in groups.values() for f in g if f not in df.columns]
+    used_linear = {t: set(f) | set(models.linear_odds(t)) for t, f in LINEAR_FEATURES.items()}
+    used_lgb = set(models.lgb_features(config.LGB_COMPACT)) | set(groups["odds"])
+    print(f"{len(candidates)} candidate features ({len(missing)} not in features.csv: "
+          f"{', '.join(missing) or 'none'})")
+
+    # A. collinearity of the linear models' inputs
+    linear_union = list(dict.fromkeys(f for t in TARGETS for f in sorted(used_linear[t])))
+    train = df[df["season"] <= max(BACKTEST_SEASONS)]
+    corr = train[linear_union].corr()
+    vifs = []
+    for t in TARGETS:
+        for v in VARIANTS:
+            feats = list(LINEAR_FEATURES[t]) + (models.linear_odds(t) if v == "with_odds" else [])
+            X = train[feats].dropna()
+            for f, val in vif(X).items():
+                vifs.append({"target": t, "model": VARIANT_LABEL[v], "feature": f, "VIF": val})
+    vifs = pd.DataFrame(vifs)
+    vif_wide = vifs.pivot_table(index="feature", columns=["target", "model"], values="VIF")
+    vif_wide.columns = [f"{t}, {m}" for t, m in vif_wide.columns]
+
+    # B. redundant pairs among every candidate
+    c_all = train[candidates].corr()
+    pairs = [{"feature": a, "other": b, "r": c_all.loc[a, b]}
+             for i, a in enumerate(candidates) for b in candidates[i + 1:]
+             if abs(c_all.loc[a, b]) >= 0.8]
+    pairs = pd.DataFrame(pairs).sort_values("r", key=np.abs, ascending=False) if pairs else pd.DataFrame()
+
+    # C. residual screen on the backtest
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    test = test.loc[test.index.intersection(bt.index)]
+    rows = []
+    for v in VARIANTS:
+        for t in TARGETS:
+            resid = test[t] - bt.loc[test.index, f"{v}|{config.MAIN_MODEL}|{t}"]
+            for f in candidates:
+                x = test[f]
+                ok = x.notna() & resid.notna()
+                if ok.sum() < 50 or x[ok].std() == 0:
+                    continue
+                r = np.corrcoef(x[ok], resid[ok])[0, 1]
+                per = [np.corrcoef(x[ok & (test["season"] == s)], resid[ok & (test["season"] == s)])[0, 1]
+                       for s in BACKTEST_SEASONS]
+                if v == "no_odds" and f in groups["odds"]:
+                    continue  # the no-odds models leave the market out on purpose
+                in_model = ("linear" if f in used_linear[t] else "LightGBM only" if f in used_lgb
+                            else "experimental" if f in groups["experimental"] else "unused")
+                rows.append({"model": VARIANT_LABEL[v], "target": t, "feature": f, "in model": in_model,
+                             "games": int(ok.sum()), "r outcome": np.corrcoef(x[ok], test.loc[ok, t])[0, 1],
+                             "r error": r, "p": corr_p(r, ok.sum()),
+                             "seasons same sign": int(sum(np.sign(p_) == np.sign(r) for p_ in per)),
+                             **{f"r {s}": p_ for s, p_ in zip(BACKTEST_SEASONS, per)}})
+    screen = pd.DataFrame(rows)
+    screen["q"] = bh(screen["p"])
+    screen = screen.sort_values("p")
+    leads = screen[(screen["q"] < 0.1) & (screen["seasons same sign"] == len(BACKTEST_SEASONS))]
+    n_tests, n_p05 = len(screen), int((screen["p"] < 0.05).sum())
+    print(f"  {n_tests} tests, {n_p05} with p < 0.05 (about {0.05 * n_tests:.0f} expected by chance), "
+          f"{int((screen['q'] < 0.1).sum())} with q < 0.1, {len(leads)} also the same sign every season")
+
+    top = (screen[screen["in model"] != "linear"].groupby(["model", "target"], sort=False).head(5)
+           .sort_values(["target", "model", "p"]))
+    cols = ["model", "target", "feature", "in model", "r outcome", "r error", "p", "q", "seasons same sign",
+            *[f"r {s}" for s in BACKTEST_SEASONS]]
+    outcome_only = screen[(screen["in model"] != "linear") & (screen["r outcome"].abs() >= 0.15)]
+    outcome_only = (outcome_only.assign(drop=outcome_only["r outcome"].abs() - outcome_only["r error"].abs())
+                    .sort_values("drop", ascending=False).drop_duplicates("feature").head(10))
+
+    report = ["# Correlation audit (2021–2025)", "",
+              "Which inputs overlap, and whether any feature lines up with what the main models still get "
+              "wrong. Nothing is refitted, so this is a screen, not a test: a lead here still has to "
+              "improve the backtest before it is adopted. 2026 is not used.", "",
+              "## A. Overlap between the linear models' inputs", "",
+              "Variance inflation factor (VIF) of each input within each linear model, on the 2021–2025 "
+              "rows: 1 means the input is unrelated to the model's other inputs, above 5 means it is "
+              "largely explained by them and its coefficient alone is hard to read. Ridge and logistic "
+              "penalties keep the predictions stable either way.", "",
+              md_table(vif_wide.sort_index(), "{:.2f}"), "",
+              "Correlations between the inputs:", "",
+              md_table(corr.round(2), "{:.2f}"), "",
+              "## B. Near-duplicate features (|r| ≥ 0.8, all candidates)", "",
+              md_table(pairs.set_index("feature"), "{:.2f}") if len(pairs) else "None.", "",
+              "## C. Correlation with the main models' errors (2023–2025 backtest)", "",
+              f"Error = outcome − the {config.MAIN_MODEL}'s out-of-sample prediction (for the win, outcome − "
+              "probability, which is what the log loss would follow if the feature were added). "
+              f"{len(candidates)} features × 3 targets × 2 variants, less the odds for the no-odds models "
+              f"(left out on purpose) = {n_tests} tests: {n_p05} have "
+              f"p < 0.05, against about {0.05 * n_tests:.0f} expected by chance alone. `q` is the "
+              "Benjamini–Hochberg false discovery rate over all of them. `in model` says whether the "
+              "target's linear model already uses the feature, LightGBM only, or neither.", "",
+              f"**Leads** (q < 0.1 and the same sign in all {len(BACKTEST_SEASONS)} seasons): "
+              + (", ".join(f"`{r['feature']}` ({r['model']}, {r['target']}, r = {r['r error']:+.3f})"
+                           for _, r in leads.iterrows()) or "none") + ".", "",
+              "Strongest five per model and target, among features the linear model doesn't use:", "",
+              md_table(top[cols].set_index("model"), "{:.3f}"), "",
+              "### Related to the result, but already explained", "",
+              "Features outside the linear model that are most related to the outcome, with how much of "
+              "that is left in the errors. A large drop means the current inputs already carry the same "
+              "information.", "",
+              md_table(outcome_only[cols[:6]].set_index("model"), "{:.3f}"), ""]
+    (EXPERIMENTS / "experiments_correlation.md").write_text("\n".join(report), encoding="utf-8")
+    screen.to_csv(REPORTS / "correlation_screen.csv", index=False)
+    print("wrote reports/experiments/experiments_correlation.md and reports/correlation_screen.csv")
+
+
 def main():
     warnings.filterwarnings("ignore")
     df = load()
@@ -1814,7 +1979,8 @@ if __name__ == "__main__":
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
                                            "calibration", "weekly2", "blend", "shin",
-                                           "disagreement", "pre_kickoff", "weather"],
+                                           "disagreement", "pre_kickoff", "weather", "correlation",
+                                           "correlation_leads"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -1830,4 +1996,6 @@ if __name__ == "__main__":
      "calibration": calibration_experiments, "weekly2": weekly2_experiments,
      "blend": blend_experiments, "shin": shin_experiments,
      "disagreement": disagreement_experiments, "pre_kickoff": pre_kickoff_experiments,
-     "weather": weather_experiments}.get(args.only, main)()
+     "weather": weather_experiments, "correlation": correlation_audit,
+     "correlation_leads": lambda: context2_experiments(CORRELATION_GROUPS, "46", "experiments_correlation_leads.md",
+                                                       "Correlation audit leads")}.get(args.only, main)()

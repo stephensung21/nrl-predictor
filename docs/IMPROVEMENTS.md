@@ -203,6 +203,9 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | No odds in the models; the market as a separate expert in a learned blend (Footy Tipper) | +0.008 vs the with-odds ensemble (clearly worse) (item 39) |
 | Shin margin removal (benchmark and input) | ±0.001, no difference (items 26, 42) |
 | Weather at kickoff (Open-Meteo rain, wind, temperature) as model features, or instead of the recorded wet flag | total MAE −0.01 to +0.05, win −0.002, not clear (item 45) |
+| Rookies in the linear win and margin models (correlation audit lead) | win −0.001, margin −0.05: too small to adopt (item 46) |
+| RAPM-based stars out, re-tested on top of S2 (correlation audit lead) | win −0.001, margin −0.03 to −0.05: too small to adopt (item 46) |
+| Origin spine stars out on top of S2 (correlation audit lead) | ±0.0005, no effect (item 46) |
 
 ---
 
@@ -626,6 +629,24 @@ Footy Tipper trains on the team list as it stood 24 hours before kickoff. We use
 | Rain-amount model, forecast the day before | −0.11 | −0.13 (clear) |
 
 So the live totals lose about 0.1 points of MAE to the unknown weather, and a forecast wins back most of it, even Tuesday's. Win and margin don't use the flag and are unchanged. **Not adopted:** totals only, about 1% of their error, mostly not statistically clear, and the model features themselves didn't help. If the totals ever matter (betting on them, or a tipping question), the cheap change is filling the current wet flag from Open-Meteo's forecast in the predict and refresh jobs; the model stays as it is.
+
+### 46. Correlation audit ✅ (analysis); ❌ its leads
+
+A screen of the whole feature table instead of one idea at a time (`python src/experiments.py --only correlation` → `reports/experiments/experiments_correlation.md`; needs `features.py --experimental`). Nothing is refitted.
+
+**Overlap between the linear inputs (2021–25).** The team-strength inputs largely measure the same thing: `elo_logit`, `diff_rapm_total` and `diff_rapm_defence` correlate 0.82–0.90 with each other (VIF 5–14), and with the opening price (0.88–0.89). `open_logit` and `open_line` are near duplicates (r = −0.99, VIF about 70) and both sit in the with-odds models. The penalties keep the predictions stable, so this only matters for reading coefficients: no single strength input's coefficient means much on its own. The star, rookie and conditions inputs are close to independent (VIF 1.0–1.4).
+
+**What the errors still correlate with (2023–25 backtest, main ensembles).** 459 feature × target × variant tests: 38 have p < 0.05, against about 23 by chance, and 5 survive a 10% false discovery rate with the same sign in all three seasons. Four are about missing or inexperienced players: rookies (margin, both variants) and RAPM-based stars out (no-odds win and margin). The fifth is the team total rating (no-odds totals), already tested in item 27. Most of what correlates with the result (ladder position r = −0.23, Origin representatives 0.21, form points 0.20–0.29) is mostly gone from the errors (|r| ≤ 0.09): the model already has it, as items 18 and 27 found.
+
+**The leads in the full backtest** (`--only correlation_leads` → `experiments_correlation_leads.md`, ensembles):
+
+| Added to the linear win and margin models | Win log loss (with / no odds) | Margin MAE (with / no odds) |
+|---|---|---|
+| Rookies (`diff_rookies`, already in LightGBM) | −0.0008 / −0.0011 | −0.05 (clear) / −0.05 |
+| RAPM-based stars out (`diff_rapm_stars_out`) | −0.0011 / −0.0013 | −0.03 (clear) / −0.05 (clear) |
+| Origin spine stars out | −0.0004 / 0.0000 | −0.00 / −0.01 |
+
+**Not adopted:** the signal is real, since the screen found it and the backtest agrees on direction, but it's the size of the capped-target change that was left out (margin −0.03, win −0.0005). The screen itself also reused the backtest. If 2027's graded season shows the same pattern in the live errors, rookies is the one to revisit: it's already computed and in LightGBM, so the change is one line in `LINEAR_FEATURES`.
 
 ---
 
