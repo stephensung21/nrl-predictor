@@ -393,7 +393,8 @@ export function RecapPanel({
 
 /* ---------- Empty and error states ---------- */
 
-export function EmptyState({ kind }: { kind: keyof typeof emptyCopy }) {
+/** `lastRound`: in the off-season, the finished season's last round, to look back from. */
+export function EmptyState({ kind, lastRound }: { kind: keyof typeof emptyCopy; lastRound?: { season: number; round: number } }) {
   const c = emptyCopy[kind];
   return (
     <section className="pt-16 pb-8" aria-live={kind === "error" ? "polite" : undefined}>
@@ -408,10 +409,21 @@ export function EmptyState({ kind }: { kind: keyof typeof emptyCopy }) {
           Try again
         </a>
       ) : (
-        <Link href="/elo" className="mt-6 inline-flex items-center gap-1 text-[15px] font-semibold text-ink underline decoration-line">
-          Look at the Elo ratings instead
-          <ChevronRight className="size-4" aria-hidden />
-        </Link>
+        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
+          {lastRound && (
+            <Link
+              href={`/round/${lastRound.season}/${lastRound.round}`}
+              className="group inline-flex items-center gap-1 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-[oklch(0.94_0.19_126)]"
+            >
+              Look back at {lastRound.season}&rsquo;s rounds
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} aria-hidden />
+            </Link>
+          )}
+          <Link href="/elo" className="inline-flex items-center gap-1 text-[15px] font-semibold text-ink underline decoration-line">
+            {lastRound ? "Or the Elo ratings" : "Look at the Elo ratings instead"}
+            <ChevronRight className="size-4" aria-hidden />
+          </Link>
+        </div>
       )}
     </section>
   );

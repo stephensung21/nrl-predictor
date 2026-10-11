@@ -104,7 +104,7 @@ export async function liveRound(season: number, round: number): Promise<LiveRoun
 }
 
 export type LiveHome =
-  | { kind: "offseason"; record: ModelRecord | null }
+  | { kind: "offseason"; record: ModelRecord | null; lastRound: { season: number; round: number } | null }
   | { kind: "round"; round: RoundData; record: ModelRecord | null; recap: string | null };
 
 /** What the home page shows from the database: the round in play, or the off-season once the
@@ -115,16 +115,19 @@ export async function liveHome(now: Date): Promise<LiveHome | undefined> {
   const [latest] = await sql`
     select max(m.season) as season from matches m join prediction_of_record p on p.match_id = m.id`;
   const season: number | null = latest?.season ?? null;
-  if (season == null) return { kind: "offseason", record: null };
+  if (season == null) return { kind: "offseason", record: null, lastRound: null };
   const record = await modelRecord(sql, season);
+  const [last] = await sql`
+    select max(m.round) as round from matches m join prediction_of_record p on p.match_id = m.id where m.season = ${season}`;
+  const lastRound = last?.round != null ? { season, round: last.round as number } : null;
   const [state] = await sql`
     select count(*) filter (where status not in ('final', 'cancelled'))::int as open, max(kickoff) as last
     from matches where season = ${season}`;
   const week = 7 * 24 * 3600 * 1000;
-  if (state.open === 0 && now.getTime() - new Date(state.last).getTime() > week) return { kind: "offseason", record };
+  if (state.open === 0 && now.getTime() - new Date(state.last).getTime() > week) return { kind: "offseason", record, lastRound };
   const round = await currentRound(sql, season);
   const data = round == null ? null : await roundData(sql, season, round);
-  if (!data) return { kind: "offseason", record };
+  if (!data) return { kind: "offseason", record, lastRound };
   const recap = await summary(sql, "round_recap", season, data.round);
   return { kind: "round", round: data, record, recap: recap?.body ?? null };
 }
