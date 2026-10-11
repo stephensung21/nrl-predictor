@@ -62,9 +62,14 @@ export type Standing = {
   roundGraded: number;
 };
 
+/** A round's name: nrl.com's title when known ("Grand Final"), otherwise "Round 12". */
+export const roundName = (round: number, title?: string) => title ?? `Round ${round}`;
+
 export type RoundView = {
   season: number;
   round: number;
+  /** "Round 12", "Finals Week 1", "Grand Final". */
+  title: string;
   phase: Phase;
   games: Game[];
   featured: Game;
@@ -152,6 +157,7 @@ export function buildRound(opts: {
   return {
     season: data.season,
     round: data.round,
+    title: roundName(data.round, data.matches[0]?.roundTitle),
     phase,
     games,
     featured: games.find((g) => g.featured) ?? games[0],

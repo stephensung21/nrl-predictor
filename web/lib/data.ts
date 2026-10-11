@@ -15,18 +15,20 @@ const num = (v: unknown) => (v == null ? null : Number(v));
 type MatchRow = {
   id: string; season: number; round: number; kickoff: Date; home_team: string; away_team: string;
   venue: string | null; city: string | null; status: string; home_score: number | null; away_score: number | null;
+  round_title: string | null;
 };
 
 function toMatch(r: MatchRow): Match {
   return {
-    id: String(r.id), season: r.season, round: r.round, kickoff: iso(r.kickoff),
+    id: String(r.id), season: r.season, round: r.round, ...(r.round_title ? { roundTitle: r.round_title } : {}),
+    kickoff: iso(r.kickoff),
     home: r.home_team as TeamName, away: r.away_team as TeamName, venue: r.venue ?? "", city: r.city ?? "",
     ...(r.status === "postponed" ? { postponed: true } : {}),
     ...(r.status === "final" ? { homeScore: r.home_score!, awayScore: r.away_score! } : {}),
   };
 }
 
-const MATCH_COLS = "m.id, m.season, m.round, m.kickoff, m.home_team, m.away_team, m.venue, m.city, m.status, m.home_score, m.away_score";
+const MATCH_COLS = "m.id, m.season, m.round, m.round_title, m.kickoff, m.home_team, m.away_team, m.venue, m.city, m.status, m.home_score, m.away_score";
 
 /* ---------- rounds ---------- */
 
@@ -122,8 +124,8 @@ export async function matchDetail(sql: Sql, matchId: string): Promise<MatchDetai
   const lists = await sql<ListRow[]>`
     select team, fetched_at, player_name, jersey_number, position from team_lists
     where match_id = ${matchId} and fetched_at < ${m.kickoff}`;
-  const h2h = await sql.unsafe<(MatchRow & { round_title: string | null })[]>(
-    `select ${MATCH_COLS}, m.round_title from matches m
+  const h2h = await sql.unsafe<MatchRow[]>(
+    `select ${MATCH_COLS} from matches m
      where m.status = 'final' and m.kickoff < $1
        and ((m.home_team = $2 and m.away_team = $3) or (m.home_team = $3 and m.away_team = $2))
      order by m.kickoff desc limit 5`, [m.kickoff, m.home_team, m.away_team]);
@@ -155,6 +157,7 @@ export async function oddsRounds(sql: Sql, season: number): Promise<OddsRound[]>
      where m.season = $1 and m.status = 'final' and p.no_odds_home_win_prob is not null
      order by m.round, m.kickoff, m.id`, [season]);
   const byRound = new Map<number, OddsGame[]>();
+  const titles = new Map<number, string>();
   for (const r of rows) {
     const game: OddsGame = {
       matchId: String(r.id), kickoff: iso(r.kickoff), home: r.home_team as TeamName, away: r.away_team as TeamName,
@@ -165,8 +168,9 @@ export async function oddsRounds(sql: Sql, season: number): Promise<OddsRound[]>
       openTotal: num(r.open_total), closeTotal: num(r.close_total), bookmaker: r.bookmaker,
     };
     byRound.set(r.round, [...(byRound.get(r.round) ?? []), game]);
+    if (r.round_title) titles.set(r.round, r.round_title);
   }
-  return [...byRound].map(([round, games]) => ({ round, games }));
+  return [...byRound].map(([round, games]) => ({ round, ...(titles.has(round) ? { title: titles.get(round) } : {}), games }));
 }
 
 /** The season's graded games for the model-vs-market scoreboard: the no-odds Model (independent of

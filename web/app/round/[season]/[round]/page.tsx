@@ -6,7 +6,7 @@ import { SampleNote } from "@/components/sample-note";
 import { emptyCopy } from "@/lib/copy";
 import { CURRENT_ROUND, SAMPLE_ROUNDS, sampleRoundView } from "@/lib/match";
 import { buildRound } from "@/lib/round";
-import { liveRound, type LiveRound } from "@/lib/source";
+import { liveRound, liveRoundTitle, type LiveRound } from "@/lib/source";
 
 const SEASON = 2026;
 const LAST_ROUND = 27;
@@ -14,7 +14,10 @@ const LAST_ROUND = 27;
 type Props = { params: Promise<{ season: string; round: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return { title: `Round ${(await params).round} · rugbyleague-tipper` };
+  const p = await params;
+  const [season, round] = [Number(p.season), Number(p.round)];
+  const live = Number.isInteger(season) && Number.isInteger(round) ? await liveRoundTitle(season, round) : null;
+  return { title: `${live ?? `Round ${p.round}`} · rugbyleague-tipper` };
 }
 
 /** Rounds with a page worth stepping to: the sample rounds, then the next one (not predicted yet). */
@@ -89,9 +92,10 @@ export default async function RoundPage({ params }: Props) {
 function LiveRoundPage({ live }: { live: LiveRound }) {
   const { season, round } = live.round;
   const view = buildRound({ data: live.round, now: new Date(), tips: [], tippers: [], ladderBefore: [] });
-  const to = (r?: number) => (r == null ? undefined : { round: r, href: `/round/${season}/${r}` });
-  const prev = to(live.rounds.filter((r) => r < round).at(-1));
-  const next = to(live.rounds.find((r) => r > round));
+  const to = (r?: LiveRound["rounds"][number]) =>
+    r == null ? undefined : { round: r.round, title: r.title ?? undefined, href: `/round/${season}/${r.round}` };
+  const prev = to(live.rounds.filter((r) => r.round < round).at(-1));
+  const next = to(live.rounds.find((r) => r.round > round));
   const done = view.games.filter((g) => g.status === "final");
   return (
     <main>

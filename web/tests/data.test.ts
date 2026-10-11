@@ -93,6 +93,7 @@ describe("the site's data layer", () => {
     expect(r.featuredMatchId).toBe("4");
     expect(r.predictions[0]).toMatchObject({ matchId: "3", homeWinProb: 0.35, homePred: 18, awayPred: 24, updated: "Team list change" });
     expect(r.matches[0]).toMatchObject({ home: "Broncos", away: "Storm", venue: "Suncorp Stadium", kickoff: "2027-03-13T08:00:00.000Z" });
+    expect(r.matches[0].roundTitle).toBe("Round 2"); // nrl.com's name, "Grand Final" for the last week
     expect(r.matches[0].homeScore).toBeUndefined();
     const done = (await roundData(sql, 2027, 1))!;
     expect(done.featuredMatchId).toBe("1"); // not drawn: the first game stands in
@@ -118,7 +119,7 @@ describe("the site's data layer", () => {
 
   it("puts the no-odds model against the market for finished games", async () => {
     const rounds = await oddsRounds(sql, 2027);
-    expect(rounds.map((r) => r.round)).toEqual([1]);
+    expect(rounds.map((r) => [r.round, r.title])).toEqual([[1, "Round 1"]]);
     expect(rounds[0].games[0]).toMatchObject({ matchId: "1", modelHomeProb: 0.66, openLine: -4.5, bookmaker: "BlueBet" });
     expect(rounds[0].games[1].openHomeProb).toBeNull(); // no prices for game 2
   });

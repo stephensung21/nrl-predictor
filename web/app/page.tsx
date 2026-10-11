@@ -36,7 +36,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   if (state === "pending" || state === "offseason" || state === "error") {
     return (
       <main>
-        <EmptyState kind={state} />
+        {/* The sample's off-season looks back at its latest replayed round. */}
+        <EmptyState kind={state} lastRound={state === "offseason" ? { season: round10.season, round: round10.round } : undefined} />
         <ModelRecordStrip record={modelRecord} />
         <SampleBar state={state} signedIn={signedIn} />
       </main>
@@ -94,7 +95,7 @@ function LiveHomePage({ live }: { live: LiveHome }) {
   if (live.kind === "offseason") {
     return (
       <main>
-        <EmptyState kind="offseason" />
+        <EmptyState kind="offseason" lastRound={live.lastRound ?? undefined} />
         {live.record && <ModelRecordStrip record={live.record} />}
       </main>
     );

@@ -161,7 +161,14 @@ async function LiveTipsPage({ round }: { round: RoundData | null }) {
 
   return (
     <main>
-      <TipList season={round.season} round={round.round} games={games} initialTips={initial} initialMargin={margin} />
+      <TipList
+        season={round.season}
+        round={round.round}
+        title={round.matches[0]?.roundTitle}
+        games={games}
+        initialTips={initial}
+        initialMargin={margin}
+      />
     </main>
   );
 }
