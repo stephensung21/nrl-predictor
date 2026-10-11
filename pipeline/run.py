@@ -8,7 +8,8 @@ without a price get the no-odds prediction. `--job odds` runs the fetch on its o
 (after the round's last game, when the next round's markets open) so opening prices are caught early.
 
 - results (Monday): scrape the current season's finished games into the processed tables, then grade
-  every finished game that has a prediction of record and write the season report.
+  every finished game that has a prediction of record and write the season report, and the paper
+  trading record at live prices (paper.py).
 - predict (Tuesday, after team lists): work out which games are next (`draw.games_to_predict`),
   fetch their team lists, draw the round's margin game if it hasn't been drawn (`margin_game`),
   predict with the frozen models, validate, and record the predictions.
@@ -44,6 +45,7 @@ import config
 import draw as drawlib
 import fetch_odds
 import grade as gradelib
+import paper
 import predict
 from features import PRE_KICKOFF_FILE
 from ingest import join_odds_to_matches, load_odds
@@ -186,6 +188,11 @@ def results_job(season, now, replay, records, run):
                                            encoding="utf-8")
     run["games"] = int(len(graded))
     print(gradelib.metrics(graded).round(4).to_string())
+    if not replay:  # live prices exist only for live seasons
+        seen = pd.concat([matches[matches["season"] == season], records.fixtures()], ignore_index=True)
+        bets = paper.write(records, season, seen.drop_duplicates("match_id", keep="last"),
+                           records.odds_snapshots(), gradelib.prediction_of_record(records.predictions()))
+        run["paper_bets"] = int(bets["profit"].notna().sum())
     return graded
 
 
