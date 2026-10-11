@@ -1,21 +1,22 @@
-// Sign-in, invites and the viewer's profile. Pages talk only to the AuthStore
-// interface, so the browser mock used for the sample can be swapped for Supabase
-// (auth with Google and email links, the `invites` and `profiles` tables; PLAN_WEB.md
-// §2 and §3.5) by changing `createAuthStore()` below.
+// Sign-in, invites and the viewer's profile. Pages talk only to the AuthStore interface:
+// the browser mock for the sample, or Supabase when it's configured (auth with Google and
+// email links, the `invites` and `profiles` tables; PLAN_WEB.md §2 and §3.5).
 //
-// The flow matches Supabase's: starting a sign-in leaves the page (Google) or sends an
-// email; either way the browser comes back through /auth/callback, which completes it
-// and returns to where the visitor started. Supabase notes for the swap:
-// - `intent: "sign-in"` maps to `shouldCreateUser: false` for email, plus a
-//   before-user-created hook for Google, so signing in never creates an account.
-// - `checkInvite` needs a security-definer RPC returning only status and inviter
-//   (invites are admin-only under row-level security).
-// - `saveProfile` with an invite code must check and redeem the invite in one transaction.
-// - `deleteAccount` needs a server route holding the service key to delete the auth user.
-// - Google writes name and avatar into auth metadata: strip them, since we keep only
-//   what PRODUCT.md lists.
+// The flow is Supabase's: starting a sign-in leaves the page (Google) or sends an email;
+// either way the browser comes back through /auth/callback, which completes it and returns
+// to where the visitor started. How the live store keeps to the comp's rules:
+// - Joining is the only way into the comp: `join_comp()` checks and redeems the invite and
+//   makes the profile in one transaction. An email sign-in (not a join) never creates a
+//   sign-in (`shouldCreateUser: false`). Google always creates one, but without an invite
+//   there's no profile, so it's signed straight back out and can do nothing.
+// - `checkInvite` is the security-definer `check_invite()`: only the status and who sent it.
+// - Deleting an account goes through a server route holding the service key (/api/account).
+// - Still to do: strip the name and avatar Google writes into the sign-in's metadata, since we
+//   keep only what PRODUCT.md lists (a trigger on auth.users in the live project).
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { inviteStatus, readInvites, redeemInvite, SAMPLE_CLOCK } from "./invites";
+import { browserClient, tippingLive } from "./supabase";
 import type { AutoTip } from "./rules";
 import type { TeamName } from "./teams";
 
@@ -53,6 +54,8 @@ export interface AuthStore {
   deleteAccount(): Promise<void>;
   /** The admin flag on `profiles`: shows the admin page and its menu item. */
   isAdmin(): Promise<boolean>;
+  /** Whether the auto-tip choice is fixed: once the season's first game has kicked off (PLAN_WEB.md §3.5). */
+  autoTipLocked(): Promise<boolean>;
 }
 
 /** Display names are what the ladder shows: short, and unique in the comp in production. */
@@ -96,6 +99,10 @@ export function sampleEmailLink(email: string, intent: Intent, returnTo: string)
 export class BrowserAuthStore implements AuthStore {
   async isAdmin() {
     return true; // the sample's viewer runs the comp
+  }
+
+  async autoTipLocked() {
+    return SEASON_UNDER_WAY_SAMPLE;
   }
 
   async checkInvite(code: string): Promise<Invite> {
@@ -164,9 +171,142 @@ export class BrowserAuthStore implements AuthStore {
   }
 }
 
-/** The store the site uses. Replace with a Supabase-backed AuthStore when the backend exists. */
+// ---------- Live: Supabase ----------
+
+/** What join_comp() and the profile constraints say, in the site's words. */
+function joinProblem(message: string): string {
+  if (message.includes("invite already used")) return "That invite’s been used. Ask for a fresh link.";
+  if (message.includes("invite expired")) return "That invite has expired. Ask for a fresh link.";
+  if (message.includes("unknown invite")) return "That invite link doesn’t work. Ask for a fresh one.";
+  if (message.includes("already in the comp")) return "You’re already in the comp.";
+  if (message.includes("sign in first")) return "Sign in first.";
+  if (message.includes("auto-tip choice is locked")) return "The auto-tip choice is locked for this season.";
+  return "Couldn’t save. Try again.";
+}
+
+const callbackUrl = (intent: Intent, returnTo: string) =>
+  `${window.location.origin}/auth/callback?${new URLSearchParams({ intent, next: safeNext(returnTo) })}`;
+
+export class SupabaseAuthStore implements AuthStore {
+  constructor(private readonly sb: SupabaseClient = browserClient()) {}
+
+  async checkInvite(code: string): Promise<Invite> {
+    const clean = code.trim().toUpperCase();
+    const { data, error } = await this.sb.rpc("check_invite", { p_code: clean });
+    if (error) throw error;
+    const row = (data as { status: Invite["status"]; invited_by: string | null }[])[0];
+    if (row?.status === "valid") return { status: "valid", code: clean, invitedBy: row.invited_by ?? "A mate" };
+    return { status: row?.status === "used" || row?.status === "expired" ? row.status : "unknown", code: clean };
+  }
+
+  async session(): Promise<Session | null> {
+    const { data } = await this.sb.auth.getSession();
+    const user = data.session?.user;
+    if (!user) return null;
+    return { userId: user.id, email: user.email ?? "", provider: user.app_metadata?.provider === "google" ? "google" : "email" };
+  }
+
+  async startSignIn(method: SignInMethod, opts: { intent: Intent; returnTo: string }) {
+    const redirectTo = callbackUrl(opts.intent, opts.returnTo);
+    if (method.provider === "google") {
+      const { error } = await this.sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+      if (error) throw new Error("Couldn’t reach Google. Try again.");
+      return "redirecting" as const;
+    }
+    const problem = emailProblem(method.email);
+    if (problem) throw new Error(problem);
+    const { error } = await this.sb.auth.signInWithOtp({
+      email: method.email.trim(),
+      // Only joining (with an invite) may create an account.
+      options: { shouldCreateUser: opts.intent === "join", emailRedirectTo: redirectTo },
+    });
+    if (error) {
+      if (opts.intent === "sign-in" && /signups? not allowed|user not found/i.test(error.message)) {
+        throw new Error("No account for that email. The comp is invite-only: use the address you joined with.");
+      }
+      if (error.status === 429) throw new Error("Too many emails just now. Wait a minute and try again.");
+      throw new Error("Couldn’t send the email. Try again.");
+    }
+    return "sent" as const;
+  }
+
+  async completeSignIn(params: URLSearchParams) {
+    const next = safeNext(params.get("next"));
+    const code = params.get("code");
+    if (!code) return { next: "/sign-in?link-failed=1" };
+    const { error } = await this.sb.auth.exchangeCodeForSession(code);
+    if (error) return { next: "/sign-in?link-failed=1" };
+    if (params.get("intent") === "sign-in" && !(await this.profile())) {
+      await this.signOut();
+      return { next: "/sign-in?no-account=1" };
+    }
+    return { next };
+  }
+
+  async signOut() {
+    await this.sb.auth.signOut();
+  }
+
+  async profile(): Promise<Profile | null> {
+    const s = await this.session();
+    if (!s) return null;
+    const { data, error } = await this.sb.from("profiles").select("display_name, fav_team, auto_tip").eq("id", s.userId).maybeSingle();
+    if (error) throw error;
+    return data ? { name: data.display_name, favTeam: data.fav_team as TeamName, autoTip: data.auto_tip as AutoTip } : null;
+  }
+
+  async saveProfile(p: Profile, inviteCode?: string) {
+    const s = await this.session();
+    if (!s) throw new Error("Sign in first.");
+    const problem = nameProblem(p.name);
+    if (problem) throw new Error(problem);
+    const existing = await this.profile();
+    if (!existing) {
+      if (!inviteCode) throw new Error("Joining needs a valid invite link.");
+      const { error } = await this.sb.rpc("join_comp", {
+        p_code: inviteCode, p_display_name: p.name.trim(), p_fav_team: p.favTeam, p_auto_tip: p.autoTip,
+      });
+      if (error) throw new Error(joinProblem(error.message));
+      return;
+    }
+    // The auto-tip is sent only when it changes: once the season starts the database refuses any change.
+    const change: Record<string, string> = { display_name: p.name.trim(), fav_team: p.favTeam };
+    if (p.autoTip !== existing.autoTip) change.auto_tip = p.autoTip;
+    const { error } = await this.sb.from("profiles").update(change).eq("id", s.userId);
+    if (error) throw new Error(joinProblem(error.message));
+  }
+
+  async deleteAccount() {
+    const res = await fetch("/api/account", { method: "DELETE" });
+    if (!res.ok) throw new Error("Couldn’t delete your account. Try again.");
+    await this.sb.auth.signOut();
+  }
+
+  async isAdmin() {
+    if (!(await this.session())) return false;
+    const { data, error } = await this.sb.rpc("is_admin");
+    return !error && data === true;
+  }
+
+  async autoTipLocked() {
+    // As the database's lock_auto_tip(): this calendar year's season, once a game has kicked off.
+    const now = new Date();
+    const { count, error } = await this.sb
+      .from("matches").select("id", { count: "exact", head: true })
+      .eq("season", now.getFullYear()).lte("kickoff", now.toISOString());
+    return !error && (count ?? 0) > 0;
+  }
+}
+
+/**
+ * Email links need custom SMTP (Supabase's own email reaches only the project's members), so the
+ * live comp offers Google only for now. The sample keeps both, to show the design.
+ */
+export const EMAIL_SIGN_IN = !tippingLive;
+
+/** The store the site uses: Supabase when it's configured, this browser otherwise. */
 export function createAuthStore(): AuthStore {
-  return new BrowserAuthStore();
+  return tippingLive ? new SupabaseAuthStore() : new BrowserAuthStore();
 }
 
 /** Auto-tip can change until the season's first game locks (PLAN_WEB.md §3.5). The sample is mid-season. */

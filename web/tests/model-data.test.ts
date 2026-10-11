@@ -270,3 +270,55 @@ describe("postponed games in the tipping scores", () => {
     expect(await round3()).toEqual([{ correct: 2, games: 2, partial: false }]);
   });
 });
+
+describe("the admin's still-to-tip counts", () => {
+  let db: PGlite;
+  beforeAll(async () => {
+    db = await freshDatabase();
+    await db.exec(`
+      insert into auth.users (id) values ('${admin}'), ('${amy}'), ('${ben}');
+      insert into profiles (id, display_name, is_admin) values ('${admin}', 'Sully', true), ('${amy}', 'Amy', false), ('${ben}', 'Ben', false);
+      insert into matches (id, season, round, kickoff, home_team, away_team) values
+        (1, 2027, 1, now() + interval '1 day', 'Storm', 'Broncos'),
+        (2, 2027, 1, now() + interval '2 days', 'Eels', 'Panthers'),
+        (3, 2027, 2, now() + interval '9 days', 'Roosters', 'Rabbitohs');
+      insert into tips (user_id, match_id, team) values
+        ('${amy}', 1, 'Storm'), ('${amy}', 2, 'Eels'), ('${ben}', 1, 'Broncos'), ('${ben}', 3, 'Roosters');
+    `);
+  });
+
+  const counts = (who: string | null) =>
+    as(db, who, () => rows<{ user_id: string; tipped: number }>(db, "select * from admin_tip_counts(2027, 1) order by user_id"));
+
+  it("gives the admin how many of the round's games each tipper has tipped, not what", async () => {
+    expect(await counts(admin)).toEqual([{ user_id: amy, tipped: 2 }, { user_id: ben, tipped: 1 }]);
+  });
+
+  it("gives a tipper nothing, and a visitor no access", async () => {
+    expect(await counts(amy)).toEqual([]);
+    await expect(counts(null)).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("an invite after its tipper leaves", () => {
+  let db: PGlite;
+  beforeAll(async () => {
+    db = await freshDatabase();
+    await db.exec(`
+      insert into auth.users (id) values ('${admin}'), ('${amy}'), ('${ben}');
+      insert into profiles (id, display_name, is_admin) values ('${admin}', 'Sully', true);
+      insert into invites (code, created_by) values ('MATES27', '${admin}');
+    `);
+    await as(db, amy, () => db.query("select join_comp('MATES27', 'Amy', 'Storm', 'home')"));
+    // Amy deletes her account: the sign-in goes, her profile with it, and the invite's used_by is cleared.
+    await db.exec(`delete from auth.users where id = '${amy}'`);
+  });
+
+  it("stays used, so nobody else can join with it", async () => {
+    const [invite] = await rows<{ used_by: string | null; used_at: Date | null }>(db, "select used_by, used_at from invites");
+    expect(invite.used_by).toBeNull();
+    expect(invite.used_at).not.toBeNull();
+    expect(await as(db, null, async () => (await db.query("select status from check_invite('MATES27')")).rows[0])).toEqual({ status: "used" });
+    await expect(as(db, ben, () => db.query("select join_comp('MATES27', 'Ben', 'Eels', 'home')"))).rejects.toThrow(/invite already used/);
+  });
+});
