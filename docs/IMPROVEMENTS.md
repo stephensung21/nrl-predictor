@@ -6,25 +6,25 @@ The goal is to beat the bookmakers' closing odds.
 
 The main yardstick is now the **2023–2025 backtest** (`python src/train.py --backtest`). For each season, the whole development procedure is rerun on earlier seasons only, then that season is predicted: 631 out-of-sample games in total. A single dev season (212 games) proved too noisy to judge by. 2025 alone once suggested the no-odds model beat the market, and the backtest showed that was luck.
 
-**Main models: the ensemble for both variants** (`MAIN_MODEL` in `config.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble is within 0.001 of with-odds linear (0.6220 vs 0.6209). The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
+**Main models: the ensemble for both variants** (`MAIN_MODEL` in `config.py`): with-odds ensemble and no-odds ensemble, each the 50/50 average of the linear model and LightGBM. On the pooled backtest the with-odds ensemble is level with with-odds linear (both 0.6209) and has the lower margin error. The ensemble was chosen as the more robust option, and since LightGBM was rebuilt (item 4) it no longer drags the ensemble down. All model types are still fitted and reported.
 
 Pooled backtest results for the current setup:
 
 | | Win log loss | Margin MAE | Total MAE |
 |---|---|---|---|
-| **With-odds ensemble** (main model) | 0.622 | **13.49** | 10.78 |
+| **With-odds ensemble** (main model) | **0.621** | **13.48** | 10.78 |
 | With-odds linear | **0.621** | 13.53 | **10.72** |
-| **No-odds ensemble** (main model) | 0.627 | 13.52 | 10.83 |
+| **No-odds ensemble** (main model) | 0.626 | 13.51 | 10.83 |
 | No-odds linear | 0.626 | 13.56 | 10.81 |
-| With-odds LightGBM | 0.629 | 13.56 | 10.91 |
+| With-odds LightGBM | 0.626 | 13.53 | 10.89 |
 | Market closing (Odds Portal average) | 0.620 | – | 10.72 |
 | Market opening | 0.633 | 13.66 | 10.84 |
 | Elo only | 0.638 | – | – |
 
-- **Win probability:** the with-odds ensemble is 0.002 behind the market average (95% interval −0.012 to +0.015) and with-odds linear 0.0005 behind, essentially level, down from +0.024 at the start of the backtest work. (The per-season and real-closing-odds figures below are from before the star absences and BlueBet inputs were added.) By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
+- **Win probability:** the with-odds ensemble and with-odds linear are both 0.0005 behind the market average (ensemble: 95% interval −0.013 to +0.014), essentially level, down from +0.024 at the start of the backtest work. (The per-season and real-closing-odds figures below are from before the star absences and BlueBet inputs were added.) By season it was behind in 2023 (0.595 vs 0.576) and slightly ahead in 2024 (0.631 vs 0.636) and 2025 (0.647 vs 0.648). Against real closing odds (271 reliable games, mostly 2023) it's still clearly behind (0.604 vs 0.588). It beats the opening market and Elo.
 - **Margin:** the models beat the opening line on average error, but not on line-cover probability (item 14).
 - **Totals:** with-odds linear is level with the closing total and beats the opening total.
-- **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +9–13% ROI (with-odds ensemble +12.6%, interval +3.0% to +22%), but almost all of it comes from team news the opening price doesn't yet reflect, and every market loses at closing prices (item 7).
+- **Betting:** no bettable edge shown yet. Against opening prices, head-to-head bets made +10–13% ROI at a 0% edge (with-odds ensemble +12.9%, interval +3.1% to +23%), but almost all of it comes from team news the opening price doesn't yet reflect, and head-to-head and line bets lose at closing prices (item 7).
 - **Caveat:** the backtest has informed many decisions (fixed feature sets, the rain flag, the adopted combination), so these numbers are somewhat optimistic. The 2026 final test below is the honest verdict.
 
 ### Final test: 2026 (run once, 9 October 2026, commit `c43c38e`)
@@ -85,7 +85,7 @@ Reopened once the ensemble became the main model, since LightGBM is half of it. 
 - **Stability:** with Optuna on the full ~50 features, a different random seed moved each game's win probability by about **3 percentage points** on average. Fixed settings averaged over 5 seeds: **0.4–0.6 points**, about six times more stable.
 - **Accuracy:** a compact feature set was the biggest gain (the full set overfit). LightGBM alone improved from 0.640 to **0.630** with odds and from 0.638 to 0.634 without. The with-odds ensemble went from 0.628 to **0.6245**, margin 13.61 → 13.51, and **total clearly better** (10.85 → 10.78). The no-odds ensemble was about unchanged on win (0.6281 → 0.6279).
 
-**Adopted:** fixed conservative settings (depth 2, learning rate 0.02, at least 40 games per leaf, L2 10, 70% of features and 80% of games per tree; only the number of trees chosen by CV), on a **compact set of 16 features** (every linear-model feature plus RAPM attack, RAPM missing, rookies, rest days, travel, neutral venue and finals flag; plus the 3 opening-odds features for the with-odds model), **averaged over 5 seeds** (`LGB_TUNING`, `LGB_FIXED`, `LGB_COMPACT`, `LGB_SEEDS` in `config.py`). These settings were chosen in advance, not tuned on the backtest. The backtest now takes about 10 seconds instead of about 10 minutes. `--tune-lgb` restores Optuna on the full feature set.
+**Adopted:** fixed conservative settings (depth 2, learning rate 0.02, at least 40 games per leaf, L2 10, 70% of features and 80% of games per tree; only the number of trees chosen by CV), on a **compact set of 16 features** (every linear-model feature plus RAPM attack, RAPM missing, rookies, rest days, travel, neutral venue and finals flag; RAPM attack and the finals flag were dropped in item 47, leaving 14; plus the 3 opening-odds features for the with-odds model), **averaged over 5 seeds** (`LGB_TUNING`, `LGB_FIXED`, `LGB_COMPACT`, `LGB_SEEDS` in `config.py`). These settings were chosen in advance, not tuned on the backtest. The backtest now takes about 10 seconds instead of about 10 minutes. `--tune-lgb` restores Optuna on the full feature set.
 
 Betting with the new ensembles (opening prices, 0% minimum edge): with-odds head-to-head +9.8% (95% interval +0.9% to +19%), −4.7% at closing prices. Same story as before: the edge is against opening prices only.
 
@@ -649,7 +649,7 @@ A screen of the whole feature table instead of one idea at a time (`python src/e
 
 **Not adopted:** the signal is real, since the screen found it and the backtest agrees on direction, but it's the size of the capped-target change that was left out (margin −0.03, win −0.0005). The screen itself also reused the backtest. If 2027's graded season shows the same pattern in the live errors, rookies is the one to revisit: it's already computed and in LightGBM, so the change is one line in `LINEAR_FEATURES`.
 
-### 47. LightGBM's extra features ❌ dropping all; 🔶 dropping RAPM attack
+### 47. LightGBM's extra features ❌ dropping all; ✅ dropping RAPM attack and the finals flag
 
 LightGBM's compact set is every linear-model feature plus eight extras (`LGB_COMPACT_EXTRA`). Dropping all eight improved the backtest's win models, so each was tested on its own (`python src/experiments.py --only lgb_extras` → `reports/experiments/experiments_lgb_extras.md`): the current set without it, and no extras but it. Main ensembles, win log loss with / no odds:
 
@@ -665,7 +665,7 @@ LightGBM's compact set is every linear-model feature plus eight extras (`LGB_COM
 - **No extra helps on its own:** each one alone is worse than no extras by 0 to +0.0015 (attack the worst, then rookies and rest days). The backtest gain from dropping all eight is spread thinly over them, and 2026 doesn't repeat it, so it was mostly luck. **Not adopted.**
 - **`is_final` is dead weight**, unused by the trees.
 
-**Open:** dropping `diff_rapm_attack` (and `is_final`) is a simplification with a reason behind it, not a tuned gain, and it points the right way on both. The gain is small (−0.0004 to −0.0011), so by the adoption rule it waits on a decision; adopting it means refreezing the 2027 models (`train.py --freeze --force`).
+**Adopted (12 October 2026):** `diff_rapm_attack` and `is_final` dropped from `LGB_COMPACT_EXTRA`, as a simplification with a reason behind it rather than a tuned gain: it points the right way on the backtest and on 2026. Pooled backtest: with-odds ensemble win 0.6220 → **0.6209**, margin 13.49 → 13.48, accuracy 64.3% → 65.3%; no-odds ensemble 0.6266 → 0.6255; totals unchanged. **Still to do:** refreeze the 2027 models (`python src/train.py --freeze --force`) before Round 1. `models/2027/` was frozen on 10 October with the old set; each bundle carries its own feature list, so until the refreeze the live pipeline keeps predicting with the old set. Version `2027.1` can stay, since nothing has been predicted with it. The 2026 final test (`reports/final_2026.md`) stays as it was run, with the old set.
 
 ---
 

@@ -73,8 +73,10 @@ LGB_FIXED = {"max_depth": 2, "num_leaves": 4, "learning_rate": 0.02, "min_child_
              "lambda_l2": 10.0, "feature_fraction": 0.7, "bagging_fraction": 0.8}
 LGB_SEEDS = 5
 LGB_COMPACT = True
-LGB_COMPACT_EXTRA = ["diff_rapm_attack", "diff_rapm_missing", "diff_rookies", "diff_rest_days",
-                     "home_travel", "away_travel", "neutral", "is_final"]
+# No RAPM attack (it is exactly diff_rapm_total + diff_rapm_defence, both already in) and no finals flag
+# (too few finals for a 40-game leaf: never split on). Item 47.
+LGB_COMPACT_EXTRA = ["diff_rapm_missing", "diff_rookies", "diff_rest_days", "home_travel", "away_travel",
+                     "neutral"]
 
 
 def feature_sets():

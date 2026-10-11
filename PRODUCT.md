@@ -63,7 +63,7 @@ The opponent in this comp is a real, tested model, not a pundit. The Model tips 
 
 ## Evidence on Hand
 
-- **Model results:** [reports/backtest.md](reports/backtest.md) (2023–25 backtest: 0.622 log loss for the with-odds ensemble against 0.638 for Elo and 0.633 for the opening market), [reports/final_2026.md](reports/final_2026.md) (the unseen 2026 season), [reports/betting.md](reports/betting.md) and [reports/betting_2026.md](reports/betting_2026.md), and the experiment reports in `reports/`.
+- **Model results:** [reports/backtest.md](reports/backtest.md) (2023–25 backtest: 0.621 log loss for the with-odds ensemble against 0.638 for Elo and 0.633 for the opening market), [reports/final_2026.md](reports/final_2026.md) (the unseen 2026 season), [reports/betting.md](reports/betting.md) and [reports/betting_2026.md](reports/betting_2026.md), and the experiment reports in `reports/`.
 - **Frozen models:** `models/2027/` (version `2027.1`, trained on 2021–2026) and `models/2026/` for replays.
 - **Data:** scraped nrl.com results, match stats and team lists in `data/`, and the historical odds sheet.
 - **Not yet available, never invent:** live weekly predictions, a graded season record, live odds, tipping data, users, ladder standings or recap lines. Until the pipeline publishes them, any page that shows them uses clearly labelled sample or replay data (2026 replays are the honest source).
