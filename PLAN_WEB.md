@@ -166,17 +166,18 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done and 
 
 1. **Create the project.** supabase.com → sign in with GitHub → *New project*. Name `rugbyleague-tipper`, region **Sydney (ap-southeast-2)**, free plan. Choose a strong **database password** and keep it in a password manager: the CLI asks for it, and it can't be shown again (only reset).
 2. **Note the project's details** (Project Settings → API, and → General): the **project URL**, the **anon (public) key**, the **service-role key** (secret: never in the browser or the repo), and the **project ref** (the id in the dashboard's address, e.g. `abcdefghijkl`).
-3. **Push the migrations from the repo** (in a terminal at the repo root, on a branch that has `supabase/migrations/20261011000000_model_data.sql`):
+3. **Push the migrations from the repo** (in a terminal at the repo root, on `main`):
+   > ⚠️ **Do this before step 4.** Once the `SUPABASE_DB_URL` secret is in GitHub, every scheduled run publishes. If the tables don't exist yet, publishing fails and the workflow sends a failure alert. Push the migrations first, check them in the Table Editor, and only then add the secret.
    ```
    npx supabase login                         # opens the browser once
    npx supabase init                          # only if supabase/config.toml doesn't exist yet
    npx supabase link --project-ref <ref>      # asks for the database password
-   npx supabase db push --dry-run             # lists the two migrations it would apply
+   npx supabase db push --dry-run             # lists the four migrations it would apply (tipping, model data, Perth Bears, weather)
    npx supabase db push
    ```
    Then the Table Editor should show `matches`, `tips`, `predictions` and the rest, each with RLS enabled. The CLI needs Docker only for `db pull` and the local stack, not for `db push`.
 4. **The pipeline's connection string.** Dashboard → *Connect* (top bar) → *Session pooler* → copy the URI (it looks like `postgresql://postgres.<ref>:[YOUR-PASSWORD]@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`) and put the database password in place of `[YOUR-PASSWORD]`. Use the **session pooler**, not the direct connection: free projects' direct connection is IPv6 only, and GitHub's runners have no IPv6.
-   - Add it to GitHub as the secret `SUPABASE_DB_URL` (Settings → Secrets and variables → Actions). From then on every scheduled run publishes.
+   - Add it to GitHub as the secret `SUPABASE_DB_URL` (Settings → Secrets and variables → Actions), **only after step 3's migrations are in**. From then on every scheduled run publishes.
    - Add it to your local `.env` as `SUPABASE_DB_URL=...` too (ignored by git).
 5. **Load the 2026 season** (once, from your computer, which has the final test's predictions in `reports/`): `.venv/Scripts/python pipeline/publish.py --backfill 2026`. It prints the rows written: 1,423 games (2021–2026, for head to head), 7,268 Elo ratings since 2009, 213 predictions and graded games, and the Model's 213 tips. Safe to run again. `--dry-run` counts the rows without connecting.
 6. **The website's keys** (for step 12):
