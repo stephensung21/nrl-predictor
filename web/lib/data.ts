@@ -4,8 +4,8 @@
 
 import type { Sql } from "./db";
 import type {
-  EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsRound, Prediction,
-  RoundData, SeasonBet, SeasonGame,
+  Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsRound, Prediction,
+  RoundData, SeasonBet, SeasonGame, Weather,
 } from "./types";
 import type { TeamName } from "./teams";
 
@@ -47,12 +47,31 @@ export async function roundData(sql: Sql, season: number, round: number): Promis
     homePred: r.p_home, awayPred: r.p_away, model: r.model as Prediction["model"], modelVersion: r.model_version,
     ...(r.updated_reason ? { updated: r.updated_reason } : {}),
   }));
+  const weather = await weatherFor(sql, rows.map((r) => String(r.id)));
   return {
     season, round,
     // The pipeline draws the margin game; until it has, the round's first game stands in.
     featuredMatchId: drawn?.featured_match != null ? String(drawn.featured_match) : String(rows[0].id),
-    matches: rows.map(toMatch), predictions,
+    matches: rows.map((r) => {
+      const m = toMatch(r);
+      const w = weather.get(m.id);
+      return w ? { ...m, weather: w } : m;
+    }),
+    predictions,
   };
+}
+
+/** Each game's weather (`match_weather`: observed if known, otherwise the latest forecast). */
+export async function weatherFor(sql: Sql, matchIds: string[]): Promise<Map<string, Weather>> {
+  if (!matchIds.length) return new Map();
+  const rows = await sql`
+    select match_id, kind, fetched_at, roofed, temp_c, rain_mm, rain_chance, wind_kmh, gust_kmh, wind_dir, conditions
+    from match_weather where match_id in ${sql(matchIds)}`;
+  return new Map(rows.map((r) => [String(r.match_id), {
+    kind: r.kind, fetchedAt: iso(r.fetched_at), roofed: r.roofed, tempC: num(r.temp_c), rainMm: num(r.rain_mm),
+    rainChance: num(r.rain_chance), windKmh: num(r.wind_kmh), gustKmh: num(r.gust_kmh), windDir: num(r.wind_dir),
+    conditions: r.conditions,
+  } satisfies Weather]));
 }
 
 /** The round the home page shows: the first with a predicted game still to be decided, else the
@@ -188,6 +207,20 @@ export async function seasonBets(sql: Sql, season: number): Promise<SeasonBet[]>
     }
   }
   return bets;
+}
+
+/** Games still to kick off with the Model's fair odds and Betr's latest price (`match_edges`), or as
+ * they stood at `at` (`edges_at`, for the tests). */
+export async function upcomingEdges(sql: Sql, at?: Date): Promise<Edge[]> {
+  const rows = at ? await sql`select * from edges_at(${at})` : await sql`select * from match_edges`;
+  return rows.map((r) => ({
+    matchId: String(r.match_id), round: r.round, kickoff: iso(r.kickoff),
+    home: r.home_team as TeamName, away: r.away_team as TeamName,
+    homeProb: r.home_prob, fairHome: r.fair_home, fairAway: r.fair_away,
+    priceAt: r.price_at ? iso(r.price_at) : null, homeOdds: num(r.home_odds), awayOdds: num(r.away_odds),
+    marketHomeProb: num(r.market_home_prob), homeEdge: num(r.home_edge), awayEdge: num(r.away_edge),
+    bet: r.bet_side ? { side: r.bet_side, team: r.bet_team as TeamName, edge: r.bet_edge } : null,
+  }));
 }
 
 /** The model's record for a season (`model_accuracy`), with the bookies' favourite on the same games. */

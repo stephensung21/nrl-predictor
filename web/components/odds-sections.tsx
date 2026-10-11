@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { SERIES } from "@/lib/odds";
 import { team, type TeamName } from "@/lib/teams";
-import type { OddsGame } from "@/lib/types";
+import type { Edge, OddsGame } from "@/lib/types";
 import { LocalTime } from "./local-time";
 import { TeamBadge } from "./team-badge";
 
@@ -232,6 +232,79 @@ export function OddsGameRow({ g, graded }: { g: OddsGame; graded: boolean }) {
           {graded && <span className="text-ink-3"> · actual {g.homeScore + g.awayScore}</span>}
         </dd>
       </dl>
+    </li>
+  );
+}
+
+/* ---------- Coming games: fair odds against Betr's price (live only) ---------- */
+
+const odds = (x: number) => x.toFixed(2);
+const signedPct = (x: number) => `${x >= 0 ? "+" : "−"}${Math.abs(Math.round(x * 100))}%`;
+
+/** One side of a coming game: the Model's fair odds, Betr's price, and the edge between them. */
+function EdgeSide({ e, side }: { e: Edge; side: "home" | "away" }) {
+  const name = side === "home" ? e.home : e.away;
+  const fair = side === "home" ? e.fairHome : e.fairAway;
+  const price = side === "home" ? e.homeOdds : e.awayOdds;
+  const edge = side === "home" ? e.homeEdge : e.awayEdge;
+  const bet = e.bet?.side === side;
+  return (
+    <div className={`min-w-0 rounded-md px-2 py-1.5 ${bet ? "ring-1 ring-ink-3 ring-inset" : ""}`}>
+      <p className="text-[12px] font-semibold text-ink-3">{team(name).code}</p>
+      <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-2 text-[13px] leading-snug">
+        <dt className="text-ink-3">Fair</dt>
+        <dd className="font-score text-[16px] font-semibold text-ink-2">{odds(fair)}</dd>
+        <dt className="text-ink-3">Betr</dt>
+        <dd className="font-score text-[16px] font-semibold text-ink-2">{price == null ? "–" : odds(price)}</dd>
+        <dt className="text-ink-3">Edge</dt>
+        <dd className={`font-score text-[16px] ${bet ? "font-bold text-ink" : "font-semibold text-ink-3"}`}>
+          {edge == null ? "–" : signedPct(edge)}
+        </dd>
+      </dl>
+    </div>
+  );
+}
+
+export function EdgeRow({ e }: { e: Edge }) {
+  return (
+    <li className="py-4">
+      <Link href={`/match/${e.matchId}`} className="group flex items-center gap-2 text-[14px]">
+        <TeamBadge name={e.home} size="sm" />
+        <span className="font-semibold text-ink group-hover:underline">{e.home}</span>
+        <span className="text-ink-3">v</span>
+        <span className="font-semibold text-ink group-hover:underline">{e.away}</span>
+        <TeamBadge name={e.away} size="sm" />
+        <span className="ml-auto shrink-0 text-[12px] text-ink-3">
+          <LocalTime iso={e.kickoff} />
+        </span>
+      </Link>
+      {e.priceAt == null ? (
+        // Unpriced: just the fair odds, rather than a grid of dashes.
+        <p className="mt-2 text-[13px] text-ink-2">
+          <span className="text-ink-3">Fair odds </span>
+          {team(e.home).code} <span className="font-score text-[16px] font-semibold">{odds(e.fairHome)}</span>
+          <span className="text-ink-3"> · </span>
+          {team(e.away).code} <span className="font-score text-[16px] font-semibold">{odds(e.fairAway)}</span>
+          <span className="text-ink-3">. No Betr price yet.</span>
+        </p>
+      ) : (
+        <div className="mt-2 grid grid-cols-2 gap-1">
+          <EdgeSide e={e} side="home" />
+          <EdgeSide e={e} side="away" />
+        </div>
+      )}
+      {e.priceAt != null && (
+        <p className="mt-2 text-[13px] text-ink-2">
+          {e.bet ? (
+            <>
+              Paper bet: <span className="font-semibold text-ink">{e.bet.team}</span> at{" "}
+              {odds((e.bet.side === "home" ? e.homeOdds : e.awayOdds)!)}, {signedPct(e.bet.edge)} edge.
+            </>
+          ) : (
+            <span className="text-ink-3">No paper bet: neither side is 2% better than the price.</span>
+          )}
+        </p>
+      )}
     </li>
   );
 }

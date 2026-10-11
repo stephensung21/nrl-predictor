@@ -18,6 +18,49 @@ export type Match = {
   /** Set once the results or refresh job has graded the game. */
   homeScore?: number;
   awayScore?: number;
+  /** `match_weather`, when the pipeline has fetched any (live data only). */
+  weather?: Weather;
+};
+
+/** `match_weather`: what the weather was once known, otherwise the latest Open-Meteo forecast. */
+export type Weather = {
+  kind: "forecast" | "observed";
+  fetchedAt: string; // UTC ISO
+  /** A roofed venue: no weather. */
+  roofed: boolean;
+  /** At kickoff. */
+  tempC: number | null;
+  /** Over the 2 hours from kickoff. */
+  rainMm: number | null;
+  /** Highest hourly chance over those 2 hours; forecasts only. */
+  rainChance: number | null;
+  windKmh: number | null;
+  gustKmh: number | null;
+  /** Degrees the wind comes from. */
+  windDir: number | null;
+  conditions: string | null;
+};
+
+/** `match_edges`: a game still to kick off, the Model's fair odds beside Betr's latest price. */
+export type Edge = {
+  matchId: string;
+  round: number;
+  kickoff: string;
+  home: TeamName;
+  away: TeamName;
+  /** The prediction of record (the Model with odds). */
+  homeProb: number;
+  fairHome: number;
+  fairAway: number;
+  /** Null until Betr prices the game. */
+  priceAt: string | null;
+  homeOdds: number | null;
+  awayOdds: number | null;
+  marketHomeProb: number | null;
+  homeEdge: number | null;
+  awayEdge: number | null;
+  /** Paper trading's bet: the side with the bigger edge, when it's at least 2%. */
+  bet: { side: "home" | "away"; team: TeamName; edge: number } | null;
 };
 
 /** `prediction_of_record` (the latest prediction before kickoff) */

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { StepLink } from "@/components/home-sections";
-import { BIG_GAP, gapOf, OddsGameRow, TrackKey } from "@/components/odds-sections";
+import { LocalTime } from "@/components/local-time";
+import { BIG_GAP, EdgeRow, gapOf, OddsGameRow, TrackKey } from "@/components/odds-sections";
 import { SampleNote } from "@/components/sample-note";
 import { Calibration, ProfitChart, TipsVsMarketChart } from "@/components/season-charts";
 import { calibration, profitCurve, SERIES, tipsCorrect, tipsVsMarket } from "@/lib/odds";
 import { oddsSource, type OddsSource } from "@/lib/source";
+import type { Edge } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Model vs market · rugbyleague-tipper" };
 
@@ -64,8 +66,9 @@ export default async function OddsPage({ searchParams }: Props) {
 
 function RoundTab({ q, src }: { q: Record<string, string | undefined>; src: OddsSource }) {
   const rounds = src.rounds;
+  const coming = src.upcoming.length > 0 && q.round == null ? <ComingGames edges={src.upcoming} /> : null;
   if (!rounds.length) {
-    return <p className="pt-6 text-[15px] text-ink-2">No graded rounds yet this season.</p>;
+    return coming ?? <p className="pt-6 text-[15px] text-ink-2">No graded rounds yet this season.</p>;
   }
   const CURRENT = rounds.at(-1)!.round;
   const n = Number(q.round);
@@ -83,7 +86,9 @@ function RoundTab({ q, src }: { q: Record<string, string | undefined>; src: Odds
   const big = priced.filter((g) => (gapOf(g) ?? 0) >= BIG_GAP).length;
 
   return (
-    <section aria-label={`Round ${round.round}`}>
+    <>
+    {coming}
+    <section aria-label={`Round ${round.round}`} className={coming ? "mt-10" : undefined}>
       <div className="flex items-center justify-between gap-3 pt-4">
         <div>
           <h2 className="font-display text-[24px] leading-none font-bold uppercase">Round {round.round}</h2>
@@ -127,6 +132,43 @@ function RoundTab({ q, src }: { q: Record<string, string | undefined>; src: Odds
           Real 2026 prices and Model numbers. Round {CURRENT} is the sample&rsquo;s current round.
         </SampleNote>
       )}
+    </section>
+    </>
+  );
+}
+
+/** Games still to kick off: the Model's fair odds against Betr's latest price, and paper trading's bet. */
+function ComingGames({ edges }: { edges: Edge[] }) {
+  const rounds = [...new Set(edges.map((e) => e.round))];
+  const latest = edges.map((e) => e.priceAt).filter((t): t is string => t != null).sort().at(-1);
+  const bets = edges.filter((e) => e.bet).length;
+  return (
+    <section aria-labelledby="coming" className="pt-4">
+      <h2 id="coming" className="font-display text-[24px] leading-none font-bold uppercase">
+        {rounds.length === 1 ? `Round ${rounds[0]}` : "Coming up"}: prices
+      </h2>
+      <p className="mt-1 max-w-[60ch] text-[13px] leading-snug text-ink-3">
+        Fair odds from the Model with odds (the Round page&rsquo;s Model), against Betr&rsquo;s latest price
+        {latest ? (
+          <>
+            {" "}(<LocalTime iso={latest} />)
+          </>
+        ) : null}
+        . Edge is the Model&rsquo;s chance times the price, minus one.
+      </p>
+      <p className="mt-3 text-[15px] leading-snug font-semibold text-ink">
+        {latest == null
+          ? "Betr hasn’t priced these games yet."
+          : bets === 0
+            ? "No paper bets: the Model doesn’t rate either side 2% better than Betr’s price in any game."
+            : `Paper trading would back ${bets} of ${edges.length} games.`}{" "}
+        <span className="font-normal text-ink-2">Paper bets are tracked, not placed.</span>
+      </p>
+      <ul className="mt-1 divide-y divide-line-soft md:grid md:grid-cols-2 md:gap-x-10 md:divide-y-0 md:[&>li]:border-b md:[&>li]:border-line-soft">
+        {edges.map((e) => (
+          <EdgeRow key={e.matchId} e={e} />
+        ))}
+      </ul>
     </section>
   );
 }
