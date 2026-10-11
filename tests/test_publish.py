@@ -300,3 +300,47 @@ def test_the_encrypted_backup_restores_the_comp(db_url, records):
     assert restored == {"auth.users": 2, "profiles": 2, "rounds": 1, "invites": 1, "tips": 2}
     after = backup.export(connection(db_url))
     assert after["tables"] == before["tables"]
+
+
+def test_the_database_edges_match_edges_py(db_url, records):
+    """edges_at() and the match_edges view give edges.py's numbers: the coming game (listed the other way
+    round by the API) at its first price (no bet) and after a later price (a bet on the Broncos)."""
+    import edges
+    import paper
+    from grade import prediction_of_record
+
+    rec, _ = records
+    soon = rec.fixtures()["start_time_utc"].iloc[0]
+    rec.add_odds_snapshots(pd.DataFrame([{
+        "captured_at": "2026-05-07T00:00:00+00:00", "event_id": "e99", "commence_time": soon,
+        "home_team": "Broncos", "away_team": "Storm", "bookmaker": "betr_au", "home_odds": 3.2, "away_odds": 1.75,
+        "home_line": 6.5, "home_line_odds": 1.9, "away_line_odds": 1.9, "total": 44.5, "over_odds": 1.9,
+        "under_odds": 1.9, "issues": ""}]))
+    publish_to(db_url, publish.live_tables(2026, rec), 2026)
+
+    record = prediction_of_record(rec.predictions())
+    snaps = paper.oriented_snapshots(rec.odds_snapshots(), rec.fixtures())
+    cols = ["match_id", "home_prob", "fair_home", "fair_away", "home_odds", "away_odds", "market_home_prob",
+            "home_edge", "away_edge", "bet_side", "bet_edge"]
+    for at in (T("2026-05-06 23:30"), pd.Timestamp.now(tz="UTC")):
+        want = edges.live_edges(record, snaps, at)[cols]
+        got = pd.DataFrame(query(db_url, f"select {', '.join(cols)} from edges_at(%s)", (at,)), columns=cols)
+        # No price or no bet: None from the database, NaN from pandas.
+        tidy = lambda d: d.assign(bet_side=d["bet_side"].fillna("")).astype(  # noqa: E731
+            {c: float for c in cols if c not in ("match_id", "bet_side")} | {"match_id": int})
+        pd.testing.assert_frame_equal(tidy(got), tidy(want), check_exact=False)
+    first, latest = (edges.live_edges(record, snaps, at) for at in (T("2026-05-06 23:30"), pd.Timestamp.now(tz="UTC")))
+    first = first[first["match_id"] == 99].iloc[0]
+    # First price, Storm 1.50 / Broncos 2.60 at 62%: -7% and -1.2%, no bet. Later, Storm 1.75 (+8.5%) and
+    # Broncos 3.20 (+21.6%): the bigger edge, the Broncos.
+    assert pd.isna(first.bet_side) and first.away_edge == pytest.approx(0.38 * 2.6 - 1)
+    assert (latest.iloc[0].bet_side, latest.iloc[0].bet_edge) == ("away", pytest.approx(0.38 * 3.2 - 1))
+    # The view is edges_at(now()), readable by a visitor and by the analyst role.
+    assert query(db_url, "select count(*) from match_edges") == [(1,)]
+    conn = connection(db_url)
+    for role in ("anon", "analyst"):
+        conn.execute(f"set role {role}")
+        try:
+            assert conn.execute("select bet_side from match_edges").fetchall() == [("away",)]
+        finally:
+            conn.execute("reset role")

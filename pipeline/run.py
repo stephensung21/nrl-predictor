@@ -9,6 +9,8 @@ without a price get the no-odds prediction. `--job odds` runs the fetch on its o
 
 After every live job except odds, the weather for the site (fetch_weather.py): forecasts for the coming
 games, and what the weather was for games just finished. Not a model input; a failure is a warning.
+After every live job, the coming games' edges against Betr's latest price (edges.py): edges.csv and
+edges.md beside the records. Also only a warning if it fails.
 
 - results (Monday): scrape the current season's finished games into the processed tables, then grade
   every finished game that has a prediction of record and write the season report, and the paper
@@ -50,6 +52,7 @@ import fetch_odds
 import fetch_sheet
 import fetch_weather
 import grade as gradelib
+import edges
 import paper
 import predict
 from features import PRE_KICKOFF_FILE
@@ -228,6 +231,16 @@ def weather_step(records, now, run):
         run.setdefault("warnings", []).append(f"weather fetch failed: {run['weather']['error']}")
 
 
+def edges_step(records, now, run):
+    """The coming games' edges against Betr's latest price (edges.py), after every live job, so a new
+    price or a re-prediction shows straight away. A failure is only a warning."""
+    try:
+        run["edges"] = edges.write(records, now)
+    except Exception as ex:
+        run["edges"] = {"status": "failed", "error": f"{type(ex).__name__}: {ex}"}
+        run.setdefault("warnings", []).append(f"edges failed: {run['edges']['error']}")
+
+
 def run_job(job, season, as_of=None, model_season=None, records=None, fail=False):
     """Run one job and record it. Returns the run record; raises if the job failed. `fail` makes it
     fail on purpose, after starting, to test the workflows' alerts (PLAN_WEB.md step 8)."""
@@ -264,6 +277,8 @@ def run_job(job, season, as_of=None, model_season=None, records=None, fail=False
     finally:
         if not replay and job != "odds":  # after the job, so the fixtures it just saw get a forecast
             weather_step(records, now, run)
+        if not replay:  # every live job fetched prices first, and predict and refresh may have re-predicted
+            edges_step(records, now, run)
         run["finished"] = pd.Timestamp.now(tz="UTC").isoformat()
         records.add_run(run)
     return run

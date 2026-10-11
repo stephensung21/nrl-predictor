@@ -46,7 +46,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | Validation before publishing | ✅ | `predict.validate`: missing inputs, probabilities, 17 named per team, duplicate teams; margin/probability disagreement is a warning |
 | Replay a past round as a test | ✅ | `predict.py --replay --season 2026 --round N`; reproduces the backtest exactly; slow test in `tests/test_predict.py` |
 | Impossible-price check on live odds | ✅ | `fetch_odds.check_prices`: a market whose implied probabilities add to under 100%, a price at or below 1, or mismatched handicaps is blanked and logged as a warning |
-| Edges and fair odds against live prices | ❌ | Needs live odds |
+| Edges and fair odds against live prices | 🔶 | Built (October 2026, `live-edges` branch): `pipeline/edges.py`, run after every live job, writes `edges.csv` and `edges.md` beside the records: for each coming game the Model's fair odds (1 / probability), Betr's latest price, the market's margin-free chance, the edge on each side and paper trading's bet (bigger edge, at least 2%). **Head to head only**, the market whose edge held up in 2026 (line bets lost; the totals' edge was mostly the rain flag). The database has the same rule in `edges_at()` and the `match_edges` view (migration `20261016000000_match_edges.sql`, readable by anyone and the `analyst` role), checked equal to `edges.py` in `tests/test_publish.py`; tried on the live project in a rolled-back transaction, not yet pushed. *Still to do:* push the migration; show it on `/odds` (the coming round, website); check against real NRL prices in the February trials |
 
 **Scoring**
 
