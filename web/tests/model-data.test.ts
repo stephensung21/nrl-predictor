@@ -123,7 +123,7 @@ describe("the views the website reads", () => {
 
   it("only takes teams it knows", async () => {
     await expect(
-      db.exec("insert into matches (id, season, round, kickoff, home_team, away_team) values (9, 2027, 1, now(), 'Bears', 'Storm')"),
+      db.exec("insert into matches (id, season, round, kickoff, home_team, away_team) values (9, 2027, 1, now(), 'Jets', 'Storm')"),
     ).rejects.toThrow(/foreign key/);
   });
 });
@@ -207,7 +207,7 @@ describe("who can read and write the model's data", () => {
         expect(await rows(db, "select * from match_odds_probs")).toHaveLength(0);
         expect(await rows(db, "select * from model_accuracy")).toHaveLength(0);
         expect(await rows(db, "select body from summaries")).toEqual([{ body: "Storm at home." }]);
-        expect(await rows(db, "select name from teams")).toHaveLength(17);
+        expect(await rows(db, "select name from teams")).toHaveLength(18);
       });
     }
   });

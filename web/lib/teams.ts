@@ -5,7 +5,7 @@
 export type TeamName =
   | "Broncos" | "Raiders" | "Bulldogs" | "Sharks" | "Dolphins" | "Titans"
   | "Sea Eagles" | "Storm" | "Knights" | "Cowboys" | "Eels" | "Panthers"
-  | "Rabbitohs" | "Dragons" | "Roosters" | "Warriors" | "Wests Tigers";
+  | "Rabbitohs" | "Dragons" | "Roosters" | "Warriors" | "Wests Tigers" | "Bears";
 
 export type Team = {
   name: TeamName;
@@ -38,6 +38,8 @@ export const TEAMS: Record<TeamName, Team> = {
   Roosters: { name: "Roosters", code: "SYD", primary: "#22457f", secondary: "#e31e26", ink: "#ffffff", bar: "#5a83c8" },
   Warriors: { name: "Warriors", code: "NZW", primary: "#34405e", secondary: "#9dcb3c", bar: "#8c9bbf" },
   "Wests Tigers": { name: "Wests Tigers", code: "WST", primary: "#f2801f", secondary: "#121212", bar: "#f58d2e" },
+  // Joins in 2027. Red and black (the North Sydney Bears' colours); check against the club's kit.
+  Bears: { name: "Bears", code: "PER", primary: "#c8102e", secondary: "#111111", ink: "#ffffff", bar: "#e0403f" },
 };
 
 export const team = (name: TeamName) => TEAMS[name];

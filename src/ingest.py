@@ -39,6 +39,7 @@ TEAM_MAP = {
     "St. George Illawarra Dragons": "Dragons",
     "Sydney Roosters": "Roosters",
     "Wests Tigers": "Wests Tigers",
+    "Perth Bears": "Bears",  # joins in 2027; the sheet's name is a guess until it lists their games
 }
 
 TEAM_STATE = {
@@ -46,6 +47,7 @@ TEAM_STATE = {
     "Storm": "VIC", "Warriors": "NZ", "Raiders": "ACT",
     "Bulldogs": "NSW", "Sharks": "NSW", "Sea Eagles": "NSW", "Knights": "NSW", "Eels": "NSW",
     "Panthers": "NSW", "Rabbitohs": "NSW", "Dragons": "NSW", "Roosters": "NSW", "Wests Tigers": "NSW",
+    "Bears": "WA",
 }
 
 CITY_STATE = {
