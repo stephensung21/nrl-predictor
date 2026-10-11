@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Check, ChevronLeft, Cloud, CloudRain, House, Wind, X } from "lucide-react";
 import { lineColours, type MatchElo } from "@/lib/elo";
-import { ordinal, type Game } from "@/lib/round";
+import { ordinal, roundName, type Game } from "@/lib/round";
 import type { Verdict, Voice } from "@/lib/match";
 import type { Preview } from "@/lib/source";
 import type { ListedPlayer, Match, MatchDetail } from "@/lib/types";
@@ -40,7 +40,7 @@ export function MatchHeading({ game, verdict, voices }: { game: Game; verdict: V
           className="-my-2 -ml-1 flex items-center gap-0.5 py-2 pr-1 font-semibold text-ink-2 hover:text-ink"
         >
           <ChevronLeft className="size-4" aria-hidden />
-          Round {match.round}
+          {roundName(match.round, match.roundTitle)}
         </Link>
         <span className="mx-1.5">·</span>
         {when}
@@ -360,6 +360,12 @@ export function HeadToHead({ game, detail }: { game: Game; detail: MatchDetail }
 
 /* ---------- Elo: both teams going in ---------- */
 
+/** "Round 12", or "the Grand Final" / "the Finals Week 1" reads as "the …" for a final. */
+const intoRound = (round: number, title?: string) => {
+  const name = roundName(round, title);
+  return /^Round /.test(name) ? name : `the ${name}`;
+};
+
 const signed = (n: number) => `${Math.round(n) > 0 ? "+" : Math.round(n) < 0 ? "−" : ""}${Math.abs(Math.round(n))}`;
 
 export function EloSection({ game, elo }: { game: Game; elo?: MatchElo }) {
@@ -403,7 +409,7 @@ export function EloSection({ game, elo }: { game: Game; elo?: MatchElo }) {
   return (
     <section aria-label="Elo" className="mt-3">
       <p className="text-[13px] text-ink-3">
-        Ratings going into Round {game.match.round}
+        Ratings going into {intoRound(game.match.round, game.match.roundTitle)}
         {elo.labels.length === 1 ? ", where every team starts the season" : ""}.
       </p>
       <div className="mt-3 grid grid-cols-2 gap-4">

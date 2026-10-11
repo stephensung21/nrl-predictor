@@ -80,6 +80,7 @@ function RoundTab({ q, src }: { q: Record<string, string | undefined>; src: Odds
   const prev = rounds.filter((r) => r.round < round.round).at(-1);
   const next = rounds.find((r) => r.round > round.round);
   const href = (r: number) => `/odds?round=${r}`;
+  const name = (r: { round: number; title?: string }) => r.title ?? `Round ${r.round}`;
 
   const priced = round.games.filter((g) => g.openHomeProb != null);
   const splits = priced.filter((g) => g.modelHomeProb >= 0.5 !== g.openHomeProb! >= 0.5).length;
@@ -88,15 +89,15 @@ function RoundTab({ q, src }: { q: Record<string, string | undefined>; src: Odds
   return (
     <>
     {coming}
-    <section aria-label={`Round ${round.round}`} className={coming ? "mt-10" : undefined}>
+    <section aria-label={name(round)} className={coming ? "mt-10" : undefined}>
       <div className="flex items-center justify-between gap-3 pt-4">
         <div>
-          <h2 className="font-display text-[24px] leading-none font-bold uppercase">Round {round.round}</h2>
+          <h2 className="font-display text-[24px] leading-none font-bold uppercase">{name(round)}</h2>
           <p className="mt-1 text-[13px] text-ink-3">{graded ? "Opening and closing prices, and results" : "Opening prices. Closing prices land at kickoff."}</p>
         </div>
         <nav aria-label="Rounds" className="flex gap-2">
-          <StepLink to={prev && { round: prev.round, href: href(prev.round) }} dir="prev" />
-          <StepLink to={next && { round: next.round, href: href(next.round) }} dir="next" />
+          <StepLink to={prev && { round: prev.round, title: prev.title, href: href(prev.round) }} dir="prev" />
+          <StepLink to={next && { round: next.round, title: next.title, href: href(next.round) }} dir="next" />
         </nav>
       </div>
 

@@ -36,12 +36,15 @@ const HINT_KEY = "rlt:showModelHint";
 export function TipList({
   season,
   round,
+  title,
   games,
   initialTips,
   initialMargin,
 }: {
   season: number;
   round: number;
+  /** The round's name when it isn't "Round N" ("Grand Final"). */
+  title?: string;
   games: TipGame[];
   /** The viewer's tips as the server knows them (sample: made up). */
   initialTips: Record<string, TeamName>;
@@ -114,7 +117,7 @@ export function TipList({
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-4 pb-1">
-        <h1 className="font-display text-[26px] leading-none font-bold uppercase">Round {round} tips</h1>
+        <h1 className="font-display text-[26px] leading-none font-bold uppercase">{title ?? `Round ${round}`} tips</h1>
         <p className="text-[13px] font-medium text-ink-3">
           <span className={tipped < games.length ? "font-semibold text-ink" : ""}>
             <span className="font-score">{tipped}</span> of <span className="font-score">{games.length}</span> tipped

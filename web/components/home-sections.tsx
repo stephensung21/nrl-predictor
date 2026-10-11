@@ -11,14 +11,14 @@ import { ModelBadge, TeamBadge } from "./team-badge";
 
 /* ---------- Round heading ---------- */
 
-export type RoundLink = { href: string; round: number };
+export type RoundLink = { href: string; round: number; title?: string };
 
 export function StepLink({ to, dir }: { to?: RoundLink; dir: "prev" | "next" }) {
   const Icon = dir === "prev" ? ChevronLeft : ChevronRight;
   const cls = "grid size-10 place-items-center rounded-full ring-1 ring-line ring-inset";
   if (!to) return <span className={`${cls} text-ink-3/40`} aria-hidden><Icon className="size-5" /></span>;
   return (
-    <Link href={to.href} aria-label={`Round ${to.round}`} className={`${cls} text-ink-2 transition-colors hover:text-ink hover:ring-ink-3`}>
+    <Link href={to.href} aria-label={to.title ?? `Round ${to.round}`} className={`${cls} text-ink-2 transition-colors hover:text-ink hover:ring-ink-3`}>
       <Icon className="size-5" aria-hidden />
     </Link>
   );
@@ -30,14 +30,20 @@ export function RoundHeading({ view, title, prev, next }: { view: RoundView; tit
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-4 pb-3">
       <div className={stepper ? "flex flex-col gap-1" : "contents"}>
       <h1 className="font-display text-[26px] leading-none font-bold tracking-[0.005em] uppercase">
-        {title ?? `Round ${view.round}`}
+        {title ?? view.title}
       </h1>
       <p className="text-[13px] font-medium text-ink-3">
-        <LocalTime iso={view.firstKickoff} format="day" /> – <LocalTime iso={view.lastKickoff} format="day" />
+        <LocalTime iso={view.firstKickoff} format="day" />
+        {/* A one-game round (the Grand Final) has one date. */}
+        {view.games.length > 1 && (
+          <>
+            {" "}– <LocalTime iso={view.lastKickoff} format="day" />
+          </>
+        )}
         <span className="mx-1.5" aria-hidden>
           ·
         </span>
-        {view.games.length} games
+        {view.games.length} game{view.games.length === 1 ? "" : "s"}
       </p>
       </div>
       {stepper && (
@@ -315,10 +321,10 @@ export function RecapPanel({
   };
 
   return (
-    <section aria-label={`Round ${view.round} recap`}>
+    <section aria-label={`${view.title} recap`}>
       {heading && (
         <div className="pt-7 pb-5">
-          <h1 className="font-display text-[46px] leading-[0.9] font-bold uppercase">Round {view.round} wrap</h1>
+          <h1 className="font-display text-[46px] leading-[0.9] font-bold uppercase">{view.title} wrap</h1>
           <p className="mt-2 text-[14px] font-medium text-ink-3">All {n} games graded</p>
         </div>
       )}

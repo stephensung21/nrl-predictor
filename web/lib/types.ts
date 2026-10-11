@@ -9,6 +9,8 @@ export type Match = {
   id: string;
   season: number;
   round: number;
+  /** The round's name from nrl.com ("Round 12", "Finals Week 1", "Grand Final"); live data only. */
+  roundTitle?: string;
   kickoff: string; // UTC ISO
   home: TeamName;
   away: TeamName;
@@ -191,7 +193,7 @@ export type OddsGame = {
   bookmaker: string | null;
 };
 
-export type OddsRound = { round: number; games: OddsGame[] };
+export type OddsRound = { round: number; title?: string; games: OddsGame[] };
 
 /** A 2026 test-season game for the season scoreboard. homeWin: 1, 0, or 0.5 for a draw. */
 export type SeasonGame = {
