@@ -169,7 +169,7 @@ Step numbers are fixed (other sections refer to them). Steps 1–3 are done and 
 - ✅ Step 9: `ANTHROPIC_API_KEY` in GitHub secrets and the local `.env`.
 - 🔶 Step 6: the `analyst` role has a password (12 October 2026; kept as is, by choice) and `SITE_DATABASE_URL` in `web/.env.local` connects (password fixed, checked 13 October 2026). Still to do: the service-role key for the server routes, and the Vercel variables.
 - ✅ Step 8: "sbeve" (stephen.j.sung@gmail.com) is the admin (12 October 2026).
-- ❌ Step 10: `BACKUP_PASSPHRASE` (not confirmed added).
+- ✅ Step 10: `BACKUP_PASSPHRASE` in GitHub secrets and the password manager (confirmed 12 October 2026).
 
 Lessons from doing them:
 - `npx supabase login` and `link` need a real terminal: from Claude Code's `!` prompt the login fails ("non-TTY"). Run them in a separate PowerShell window; the login is saved for later commands.
@@ -236,7 +236,6 @@ Lessons from doing them:
 *You:*
 - Check `/tipping` and make an invite on the admin page (`SITE_DATABASE_URL` now connects).
 - Optional: `SUPABASE_SERVICE_ROLE_KEY` in `web/.env.local`, to try deleting an account.
-- `BACKUP_PASSPHRASE` as a GitHub secret, if not done (also in your password manager).
 - The odds sheet decision (open question below; making the repo private is the simplest).
 - At deploy: import the repo into Vercel and add its variables (Supabase setup step 6), then add the Vercel address to Supabase's Site URL and redirect URLs, and to the Google OAuth client if it asks.
 - Optional: a Reddit app (step 11b).
@@ -741,7 +740,7 @@ Planned: LLM-written match previews and round recaps, a weekly review of the mod
 
 | Feature | Runs where | Reads | Writes |
 |---|---|---|---|
-| Match previews, round recaps, the weekly review | A step in the pipeline (Python, GitHub Actions, the Claude API with `ANTHROPIC_API_KEY`) after predict or results | The round's predictions, team lists, odds, Elo and graded results | `summaries` (with the Claude model and prompt version), shown by the site |
+| Match previews, round recaps, post-mortems, the weekly review | A step in the pipeline (Python, GitHub Actions, the Claude API with `ANTHROPIC_API_KEY`) after predict or results | The match brief (§7.4): one fact pack per game, assembled by code from the prediction, its drivers, Elo, form, team lists, odds and weather | `summaries` (with the Claude model, prompt version and the brief it was written from), shown by the site |
 | Results-and-formulas reviewer | A scheduled GitHub Actions job working in the repo (for example Claude Code or the Agent SDK, headless), since it needs the code in `src/`, the history and the Python environment to run backtests | `data/pipeline/live/` (graded games, predictions), `models/<season>/meta.json`, the backtest reports, IMPROVEMENTS.md | A pull request with the change and its backtest, judged by the adoption rule (only a meaningful backtest gain is adopted; small gains go to "Already tried"). It never changes the live models or the database: you merge, then refreeze a new model version, which `model_versions` records |
 | "Ask the model" chat | A website route on Vercel calling Claude with read-only SQL as its tool | The model's tables and views, through the `analyst` role | Nothing |
 
@@ -759,7 +758,7 @@ Every prediction says what drove it: "Storm 68%: the market had them at 62%; Hug
 - **Grouping:** about 20 features become 5–6 readable groups: the market (opening odds, BlueBet), team strength (Elo, team rating), line-up (RAPM total, defence, vs usual), star absences, context (rest, travel, finals) and conditions (wet). Each group is named in plain words with the players behind it where there are any ("Hughes, Munster out").
 - **Change since Tuesday:** when a refresh changes the prediction, the difference between the two explanations says why. This replaces the hand-written `updated_reason` ("Hughes out") with one taken from the numbers.
 - **Stored:** a new `prediction_drivers` table (run, match, model, group, feature, contribution in margin points and in log-odds), written with the prediction it explains.
-- **Shown:** on `/match/[id]` as a "What drove this" bar list, and passed to the match preview (`summaries.py`) so the text quotes the real drivers instead of guessing.
+- **Shown:** on `/match/[id]` as a "What drove this" bar list. The drivers are also the first section of the match brief (§7.4), so the preview quotes the real drivers instead of guessing.
 - **Checks:** a test that the contributions plus the baseline give back the uncalibrated prediction for every model; and a replay of a 2026 round that gives the same drivers twice.
 
 ### 7.2 Post-mortems of wrong predictions ⬜
@@ -810,3 +809,45 @@ Model changes come from patterns across many games, never from one. This is the 
 - Usually the right outcome is **"no systemic problem: the misses are shared upsets and variance".** The report should say so plainly rather than find something to change.
 
 **Why this split.** The post-mortem is a fixed sequence (gather facts, classify, write), so it's a pipeline step with one Claude call, like the recaps. Only the reviewer needs to be an agent: it has to look at the patterns, decide what to test, edit code, run backtests and judge the result.
+
+### 7.4 Match briefs: one fact pack for every LLM summary ⬜
+
+The aim, over time: one plain-English summary per game that pulls everything together: what drove the prediction (7.1), Elo, form, team news, the market and its moves, the weather, and later data not collected yet. The design keeps one split: **code decides the facts, Claude only words them.** Today's previews already work this way on a small scale (`summaries.game_facts`); the brief makes it the general pattern, so adding a data point is one new section and never a rewrite of the prompts.
+
+**The brief.** A structured JSON document per game, assembled by plain code (`pipeline/brief.py`) from data the pipeline already holds. It's built from sections, each a small function that returns its facts, or nothing when the data isn't there:
+
+| Section | From | Available |
+|---|---|---|
+| `prediction` | the prediction: tip, chance, score, margin, total, model version | now |
+| `drivers` | 7.1's grouped contributions, with the players behind them | with 7.1 |
+| `market` | opening and latest Betr price, its margin-free chance, the move since opening, the edge | now (`odds_snapshots`, `edges.py`) |
+| `elo` | both ratings, the gap, each side's change over the last five games and the season | now (`elo_ratings`) |
+| `form` | last five results, points for and against, head to head | now (moves from `game_facts`) |
+| `team_news` | ins and outs against last week, star absences, changes since Tuesday | now (team lists), with 7.1 for the changes' effect |
+| `conditions` | forecast or observed weather, roof, neutral venue, rest and travel | now (`weather`, features) |
+| `result` | score and the model's error, after the game | after grading |
+| `postmortem` | 7.2's facts and cause, for badly missed games | with 7.2 |
+| *later* | new sources (injury reports, the r/nrl match thread, live scores) | each a new section |
+
+**Rules for the brief:**
+- **Built at prediction time, frozen with the prediction.** Each brief belongs to one run and one game, like the drivers, so a text can always be traced to exactly what it saw. A refresh makes a new brief; the change between the two is itself a fact ("Hughes ruled out since Tuesday: Storm 68% → 61%").
+- **Only facts, already worked out.** Code does every calculation (differences, percentages, rankings, "biggest driver") so Claude never does arithmetic. Each number carries its unit and a short label.
+- **Missing means absent, not zero.** A section with no data is left out, and the prompt says only the sections present may be used.
+- **Compact:** a target of about 1,500 tokens per game, so a whole round's briefs fit one recap prompt. Sections can be trimmed for shorter texts (a preview needs the top 3 drivers, a post-mortem all of them).
+- **Nothing about the tippers,** as for every agent feature.
+- **Versioned:** `BRIEF_VERSION` beside `PROMPT_VERSION`, bumped when a section is added or changed.
+
+**Stored:** a `match_briefs` table (run, match, brief version, the JSON, created at), written by `publish.py` with the prediction, readable by the `analyst` role. `summaries` gets a `brief_id` column, so each text points at its facts, and its `kind` check gains `match_summary` and `match_postmortem`. The site can also show sections straight from the brief (the drivers' bars, the Elo gap) without an LLM.
+
+**The summaries that read it:**
+- **Match preview** (now), then a **full match summary** that uses every section present: the main future addition.
+- **Post-mortem** (7.2): the brief plus its `result` and `postmortem` sections.
+- **Round recap:** the round's briefs, trimmed.
+- **"Ask the model" chat:** the brief as the starting context for a question about a game, with SQL for anything beyond it.
+
+**Checks:**
+- **Grounding:** every number in a text must appear in its brief (a cheap pattern match on the numbers, rounding allowed). A text that fails is written again once, then dropped and logged. It's never published with invented figures.
+- **Sections:** each section function has a test on a replayed 2026 game, and the brief for a replayed round is the same twice.
+- **Prompt changes** are tried on a fixed set of saved briefs (a few ordinary games, an upset, a game with late changes, one with missing odds) and read side by side before `PROMPT_VERSION` is bumped.
+
+**Order of work:** the brief comes with 7.1. `brief.py` starts with the sections available now plus `drivers`, and `summaries.game_facts` is replaced by it, so the previews move onto the brief straight away. The full match summary, post-mortems and later sources then each add a section and a prompt; none of them change the brief's structure.
