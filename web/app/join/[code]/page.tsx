@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JoinFlow } from "@/components/auth-forms";
 import { SampleNote } from "@/components/sample-note";
+import { tippingLive } from "@/lib/supabase";
 
 export const metadata: Metadata = { title: "Join the comp · rugbyleague-tipper" };
 
@@ -9,6 +10,7 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
   return (
     <main>
       <JoinFlow code={decodeURIComponent(code)} />
+      {!tippingLive && (
       <SampleNote
         states={[
           { href: "/join/MATES26", label: "Valid invite", on: code.toUpperCase() === "MATES26" },
@@ -18,6 +20,7 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
       >
         Sign-in is a stand-in until the real accounts exist: nothing is sent, and your details stay in this browser.
       </SampleNote>
+      )}
     </main>
   );
 }

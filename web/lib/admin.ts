@@ -1,13 +1,14 @@
 // The comp owner's tools: invites, tippers, the margin game and the pipeline's run
-// log. Pages talk only to the AdminStore interface; the browser mock used for the
-// sample can be swapped for Supabase (the `invites`, `profiles` (admin flag),
-// `rounds` and `pipeline_runs` tables, admin-only under row-level security;
-// PLAN_WEB.md §2) by changing `createAdminStore()`. The store also owns the clock,
-// so statuses like "expired" are judged against real time once it's live.
+// log. Pages talk only to the AdminStore interface: the browser mock for the sample, or
+// Supabase when it's configured (the `invites`, `profiles` (admin flag), `rounds` and
+// `pipeline_runs` tables, admin-only under row-level security; PLAN_WEB.md §2). The
+// store also owns the clock, so statuses like "expired" are judged against real time live.
 
 import { round10, SAMPLE_NOW, tippers, tips, YOU_ID, YOUR_EARLY_TIP_COUNT } from "./sample";
 import { NEXT_ROUND, SEASON_ROUNDS } from "./sample-archive";
 import { INVITE_DAYS, readInvites, SAMPLE_ADMIN, sampleDays, writeInvites, type AdminInvite } from "./invites";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { browserClient, tippingLive } from "./supabase";
 import type { TeamName } from "./teams";
 
 export { INVITE_DAYS, inviteStatus, type AdminInvite, type InviteStatus } from "./invites";
@@ -15,10 +16,10 @@ export { INVITE_DAYS, inviteStatus, type AdminInvite, type InviteStatus } from "
 export type AdminTipper = { id: string; name: string; favTeam?: TeamName; joined: string; missing: number; isYou: boolean };
 
 export type PipelineRun = {
-  job: "results" | "predict" | "refresh";
+  job: "results" | "predict" | "refresh" | "odds" | "backfill";
   startedAt: string;
-  status: "ok" | "failed" | "running";
-  round: number;
+  status: "ok" | "nothing to do" | "failed" | "running";
+  round: number | null;
   modelVersion: string;
   commit: string;
   /** Games written, or the reason it stopped. */
@@ -49,7 +50,8 @@ export interface AdminStore {
   cancelInvite(code: string): Promise<void>;
   tippers(): Promise<AdminTipper[]>;
   removeTipper(id: string): Promise<void>;
-  margin(): Promise<MarginInfo>;
+  /** Null when no round has a margin game yet (the off-season). */
+  margin(): Promise<MarginInfo | null>;
   runs(): Promise<PipelineRun[]>;
 }
 
@@ -144,6 +146,146 @@ export class BrowserAdminStore implements AdminStore {
   }
 }
 
+// ---------- Live: Supabase ----------
+
+type FixtureRow = { id: number; home_team: TeamName; away_team: TeamName; kickoff: string };
+const toFixture = (m: FixtureRow): Fixture => ({ matchId: String(m.id), home: m.home_team, away: m.away_team, kickoff: m.kickoff });
+
+/** When the pipeline's predict job next runs (Tuesdays 07:15 UTC, .github/workflows/predict.yml). */
+export function nextPredictRun(after: Date): string {
+  const t = new Date(after);
+  t.setUTCHours(7, 15, 0, 0);
+  while (t.getUTCDay() !== 2 || t <= after) t.setUTCDate(t.getUTCDate() + 1);
+  return t.toISOString();
+}
+
+export class SupabaseAdminStore implements AdminStore {
+  constructor(private readonly sb: SupabaseClient = browserClient()) {}
+
+  now() {
+    return new Date();
+  }
+
+  private async me() {
+    const { data } = await this.sb.auth.getSession();
+    const id = data.session?.user.id;
+    if (!id) throw new Error("Sign in first.");
+    return id;
+  }
+
+  async isAdmin() {
+    const { data: s } = await this.sb.auth.getSession();
+    if (!s.session) return false;
+    const { data, error } = await this.sb.rpc("is_admin");
+    return !error && data === true;
+  }
+
+  private async names(): Promise<Map<string, string>> {
+    const { data, error } = await this.sb.from("profiles").select("id, display_name");
+    if (error) throw error;
+    return new Map(data.map((p) => [p.id as string, p.display_name as string]));
+  }
+
+  async invites(): Promise<AdminInvite[]> {
+    const [{ data, error }, names] = await Promise.all([
+      this.sb.from("invites").select("code, created_at, expires_at, created_by, used_by, used_at, cancelled_at").order("created_at", { ascending: false }),
+      this.names(),
+    ]);
+    if (error) throw error;
+    return data.map((i) => ({
+      code: i.code,
+      createdAt: i.created_at,
+      expiresAt: i.expires_at,
+      createdBy: names.get(i.created_by) ?? "",
+      // A used invite stays used after its tipper leaves the comp.
+      ...(i.used_at ? { usedBy: (i.used_by && names.get(i.used_by)) || "someone who has since left" } : {}),
+      ...(i.cancelled_at ? { cancelled: true } : {}),
+    }));
+  }
+
+  async createInvite(): Promise<AdminInvite> {
+    const created_by = await this.me();
+    const { data, error } = await this.sb.from("invites").insert({ code: newCode(), created_by }).select("code, created_at, expires_at").single();
+    if (error) throw error;
+    const names = await this.names();
+    return { code: data.code, createdAt: data.created_at, expiresAt: data.expires_at, createdBy: names.get(created_by) ?? "" };
+  }
+
+  async cancelInvite(code: string) {
+    const { error } = await this.sb.from("invites").update({ cancelled_at: new Date().toISOString() }).eq("code", code);
+    if (error) throw error;
+  }
+
+  async tippers(): Promise<AdminTipper[]> {
+    const me = await this.me();
+    // The round in play: the next game still to be played, and its round.
+    const { data: next } = await this.sb
+      .from("matches").select("season, round").in("status", ["scheduled", "live"]).order("kickoff").limit(1).maybeSingle();
+    const [{ data: people, error }, games, counts] = await Promise.all([
+      this.sb.from("profiles").select("id, display_name, fav_team, created_at").eq("is_model", false).order("display_name"),
+      next
+        ? this.sb.from("matches").select("id", { count: "exact", head: true }).eq("season", next.season).eq("round", next.round).neq("status", "postponed")
+        : Promise.resolve({ count: 0 }),
+      next ? this.sb.rpc("admin_tip_counts", { p_season: next.season, p_round: next.round }) : Promise.resolve({ data: [] }),
+    ]);
+    if (error) throw error;
+    const tipped = new Map(((counts.data ?? []) as { user_id: string; tipped: number }[]).map((c) => [c.user_id, c.tipped]));
+    return people.map((p) => ({
+      id: p.id,
+      name: p.display_name,
+      favTeam: (p.fav_team ?? undefined) as TeamName | undefined,
+      joined: p.created_at,
+      missing: Math.max(0, (games.count ?? 0) - (tipped.get(p.id) ?? 0)),
+      isYou: p.id === me,
+    }));
+  }
+
+  async removeTipper(id: string) {
+    const res = await fetch("/api/admin/tipper", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) });
+    if (!res.ok) throw new Error("Couldn’t remove them. Try again.");
+  }
+
+  async margin(): Promise<MarginInfo | null> {
+    const { data: drawn, error } = await this.sb
+      .from("rounds").select("season, round, featured_match")
+      .not("featured_match", "is", null)
+      .order("season", { ascending: false }).order("round", { ascending: false }).limit(2);
+    if (error) throw error;
+    const [cur, prev] = drawn;
+    if (!cur) return null;
+    const ids = [cur.featured_match, ...(prev && prev.season === cur.season && prev.round === cur.round - 1 ? [prev.featured_match] : [])];
+    const cols = "id, home_team, away_team, kickoff";
+    const [{ data: featured }, { data: upcoming }] = await Promise.all([
+      this.sb.from("matches").select(cols).in("id", ids),
+      this.sb.from("matches").select(cols).eq("season", cur.season).eq("round", cur.round + 1).order("kickoff"),
+    ]);
+    const game = (id: number) => toFixture((featured as FixtureRow[]).find((m) => m.id === id)!);
+    return {
+      current: { round: cur.round, game: game(cur.featured_match), how: "drawn" },
+      previous: ids.length > 1 ? { round: prev!.round, game: game(prev!.featured_match) } : null,
+      // The latest drawn round is the current one, so the next round isn't drawn yet.
+      next: { round: cur.round + 1, games: ((upcoming ?? []) as FixtureRow[]).map(toFixture), drawn: null, drawsAt: nextPredictRun(new Date()) },
+    };
+  }
+
+  async runs(): Promise<PipelineRun[]> {
+    const { data, error } = await this.sb
+      .from("pipeline_runs").select("job, started_at, status, round, games, model_version, commit, notes")
+      .order("started_at", { ascending: false }).limit(4);
+    if (error) throw error;
+    return data.map((r) => ({
+      job: r.job,
+      startedAt: r.started_at,
+      status: r.status,
+      round: r.round,
+      modelVersion: r.model_version ?? "–",
+      commit: (r.commit ?? "").slice(0, 7),
+      note: r.notes ?? (r.games != null ? `${r.games} games` : r.status),
+    }));
+  }
+}
+
+/** The store the site uses: Supabase when it's configured, this browser otherwise. */
 export function createAdminStore(): AdminStore {
-  return new BrowserAdminStore();
+  return tippingLive ? new SupabaseAdminStore() : new BrowserAdminStore();
 }

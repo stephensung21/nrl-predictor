@@ -302,11 +302,12 @@ function Fixture({ home, away, strong }: { home: string; away: string; strong?: 
 
 export function Margin() {
   const store = useStore();
-  const [m, setM] = useState<MarginInfo | null>(null);
+  const [m, setM] = useState<MarginInfo | null | undefined>(undefined);
   useEffect(() => {
     store.margin().then(setM);
   }, [store]);
-  if (!m) return <p className="mt-3 text-[14px] text-ink-3">Loading…</p>;
+  if (m === undefined) return <p className="mt-3 text-[14px] text-ink-3">Loading…</p>;
+  if (m === null) return <p className="mt-3 text-[14px] text-ink-2">No margin game yet. The pipeline draws one when a round&rsquo;s predictions publish.</p>;
   const { current, previous, next } = m;
   const clear = previous && ![previous.game.home, previous.game.away].some((t) => t === current.game.home || t === current.game.away);
   const { eligible, excluded } = eligibleForDraw(next.games, current.game);
@@ -367,14 +368,14 @@ export function Margin() {
 
 /* ---------- Pipeline runs ---------- */
 
-const JOB = { results: "Results", predict: "Predictions", refresh: "Refresh" } as const;
+const JOB = { results: "Results", predict: "Predictions", refresh: "Refresh", odds: "Odds", backfill: "Backfill" } as const;
 
 /** Worked out from the runs: did each failure get re-run, and what did it cost if not. */
 function runSummary(runs: PipelineRun[]) {
   const failed = runs.filter((r) => r.status === "failed");
   if (failed.length === 0) return `All ${runs.length} runs succeeded.`;
   const lines = failed.map((f) => {
-    const later = runs.find((r) => r.job === f.job && r.startedAt > f.startedAt && r.status === "ok");
+    const later = runs.find((r) => r.job === f.job && r.startedAt > f.startedAt && (r.status === "ok" || r.status === "nothing to do"));
     const when = sydney(f.startedAt);
     if (later) return `The ${JOB[f.job].toLowerCase()} run on ${when} failed; the next one, ${sydney(later.startedAt)}, worked.`;
     return f.job === "refresh"
@@ -399,14 +400,14 @@ export function Runs() {
           <li key={r.startedAt + r.job} className="py-2.5 text-[14px]">
             <div className="flex items-baseline justify-between gap-3">
               <span className="font-semibold text-ink">
-                {JOB[r.job]} <span className="font-normal text-ink-3">· Round {r.round}</span>
+                {JOB[r.job]} {r.round != null && <span className="font-normal text-ink-3">· Round {r.round}</span>}
               </span>
               <span
                 className={`shrink-0 text-[12px] font-bold tracking-[0.06em] uppercase ${
                   r.status === "failed" ? "text-miss" : r.status === "running" ? "text-live" : "text-ink-3"
                 }`}
               >
-                {r.status === "ok" ? "OK" : r.status === "failed" ? "Failed" : "Running"}
+                {{ ok: "OK", "nothing to do": "Nothing to do", failed: "Failed", running: "Running" }[r.status]}
               </span>
             </div>
             <p className="mt-0.5 text-[13px] text-ink-2">{r.note}</p>

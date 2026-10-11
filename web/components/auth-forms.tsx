@@ -9,7 +9,7 @@ import {
   createAuthStore,
   nameProblem,
   sampleEmailLink,
-  SEASON_UNDER_WAY_SAMPLE,
+  EMAIL_SIGN_IN,
   type Intent,
   type Invite,
   type Profile,
@@ -104,6 +104,8 @@ export function SignInPanel({ intent, returnTo }: { intent: Intent; returnTo: st
         <GoogleMark />
         Continue with Google
       </button>
+      {EMAIL_SIGN_IN && (
+      <>
       <p className="my-4 flex items-center gap-3 text-[12px] text-ink-3">
         <span className="h-px flex-1 bg-line-soft" />
         or
@@ -144,6 +146,8 @@ export function SignInPanel({ intent, returnTo }: { intent: Intent; returnTo: st
           Email me a link
         </button>
       </form>
+      </>
+      )}
       {error && (
         <p id="auth-error" role="alert" className="mt-3 text-[14px] text-miss">
           {error}
@@ -276,6 +280,10 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Partial<Profile>>({ autoTip: "home" });
   const [error, setError] = useState<string | null>(null);
+  const [underWay, setUnderWay] = useState(false);
+  useEffect(() => {
+    store.autoTipLocked().then(setUnderWay);
+  }, [store]);
   const heading = useFocusOnMount<HTMLParagraphElement>();
   return (
     <form
@@ -295,7 +303,19 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
       <p ref={heading} tabIndex={-1} className="mb-5 flex items-start gap-2 text-[14px] text-ink-2 outline-none">
         <Check className="mt-0.5 size-4 shrink-0 text-lime" strokeWidth={3} aria-hidden />
         <span>
-          Signed in as <span className="font-semibold text-ink">{session.email}</span>. Three quick things:
+          Signed in as <span className="font-semibold text-ink">{session.email}</span>.{" "}
+          <button
+            type="button"
+            className="font-semibold text-ink underline decoration-line"
+            onClick={async () => {
+              // Wrong account: sign out and come back here to pick another. The invite stays unused.
+              await store.signOut();
+              window.location.reload();
+            }}
+          >
+            Not you?
+          </button>{" "}
+          Three quick things:
         </span>
       </p>
       <ProfileFields
@@ -304,7 +324,7 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
           setDraft(d);
           setError(null); // an answer changed, so the old message may no longer be true
         }}
-        autoTipMode={SEASON_UNDER_WAY_SAMPLE ? "joining-mid-season" : "open"}
+        autoTipMode={underWay ? "joining-mid-season" : "open"}
       />
       {error && (
         <p role="alert" className="mt-4 text-[14px] text-miss">
@@ -383,7 +403,11 @@ export function AuthCallback() {
   const store = useMemo(() => createAuthStore(), []);
   const router = useRouter();
   const params = useSearchParams();
+  // Once only: React runs effects twice in development, and a sign-in code works once.
+  const started = useRef(false);
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     store.completeSignIn(new URLSearchParams(params.toString())).then(({ next }) => router.replace(next));
   }, [store, params, router]);
   return <p className="pt-10 text-[15px] text-ink-3">Signing you in…</p>;
@@ -394,15 +418,26 @@ export function AuthCallback() {
 export function SignInPage() {
   const params = useSearchParams();
   const noAccount = params.get("no-account") === "1";
+  const linkFailed = params.get("link-failed") === "1";
   const heading = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (noAccount) heading.current?.focus();
-  }, [noAccount]);
+    if (noAccount || linkFailed) heading.current?.focus();
+  }, [noAccount, linkFailed]);
 
   return (
     <section className="pt-6">
       <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">Sign in</h1>
-      <p className="mt-3 text-[15px] text-ink-2">Welcome back. Same email or Google account you joined with.</p>
+      <p className="mt-3 text-[15px] text-ink-2">Welcome back. {EMAIL_SIGN_IN ? "Same email or Google account" : "The same Google account"} you joined with.</p>
+      {linkFailed && (
+        <div className="mt-6 rounded-lg bg-raised px-4 py-4">
+          <p ref={heading} tabIndex={-1} className="text-[16px] font-semibold text-ink outline-none">
+            That sign-in didn&rsquo;t work.
+          </p>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">
+            The link may have expired or been opened in a different browser. Try again below.
+          </p>
+        </div>
+      )}
       {noAccount && (
         <div className="mt-6 rounded-lg bg-raised px-4 py-4">
           <p ref={heading} tabIndex={-1} className="text-[16px] font-semibold text-ink outline-none">
@@ -429,12 +464,14 @@ export function AccountPanel() {
   const [saved, setSaved] = useState<"idle" | "saved" | "error">("idle");
   const [confirming, setConfirming] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [autoTipLocked, setAutoTipLocked] = useState(true);
   const keepRef = useRef<HTMLButtonElement>(null);
   const deleteRef = useRef<HTMLButtonElement>(null);
   const goneRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     store.session().then(setSession);
+    store.autoTipLocked().then(setAutoTipLocked);
     store.profile().then((p) => {
       if (p) {
         setDraft(p);
@@ -510,7 +547,7 @@ export function AccountPanel() {
             setDraft(d);
             setSaved("idle");
           }}
-          autoTipMode={SEASON_UNDER_WAY_SAMPLE ? "locked" : "open"}
+          autoTipMode={autoTipLocked ? "locked" : "open"}
         />
         <div className="mt-6 flex items-center gap-4">
           <button type="submit" className={pill}>

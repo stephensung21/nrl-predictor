@@ -114,3 +114,11 @@ export async function liveHome(now: Date): Promise<LiveHome | undefined> {
   const recap = await summary(sql, "round_recap", season, data.round);
   return { kind: "round", round: data, record, recap: recap?.body ?? null };
 }
+
+/** The round open for tipping (or being played): the home page's round. Null in the off-season,
+ * undefined when there's no database (the page uses the sample). */
+export async function liveTipRound(now: Date): Promise<RoundData | null | undefined> {
+  const home = await liveHome(now);
+  if (!home) return undefined;
+  return home.kind === "round" ? home.round : null;
+}
