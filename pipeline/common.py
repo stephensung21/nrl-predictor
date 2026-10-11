@@ -2,7 +2,7 @@
 Shared pieces for the weekly pipeline: paths, the model code in src/, and the pipeline's own records.
 
 Every run is recorded, and every prediction it made is kept (not overwritten), with when it was
-made; so is every odds snapshot (fetch_odds.py). Grading needs the full history: a game's prediction of record is the latest one made before
+made; so is every odds snapshot (fetch_odds.py) and weather forecast (fetch_weather.py). Grading needs the full history: a game's prediction of record is the latest one made before
 its kickoff. Live records go in data/pipeline/live/<season>/ and are committed by the results job;
 replays of past seasons go in data/pipeline/replay/<season>/ (ignored by git, regenerable).
 """
@@ -45,6 +45,7 @@ class Records:
         self.fixtures_file = self.dir / "fixtures.csv"
         self.rounds_file = self.dir / "rounds.csv"
         self.summaries_file = self.dir / "summaries.csv"
+        self.weather_file = self.dir / "weather.csv"
 
     def add_run(self, record):
         with self.runs_file.open("a", encoding="utf-8") as f:
@@ -108,6 +109,16 @@ class Records:
 
     def add_summaries(self, rows):
         rows.to_csv(self.summaries_file, mode="a", header=not self.summaries_file.exists(), index=False)
+
+    def weather(self):
+        """Every forecast and observation fetched for the site (fetch_weather.py), oldest first."""
+        from fetch_weather import COLS
+        if not self.weather_file.exists():
+            return pd.DataFrame(columns=COLS)
+        return pd.read_csv(self.weather_file, dtype={"source": str, "conditions": str})
+
+    def add_weather(self, rows):
+        rows.to_csv(self.weather_file, mode="a", header=not self.weather_file.exists(), index=False)
 
     def update_fixtures(self, fixtures):
         new = fixtures.reindex(columns=FIXTURE_COLS)

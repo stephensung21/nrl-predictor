@@ -9,12 +9,13 @@ rebuilt from the repo. Nothing here touches the tippers' own data except the Mod
 
 - live (the default; run after each scheduled job): the season's matches (finished, and the coming
   games the predict job has seen), the odds sheet's prices and the live snapshots, team lists, Elo for
-  the season, each round's margin game, model versions, the run log, every prediction and the graded
-  games; then the Model's tips (and its margin for the margin game) for games not yet started.
+  the season, each round's margin game, model versions, the run log, every prediction, the graded
+  games and each game's weather (fetch_weather.py); then the Model's tips (and its margin for the margin game) for games not yet started.
 - `--backfill SEASON`: a finished season from the final test's predictions
   (reports/predictions_2026.csv, from `train.py --final`), so the site starts with a real season.
   They used each game's final team list, so they're marked as a backfill, not a live record. Every
-  scraped season's games (2021 on, for head to head) and Elo for every season since 2009 go with it.
+  scraped season's games (2021 on, for head to head) and Elo for every season since 2009 go with it,
+  and the season's observed weather if `fetch_weather.py --backfill SEASON` has been run.
 
 Connects with SUPABASE_DB_URL: the project's session pooler connection string (Project Settings →
 Database → Connection string → Session pooler), which works over IPv4 as GitHub's runners need.
@@ -206,6 +207,19 @@ def summary_rows(summaries, match_ids, run_ids):
         "created_at": ts(s["created_at"])})
 
 
+def weather_rows(weather, match_ids):
+    """The latest forecast and the observation for each game (fetch_weather.py)."""
+    if weather.empty:
+        return pd.DataFrame()
+    w = weather[weather["match_id"].isin(match_ids)].drop_duplicates(["match_id", "kind"], keep="last")
+    return pd.DataFrame({
+        "match_id": w["match_id"].astype("int64"), "kind": w["kind"], "fetched_at": ts(w["fetched_at"]),
+        "source": w["source"], "roofed": w["roofed"].astype(bool), "temp_c": w["temp_c"], "rain_mm": w["rain_mm"],
+        "rain_chance": w["rain_chance"].astype("Int64"), "wind_kmh": w["wind_kmh"], "gust_kmh": w["gust_kmh"],
+        "wind_dir": w["wind_dir"].astype("Int64"), "weather_code": w["weather_code"].astype("Int64"),
+        "conditions": w["conditions"]})
+
+
 def run_rows(runs):
     rows = []
     for r in runs:
@@ -265,6 +279,7 @@ def live_tables(season, records):
         "predictions": prediction_rows(preds),
         "graded_games": graded_rows(graded) if graded is not None else pd.DataFrame(),
         "summaries": summary_rows(records.summaries(), set(matches["id"]), {r["id"] for r in runs}),
+        "weather": weather_rows(records.weather(), set(matches["id"])),
     }
 
 
@@ -306,6 +321,7 @@ def backfill_tables(season, predictions_file=None):
         "pipeline_runs": run_rows([run]),
         "predictions": prediction_rows(preds),
         "graded_games": graded_rows(graded),
+        "weather": weather_rows(Records(season, replay=False).weather(), set(matches["id"])),
     }
 
 
@@ -315,7 +331,7 @@ KEYS = {"model_versions": ["version"], "matches": ["id"], "odds_sheet": ["match_
         "odds_snapshots": ["match_id", "bookmaker", "captured_at"], "team_lists": ["match_id", "fetched_at", "player_id"],
         "elo_ratings": ["team", "played_on"], "rounds": ["season", "round"],
         "summaries": ["kind", "season", "round", "match_id"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
-        "graded_games": ["match_id"]}
+        "graded_games": ["match_id"], "weather": ["match_id", "kind"]}
 
 
 def plain(v):

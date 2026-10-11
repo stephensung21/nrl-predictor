@@ -161,6 +161,17 @@ def records(tmp_path, monkeypatch):
         "home_line": 6.5, "home_line_odds": 1.9, "away_line_odds": 1.9, "total": 44.5, "over_odds": 1.9,
         "under_odds": 1.9, "issues": ""}]))
 
+    played = int(games["match_id"].iloc[0])
+    weather = lambda mid, kind, at, rain, code, cond, **k: {  # noqa: E731
+        "match_id": mid, "kind": kind, "fetched_at": at, "source": "forecast", "roofed": False, "temp_c": 14.0,
+        "rain_mm": rain, "rain_chance": k.get("chance"), "wind_kmh": 12.0, "gust_kmh": 30.0, "wind_dir": 200,
+        "weather_code": code, "conditions": cond}
+    rec.add_weather(pd.DataFrame([
+        weather(played, "forecast", "2026-05-05T07:15:00+00:00", 0.0, 3, "Overcast", chance=40),
+        weather(played, "forecast", "2026-05-06T23:15:00+00:00", 2.0, 61, "Light rain", chance=70),
+        weather(played, "observed", "2026-05-11T00:15:00+00:00", 4.5, 63, "Rain"),
+        weather(99, "forecast", "2026-05-05T07:15:00+00:00", 0.0, 1, "Mainly clear", chance=5)]))
+
     lists = tmp_path / "lists" / "2026" / "round-30"
     lists.mkdir(parents=True)
     pd.DataFrame([{"match_id": 99, "season": 2026, "team": "Storm", "player_id": n, "player_name": f"P{n}",
@@ -178,6 +189,14 @@ def test_live_publishing_is_safe_to_rerun_and_the_views_read_it(db_url, records)
     counts = query(db_url, "select (select count(*) from predictions), (select count(*) from pipeline_runs), "
                            "(select count(*) from matches where id = 99), (select count(*) from odds_snapshots)")
     assert counts == [(9, 4, 1, 1)]
+
+    # Weather: the latest forecast and the observation are kept; the site's view shows what the weather
+    # was once known, otherwise the latest forecast.
+    played = int(games["match_id"].iloc[0])
+    assert first["weather"] == 3
+    assert query(db_url, "select match_id, kind, conditions, rain_mm, rain_chance from match_weather order by match_id") == [
+        (99, "forecast", "Mainly clear", 0.0, 5), (played, "observed", "Rain", 4.5, None)]
+    assert query(db_url, "select conditions from weather where match_id = %s and kind = 'forecast'", (played,)) == [("Light rain",)]
 
     # Previews and recaps (a recap has no match, which the key treats as a value, not a gap).
     assert query(db_url, "select kind, match_id, body from summaries order by kind") == [
