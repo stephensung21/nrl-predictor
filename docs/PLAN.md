@@ -183,6 +183,13 @@ Stats, news and market agents each give a view, and a lead agent combines them i
 
 Weekly checks on calibration drift, accuracy against the market and closing line value trend, with a written summary and alerts when something degrades.
 
+### 7.8 Explanations, post-mortems and the model reviewer
+
+Planned in detail in [PLAN_WEB.md §7](PLAN_WEB.md#7-agent-features-later):
+- **Game-by-game explanations (7.1):** each prediction's drivers, calculated in `predict.py` from the frozen models (exact for the linear half, SHAP for LightGBM). Plain code, no agent.
+- **Post-mortems of badly missed games (7.2):** the facts assembled by code (late changes, the market's move, conditions, in-game events), the main cause classified by code, and a short write-up by Claude. Never suggests a model change from one game.
+- **Model reviewer (7.3):** the one real agent loop. Every 6 rounds, it looks for patterns across many misses, proposes at most 2–3 changes with pass criteria set in advance, tests them on the backtest, and opens a pull request. Small or unclear gains go to "Already tried".
+
 ### Where not to use agents
 
 - Producing the main probability.
