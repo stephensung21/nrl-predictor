@@ -243,3 +243,32 @@ def test_backfill_gives_the_final_test_s_numbers(db_url):
     model_correct = query(db_url, "select sum(correct) from round_scores s join profiles p on p.id = s.user_id "
                                   "where p.is_model and s.season = 2026")[0][0]
     assert model_correct == int(want.loc["Model", "tips"])
+
+
+# ---------------------------------------------------------------- the tipping backup
+
+def test_the_encrypted_backup_restores_the_comp(db_url, records):
+    """Tippers, tips, the margin game and invites survive a backup, a wipe and a restore; the file
+    can't be read without the passphrase."""
+    import json
+    import backup
+    rec, games = records
+    publish_to(db_url, publish.live_tables(2026, rec), 2026)
+    amy = "00000000-0000-0000-0000-000000000002"
+    connection(db_url).execute(f"""
+        insert into auth.users (id, email) values ('{amy}', 'amy@example.com');
+        insert into profiles (id, display_name, fav_team, auto_tip, is_admin) values ('{amy}', 'Amy', 'Storm', 'crowd', true);
+        insert into tips (user_id, match_id, team, margin) values ('{amy}', 99, 'Broncos', 7);
+        insert into invites (code, created_by) values ('MATES27', '{amy}');
+    """)
+    before = backup.export(connection(db_url))
+    blob = backup.encrypt(json.dumps(before).encode(), "correct horse")
+    assert b"amy@example.com" not in blob and b"Amy" not in blob
+    with pytest.raises(Exception):
+        backup.decrypt(blob, "wrong passphrase")
+
+    connection(db_url).execute("delete from tips; delete from invites; delete from rounds; delete from profiles; delete from auth.users")
+    restored = backup.restore(connection(db_url), json.loads(backup.decrypt(blob, "correct horse")))
+    assert restored == {"auth.users": 2, "profiles": 2, "rounds": 1, "invites": 1, "tips": 2}
+    after = backup.export(connection(db_url))
+    assert after["tables"] == before["tables"]

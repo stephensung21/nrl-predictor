@@ -7,6 +7,8 @@
 #   ODDS_API_KEY       The Odds API key (fetch_odds.py); without it the odds fetch is skipped
 #   SUPABASE_DB_URL    the database's session pooler connection string (publish.py); without it
 #                      nothing is published
+#   BACKUP_PASSPHRASE  encrypts Monday's backup of the tipping tables (backup.py); keep a copy
+#                      outside GitHub, since a backup can't be read without it
 #   ALERT_WEBHOOK_URL  optional Discord or Slack webhook for failure alerts (GitHub also emails)
 name: pipeline job
 
@@ -81,6 +83,25 @@ jobs:
           REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
         run: python pipeline/publish.py
+
+      # The tipping comp is the only data the repo can't rebuild. The repo (and so its artifacts) is
+      # public, so the file is encrypted before it's kept.
+      - name: Back up the tipping tables
+        id: backup
+        if: inputs.job == 'results'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: python pipeline/backup.py --out backups
+
+      - name: Keep the backup
+        if: inputs.job == 'results' && hashFiles('backups/*.bin') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tipping-backup-${{ github.run_id }}
+          path: backups/*.bin
+          retention-days: 90
+          if-no-files-found: ignore
 
       - name: Save the season's raw pages
         if: always() && inputs.job == 'results'
