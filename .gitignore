@@ -24,3 +24,4 @@ data/pipeline/replay/
 
 # Encrypted tipping backups (pipeline/backup.py); kept as workflow artifacts, not in the repo
 backups/
+supabase/.temp/
