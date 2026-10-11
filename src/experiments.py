@@ -42,6 +42,8 @@ Usage:
     python src/experiments.py --only correlation -> reports/experiments/experiments_correlation.md (overlap
                                                   between inputs, and features correlated with the main
                                                   models' backtest errors; needs features.py --experimental)
+    python src/experiments.py --only lgb_extras -> reports/experiments/experiments_lgb_extras.md (each of
+                                                  LightGBM's eight extra features dropped, or kept alone)
 """
 
 import argparse
@@ -1855,6 +1857,85 @@ def correlation_audit():
     print("wrote reports/experiments/experiments_correlation.md and reports/correlation_screen.csv")
 
 
+# ---------------------------------------------------------------- 47. LightGBM's extra features
+
+def lgb_extras_experiments():
+    """LightGBM's compact set is every linear-model feature plus LGB_COMPACT_EXTRA. Dropping all eight
+    extras improved the win models, so each is tested on its own, both ways: the current set without
+    it (what it adds on top of the others), and no extras but it (what it adds alone)."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    extras = list(LGB_COMPACT_EXTRA)
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        variants = {"47 no extras": pipeline_backtest(df, LGB_COMPACT_EXTRA=[])}
+        for f in extras:
+            variants[f"47 drop {f}"] = pipeline_backtest(df, LGB_COMPACT_EXTRA=[x for x in extras if x != f])
+        for f in extras:
+            variants[f"47 only {f}"] = pipeline_backtest(df, LGB_COMPACT_EXTRA=[f])
+    finally:
+        builtins.print = quiet
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    for name, preds in variants.items():
+        compare_pipelines(name, test, preds, base, models=("lightgbm", "ensemble"))
+    res = pd.DataFrame(RESULTS)
+    RESULTS.clear()
+
+    # 2026 as extra information only (the final test season, so not used to decide): the same
+    # procedure, developed on 2021-2025, for the setups the backtest pointed to.
+    full = models.load_data()
+    full = full[full["season"] <= 2026].reset_index(drop=True)
+    test26 = full[full["season"] == 2026].set_index("match_id")
+    builtins.print = lambda *a, **k: None
+    try:
+        with config.override(BACKTEST_SEASONS=[2026]):
+            base26 = pipeline_backtest(full)
+            check = {"no extras": [], "drop diff_rapm_attack": [x for x in extras if x != "diff_rapm_attack"],
+                     "drop diff_rapm_attack and is_final": [x for x in extras if x not in ("diff_rapm_attack", "is_final")]}
+            check = {k: pipeline_backtest(full, LGB_COMPACT_EXTRA=v) for k, v in check.items()}
+    finally:
+        builtins.print = quiet
+    for name, preds in check.items():
+        compare_pipelines(f"2026 {name}", test26, preds, base26, models=("ensemble",))
+    res26 = pd.DataFrame(RESULTS)
+
+    ens = res[res["experiment"].str.endswith(": ensemble")].copy()
+    ens["experiment"] = ens["experiment"].str.replace(": ensemble", "").str.replace("47 ", "")
+    ens["col"] = ens["model"] + ", " + ens["target"]
+    summary = ens.pivot(index="experiment", columns="col", values="diff")
+    summary = summary.loc[list(dict.fromkeys(ens["experiment"]))]
+    summary = summary[[f"{VARIANT_LABEL[v]}, {t}" for v in VARIANTS for t in TARGETS]]
+    clear = ens[ens["verdict"] != "no clear difference"]
+    notes = [f"- `{r['experiment']}`: {r['model']} {r['target']} {r['verdict']} ({r['diff']:+.4f})"
+             for _, r in clear.iterrows()]
+
+    report = ["# LightGBM's extra features (2023–2025 backtest)", "",
+              "LightGBM's compact set is every linear-model feature, plus the opening odds for the with-odds "
+              "model, plus eight extras (`LGB_COMPACT_EXTRA`): " + ", ".join(f"`{f}`" for f in extras) + ". "
+              "Each extra is tested on its own: `drop X` is the current set without it (what it adds on "
+              "top of the other extras), `only X` is no extras but it (what it adds alone). Only LightGBM "
+              "changes; the linear models are the same in every row.", "",
+              "## Main ensembles: change against the current setup", "",
+              "New minus current (negative = better): win log loss, margin and total MAE.", "",
+              md_table(summary, "{:+.4f}"), "",
+              "Clear differences (paired bootstrap 95% interval excludes 0):", "",
+              *(notes or ["- none"]), "",
+              "## 2026 (extra information only)", "",
+              "The final test season, predicted by the same procedure developed on 2021–2025. Not used "
+              "to decide, since it was already scored once; shown to see whether the backtest's pattern "
+              "holds on new games. Main ensembles, all 213 games.", "",
+              md_table(res26.set_index("experiment")), "",
+              "## Every result (LightGBM alone and the ensemble)", "",
+              md_table(res.set_index("experiment")), ""]
+    (EXPERIMENTS / "experiments_lgb_extras.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_lgb_extras.md")
+
+
 def main():
     warnings.filterwarnings("ignore")
     df = load()
@@ -1980,7 +2061,7 @@ if __name__ == "__main__":
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
                                            "calibration", "weekly2", "blend", "shin",
                                            "disagreement", "pre_kickoff", "weather", "correlation",
-                                           "correlation_leads"],
+                                           "correlation_leads", "lgb_extras"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -1998,4 +2079,5 @@ if __name__ == "__main__":
      "disagreement": disagreement_experiments, "pre_kickoff": pre_kickoff_experiments,
      "weather": weather_experiments, "correlation": correlation_audit,
      "correlation_leads": lambda: context2_experiments(CORRELATION_GROUPS, "46", "experiments_correlation_leads.md",
-                                                       "Correlation audit leads")}.get(args.only, main)()
+                                                       "Correlation audit leads"),
+     "lgb_extras": lgb_extras_experiments}.get(args.only, main)()

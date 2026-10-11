@@ -206,6 +206,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Rookies in the linear win and margin models (correlation audit lead) | win −0.001, margin −0.05: too small to adopt (item 46) |
 | RAPM-based stars out, re-tested on top of S2 (correlation audit lead) | win −0.001, margin −0.03 to −0.05: too small to adopt (item 46) |
 | Origin spine stars out on top of S2 (correlation audit lead) | ±0.0005, no effect (item 46) |
+| LightGBM without its eight extra features | backtest win −0.0027 (clear), but 2026 +0.0009 / +0.0002: didn't hold (item 47) |
 
 ---
 
@@ -647,6 +648,24 @@ A screen of the whole feature table instead of one idea at a time (`python src/e
 | Origin spine stars out | −0.0004 / 0.0000 | −0.00 / −0.01 |
 
 **Not adopted:** the signal is real, since the screen found it and the backtest agrees on direction, but it's the size of the capped-target change that was left out (margin −0.03, win −0.0005). The screen itself also reused the backtest. If 2027's graded season shows the same pattern in the live errors, rookies is the one to revisit: it's already computed and in LightGBM, so the change is one line in `LINEAR_FEATURES`.
+
+### 47. LightGBM's extra features ❌ dropping all; 🔶 dropping RAPM attack
+
+LightGBM's compact set is every linear-model feature plus eight extras (`LGB_COMPACT_EXTRA`). Dropping all eight improved the backtest's win models, so each was tested on its own (`python src/experiments.py --only lgb_extras` → `reports/experiments/experiments_lgb_extras.md`): the current set without it, and no extras but it. Main ensembles, win log loss with / no odds:
+
+| | 2023–25 backtest | 2026 (extra information) |
+|---|---|---|
+| No extras | **−0.0027 / −0.0025** (clear) | +0.0009 / +0.0002 |
+| Without `diff_rapm_attack` | −0.0011 / −0.0011 (margin −0.017, clear, with odds) | −0.0004 / −0.0004 |
+| Without any other single extra | −0.0006 to +0.0004 | – |
+| `is_final` | no effect at all: LightGBM never splits on it (too few finals games for a 40-game leaf) | – |
+
+**What it shows:**
+- **RAPM attack is redundant.** `diff_rapm_total` = `diff_rapm_attack` − `diff_rapm_defence` exactly, and LightGBM already has the other two. Trees can't add columns, so the third copy only spreads the splits; it's the largest single cost, and the only one that also points the right way on 2026.
+- **No extra helps on its own:** each one alone is worse than no extras by 0 to +0.0015 (attack the worst, then rookies and rest days). The backtest gain from dropping all eight is spread thinly over them, and 2026 doesn't repeat it, so it was mostly luck. **Not adopted.**
+- **`is_final` is dead weight**, unused by the trees.
+
+**Open:** dropping `diff_rapm_attack` (and `is_final`) is a simplification with a reason behind it, not a tuned gain, and it points the right way on both. The gain is small (−0.0004 to −0.0011), so by the adoption rule it waits on a decision; adopting it means refreezing the 2027 models (`train.py --freeze --force`).
 
 ---
 
