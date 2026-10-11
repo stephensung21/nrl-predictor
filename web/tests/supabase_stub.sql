@@ -12,7 +12,15 @@ create table auth.users (
   aud text,
   role text,
   email text,
+  raw_user_meta_data jsonb,               -- what the sign-in provider sends (Google: name, photo)
   created_at timestamptz default now()
+);
+create table auth.identities (
+  id uuid primary key,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  provider text not null,
+  provider_id text not null,
+  identity_data jsonb not null
 );
 create function auth.uid() returns uuid language sql stable as
   $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
