@@ -14,7 +14,7 @@ This plan extends [PLAN.md](PLAN.md). The visual and UX design is in [DESIGN_BRI
 
 The core model is built and tested (see [IMPROVEMENTS.md](IMPROVEMENTS.md) and [MODELLING_PLAN.md](MODELLING_PLAN.md)):
 
-- **Main model:** the **with-odds ensemble** (average of a linear model and LightGBM, with the opening odds as inputs). On the 2023–25 backtest it scores 0.622 log loss against 0.638 for Elo and 0.633 for the opening market, and on the unseen 2026 season it was level with the closing market. The **no-odds ensemble** (0.627) is the independent model for the model-vs-market page and the fallback when odds aren't available.
+- **Main model:** the **with-odds ensemble** (average of a linear model and LightGBM, with the opening odds as inputs). On the 2023–25 backtest it scores 0.621 log loss against 0.638 for Elo and 0.633 for the opening market, and on the unseen 2026 season it was level with the closing market. The **no-odds ensemble** (0.626) is the independent model for the model-vs-market page and the fallback when odds aren't available.
 - **Predicting from Tuesday's team lists** costs almost nothing in accuracy (+0.0014 log loss, item 40), so the Tuesday-evening job is the right main prediction.
 - **`src/predict.py` exists:** it predicts a round with frozen models from the current team lists, validates the result, and writes a CSV, a Markdown table and a run record. A replay mode re-predicts past rounds as of their Tuesday and reproduces the backtest's Tuesday-list predictions exactly.
 - **Models are frozen once before the season** (`python src/train.py --freeze` → `models/2027/`). Weekly refitting was tested and was worse (item 24); during the season only the features update.
@@ -41,7 +41,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 | Step | Status | Where / notes |
 |---|---|---|
-| Pre-season model freeze | ✅ | `python src/train.py --freeze` → `models/2027/` (version `2027.1`, trained on 2021–2026). Rerun before Round 1 if more 2026 data or settings change. |
+| Pre-season model freeze | ✅ | `python src/train.py --freeze` → `models/2027/` (version `2027.1`, trained on 2021–2026). Refrozen 12 October 2026 after item 47 (two LightGBM inputs dropped). Rerun before Round 1 if more 2026 data or settings change. |
 | Predict a round from current team lists | ✅ | `python src/predict.py --round N` (live) |
 | Validation before publishing | ✅ | `predict.validate`: missing inputs, probabilities, 17 named per team, duplicate teams; margin/probability disagreement is a warning |
 | Replay a past round as a test | ✅ | `predict.py --replay --season 2026 --round N`; reproduces the backtest exactly; slow test in `tests/test_predict.py` |

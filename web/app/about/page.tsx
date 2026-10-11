@@ -17,8 +17,8 @@ const TEST_2026 = [
   { name: "Always the home team", logLoss: 0.6903, brier: 0.2486, accuracy: 0.5446 },
 ];
 const BACKTEST = [
-  { name: "The Model (with odds)", logLoss: 0.622 },
-  { name: "The Model without odds", logLoss: 0.627 },
+  { name: "The Model (with odds)", logLoss: 0.621 },
+  { name: "The Model without odds", logLoss: 0.626 },
   { name: "Bookies’ opening price", logLoss: 0.633 },
   { name: "Elo", logLoss: 0.638 },
 ];
@@ -72,12 +72,8 @@ export default function AboutPage() {
       <Section id="inputs" title="What goes in">
         <ul className="list-disc space-y-2 pl-5 marker:text-ink-3">
           <li>
-            <span className="font-semibold text-ink">Recent form</span> from every game&rsquo;s results and match stats since 2020:
-            points, metres, line breaks, errors and the like.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">Elo ratings</span> built from every result since 2009, which say how
-            strong each team is right now.
+            <span className="font-semibold text-ink">Team ratings</span> built from every result since 2009: Elo, and a rating
+            fitted to winning margins. Together they say how strong each team is right now.
           </li>
           <li>
             <span className="font-semibold text-ink">Tuesday&rsquo;s team lists:</span> a rating for every player from how his
@@ -85,7 +81,7 @@ export default function AboutPage() {
           </li>
           <li>
             <span className="font-semibold text-ink">The situation:</span> rest days, travel and whether a team is at its own
-            ground.
+            ground, plus the Origin period and a wet ground for the total.
           </li>
           <li>
             <span className="font-semibold text-ink">The bookies&rsquo; opening prices,</span> for the main Model only.
@@ -111,8 +107,8 @@ export default function AboutPage() {
       <Section id="tested" title="How it was tested">
         <p>
           It was only ever judged on seasons it never saw while it was being built. On 2023&ndash;25 its win chances were more
-          accurate than Elo&rsquo;s and the bookies&rsquo; opening prices, though it tipped no more winners than the opening
-          favourite, and the closing prices were slightly more accurate still. Then, with everything fixed in advance, it predicted the whole 2026 season once.
+          accurate than Elo&rsquo;s and the bookies&rsquo; opening prices, and it tipped slightly more winners than the opening
+          favourite, though the closing prices were slightly more accurate still. Then, with everything fixed in advance, it predicted the whole 2026 season once.
         </p>
       </Section>
       <dl className="mt-4 grid max-w-[40rem] grid-cols-3 border-y border-line-soft">
@@ -184,9 +180,9 @@ export default function AboutPage() {
             main version adds the opening price, line and total as inputs.
           </p>
           <p>
-            <span className="font-semibold text-ink">Features.</span> Elo and a team margin rating; rolling form from match
-            stats; context (rest, travel, venue, finals); player ratings (an adjusted plus-minus per player, summed over the named
-            17, with spine changes and absences); and, for the main version, the odds. Everything about a game is built only from
+            <span className="font-semibold text-ink">Features.</span> Elo and a team margin rating; player ratings (an adjusted
+            plus-minus per player, summed over the named 17, with rookies, missing regulars and star absences); context (rest,
+            travel, neutral venue, the Origin period, a wet ground); and, for the main version, the odds. Everything about a game is built only from
             what was known before it.
           </p>
           <p>

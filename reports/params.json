@@ -49,14 +49,12 @@
         "rapm_points",
         "team_margin",
         "wet_conditions",
-        "diff_rapm_attack",
         "diff_rapm_missing",
         "diff_rookies",
         "diff_rest_days",
         "home_travel",
         "away_travel",
         "neutral",
-        "is_final",
         "open_logit",
         "open_line",
         "open_total",
@@ -100,14 +98,12 @@
         "rapm_points",
         "team_margin",
         "wet_conditions",
-        "diff_rapm_attack",
         "diff_rapm_missing",
         "diff_rookies",
         "diff_rest_days",
         "home_travel",
         "away_travel",
-        "neutral",
-        "is_final"
+        "neutral"
       ]
     }
   },
@@ -131,7 +127,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 149,
+        "lgb_rounds": 148,
         "lgb_seeds": 5
       },
       "margin": {
@@ -152,7 +148,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 77,
+        "lgb_rounds": 79,
         "lgb_seeds": 5
       },
       "total": {
@@ -173,7 +169,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 92,
+        "lgb_rounds": 126,
         "lgb_seeds": 5
       }
     },
@@ -196,7 +192,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 141,
+        "lgb_rounds": 143,
         "lgb_seeds": 5
       },
       "margin": {
@@ -217,7 +213,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 77,
+        "lgb_rounds": 80,
         "lgb_seeds": 5
       },
       "total": {
@@ -238,7 +234,7 @@
           "feature_fraction": 0.7,
           "bagging_fraction": 0.8
         },
-        "lgb_rounds": 51,
+        "lgb_rounds": 37,
         "lgb_seeds": 5
       }
     }
