@@ -111,6 +111,7 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
     # Games not scraped yet get their match id from the match centre, keyed by the draw's link.
     ids = dict(zip(fixtures["url"].str.replace("https://www.nrl.com", "", regex=False), fixtures["match_id"]))
     neutral = drawlib.neutral_games(draw.assign(match_id=draw["match_id"].fillna(draw["url"].map(ids))))
+    records.update_fixtures(fixtures.assign(neutral=fixtures["match_id"].isin(neutral)))
     bundle = predict.load_bundle(model_season)
     run["model_version"] = bundle.get("version")
     live_odds = None if replay else fetch_odds.for_fixtures(fixtures, fetch_odds.game_prices(records.odds_snapshots()))

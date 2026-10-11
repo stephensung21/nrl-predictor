@@ -1,9 +1,12 @@
 # One job of the weekly pipeline (pipeline/run.py), called by results.yml, predict.yml, refresh.yml
 # and odds.yml (PLAN_WEB.md §1.1, step 8). It runs the job, commits what it recorded, and alerts if
-# the job failed. Nothing is published to the website yet (step 7 adds that).
+# the job failed. After a job that didn't fail, publish.py copies the season's records into the
+# Supabase database (step 7).
 #
 # Secrets (Settings > Secrets and variables > Actions):
 #   ODDS_API_KEY       The Odds API key (fetch_odds.py); without it the odds fetch is skipped
+#   SUPABASE_DB_URL    the database's session pooler connection string (publish.py); without it
+#                      nothing is published
 #   ALERT_WEBHOOK_URL  optional Discord or Slack webhook for failure alerts (GitHub also emails)
 name: pipeline job
 
@@ -69,6 +72,15 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           FAIL: ${{ inputs.fail && '--fail' || '' }}
         run: python pipeline/run.py --job "$JOB" $FAIL
+
+      # Every run publishes, even one with nothing to do: that also keeps the free database from
+      # pausing in the off-season. A failure here fails the workflow and alerts.
+      - name: Publish to the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+        run: python pipeline/publish.py
 
       - name: Save the season's raw pages
         if: always() && inputs.job == 'results'

@@ -375,7 +375,8 @@ alter table invites enable row level security;
 -- data through this role and nothing else: no tips, profiles, invites or run log. It can't log in
 -- until a password is set by hand in the dashboard's SQL editor, never in a migration:
 --   alter role analyst login password '...';
-create role analyst nologin;
+-- Roles belong to the whole server, not one database, so this tolerates one left by an earlier reset.
+do $$ begin create role analyst nologin; exception when duplicate_object then null; end $$;
 grant usage on schema public to analyst;
 
 -- Model data: anyone (and the analyst) reads; only the service key writes.

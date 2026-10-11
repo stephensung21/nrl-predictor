@@ -20,6 +20,8 @@ import config  # noqa: E402,F401  (the model code, imported here once for every 
 from ingest import PROCESSED  # noqa: E402
 
 RECORDS = ROOT / "data" / "pipeline"
+FIXTURE_COLS = ["match_id", "season", "round", "round_title", "is_final", "start_time_utc", "venue", "venue_city",
+                "home_team", "away_team", "neutral", "url"]
 PREDICTION_COLS = ["run_id", "created_at", "match_id", "season", "round", "start_time_utc", "home_team",
                    "away_team", "home_win_prob", "margin", "total", "home_score", "away_score", "model",
                    "no_odds_home_win_prob", "market_open_home_prob", "model_version", "inputs"]
@@ -39,6 +41,7 @@ class Records:
         self.predictions_file = self.dir / "predictions.csv"
         self.graded_file = self.dir / "graded.csv"
         self.odds_file = self.dir / "odds_snapshots.csv"
+        self.fixtures_file = self.dir / "fixtures.csv"
 
     def add_run(self, record):
         with self.runs_file.open("a", encoding="utf-8") as f:
@@ -76,3 +79,15 @@ class Records:
 
     def add_odds_snapshots(self, snaps):
         snaps.to_csv(self.odds_file, mode="a", header=not self.odds_file.exists(), index=False)
+
+    def fixtures(self):
+        """The games the predict and refresh jobs have seen, with their nrl.com match ids (the draw
+        doesn't give them), so they can be published before they're played. Latest version of each."""
+        if not self.fixtures_file.exists():
+            return pd.DataFrame(columns=FIXTURE_COLS)
+        return pd.read_csv(self.fixtures_file)
+
+    def update_fixtures(self, fixtures):
+        new = fixtures.reindex(columns=FIXTURE_COLS)
+        both = pd.concat([self.fixtures(), new], ignore_index=True)
+        both.drop_duplicates("match_id", keep="last").sort_values(["start_time_utc", "match_id"])             .to_csv(self.fixtures_file, index=False)

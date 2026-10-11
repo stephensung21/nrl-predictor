@@ -144,27 +144,46 @@ def game_prices(snaps):
     return out.rename(columns={"open_home_line": "open_line", "close_home_line": "close_line"}).reset_index()
 
 
+def match_events(events, fixtures):
+    """nrl.com's match id for each of the API's games (event_id, commence_time, home_team,
+    away_team): the same two teams and a kickoff within 36 hours. `flipped` marks games the API lists
+    the other way round from nrl.com, whose prices must be turned round to nrl.com's home team."""
+    fx = fixtures[["match_id", "start_time_utc", "home_team", "away_team"]].copy()
+    fx["start_time_utc"] = pd.to_datetime(fx["start_time_utc"], utc=True)
+    ev = events[["event_id", "commence_time", "home_team", "away_team"]].drop_duplicates("event_id").copy()
+    ev["commence_time"] = pd.to_datetime(ev["commence_time"], utc=True)
+    rows = []
+    for e in ev.itertuples():
+        near = fx[(fx["start_time_utc"] - e.commence_time).abs() <= pd.Timedelta(hours=36)]
+        for flipped, home, away in ((False, e.home_team, e.away_team), (True, e.away_team, e.home_team)):
+            hit = near[(near["home_team"] == home) & (near["away_team"] == away)]
+            if len(hit):
+                rows.append({"event_id": e.event_id, "match_id": int(hit["match_id"].iloc[0]), "flipped": flipped})
+                break
+    return pd.DataFrame(rows, columns=["event_id", "match_id", "flipped"])
+
+
+def turn_round(snaps, flipped):
+    """Snapshot prices from the other team's side: home and away swapped, the line negated."""
+    s = snaps.copy()
+    f = flipped.to_numpy(bool)
+    s.loc[f, ["home_odds", "away_odds"]] = snaps.loc[f, ["away_odds", "home_odds"]].to_numpy()
+    s.loc[f, ["home_line_odds", "away_line_odds"]] = snaps.loc[f, ["away_line_odds", "home_line_odds"]].to_numpy()
+    s.loc[f, "home_line"] = -snaps.loc[f, "home_line"]
+    return s
+
+
 def for_fixtures(fixtures, prices):
-    """The opening prices (p_open, open_line, open_total) for each fixture, by match id. A game is
-    matched on its two teams and a kickoff within 36 hours; if the API lists the teams the other way
-    round from nrl.com, the prices are turned round to nrl.com's home team."""
+    """The opening prices (p_open, open_line, open_total) for each fixture, by match id, turned round
+    to nrl.com's home team where the API lists the game the other way round (match_events)."""
     cols = ["p_open", "open_line", "open_total"]
     if prices is None or prices.empty:
         return pd.DataFrame(columns=cols, index=pd.Index([], name="match_id"))
-    fx = fixtures[["match_id", "start_time_utc", "home_team", "away_team"]].copy()
-    fx["start_time_utc"] = pd.to_datetime(fx["start_time_utc"], utc=True)
-    rows = {}
-    for f in fx.itertuples():
-        near = prices[(prices["commence_time"] - f.start_time_utc).abs() <= pd.Timedelta(hours=36)]
-        same = near[(near["home_team"] == f.home_team) & (near["away_team"] == f.away_team)]
-        flipped = near[(near["home_team"] == f.away_team) & (near["away_team"] == f.home_team)]
-        if len(same):
-            p = same.iloc[0]
-            rows[f.match_id] = [p["p_open"], p["open_line"], p["open_total"]]
-        elif len(flipped):
-            p = flipped.iloc[0]
-            rows[f.match_id] = [1 - p["p_open"], -p["open_line"], p["open_total"]]
-    return pd.DataFrame.from_dict(rows, orient="index", columns=cols).rename_axis("match_id").astype(float)
+    m = prices.merge(match_events(prices, fixtures), on="event_id").drop_duplicates("match_id")
+    out = pd.DataFrame({"p_open": np.where(m["flipped"], 1 - m["p_open"], m["p_open"]),
+                        "open_line": np.where(m["flipped"], -m["open_line"], m["open_line"]),
+                        "open_total": m["open_total"].to_numpy()}, index=pd.Index(m["match_id"], name="match_id"))
+    return out.astype(float)
 
 
 # ---------------------------------------------------------------- fetching

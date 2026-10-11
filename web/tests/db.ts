@@ -10,24 +10,8 @@ const migrations = readdirSync(migrationsDir)
   .sort()
   .map((f) => readFileSync(new URL(f, migrationsDir), "utf8"));
 
-/** Supabase's roles, auth schema and default privileges, as far as the migrations rely on them.
- * Supabase grants everything in `public` to anon and authenticated by default; the migrations
- * revoke that and grant only what's needed, which these defaults make the tests check. */
-const SUPABASE_STUB = `
-  create role anon nologin;
-  create role authenticated nologin;
-  create role service_role nologin bypassrls;
-  create schema auth;
-  create table auth.users (id uuid primary key);
-  create function auth.uid() returns uuid language sql stable as
-    $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema auth to anon, authenticated, service_role;
-  grant execute on function auth.uid() to anon, authenticated, service_role;
-  grant usage on schema public to anon, authenticated, service_role;
-  alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-  alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
-  alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
-`;
+/** Supabase's roles, auth schema and default privileges (see the file). */
+const SUPABASE_STUB = readFileSync(new URL("supabase_stub.sql", import.meta.url), "utf8");
 
 export const uuid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
