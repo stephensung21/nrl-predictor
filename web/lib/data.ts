@@ -191,16 +191,16 @@ export async function seasonGames(sql: Sql, season: number): Promise<SeasonGame[
   }));
 }
 
-/** Flat bets on the no-odds Model's edges of more than 2% at the opening price, either side, draws
- * left out (as web/scripts/build_odds_sample.py and src/betting.py). */
+/** Flat bets on the Model with odds' edges of more than 2% at the opening price, either side, draws
+ * left out: the prediction of record, as paper trading bets (and web/scripts/build_odds_sample.py,
+ * src/betting.py). */
 export async function seasonBets(sql: Sql, season: number): Promise<SeasonBet[]> {
   const rows = await sql`
-    select m.id, m.home_score, m.away_score, p.no_odds_home_win_prob as p, o.home_odds_open, o.away_odds_open
+    select m.id, m.home_score, m.away_score, p.home_win_prob as p, o.home_odds_open, o.away_odds_open
     from matches m
     join prediction_of_record p on p.match_id = m.id
     join match_odds o on o.match_id = m.id
     where m.season = ${season} and m.status = 'final' and m.home_score <> m.away_score
-      and p.no_odds_home_win_prob is not null
     order by m.kickoff, m.id`;
   const bets: SeasonBet[] = [];
   for (const r of rows) {
@@ -208,7 +208,7 @@ export async function seasonBets(sql: Sql, season: number): Promise<SeasonBet[]>
     for (const [side, prob, price] of [["home", r.p, r.home_odds_open], ["away", 1 - r.p, r.away_odds_open]] as const) {
       if (price == null || prob * price - 1 <= 0.02) continue;
       const won = homeWon === (side === "home");
-      bets.push({ matchId: String(r.id), side, odds: price, won, profit: won ? Math.round((price - 1) * 100) / 100 : -1 });
+      bets.push({ matchId: String(r.id), side, prob, odds: price, won, profit: won ? Math.round((price - 1) * 100) / 100 : -1 });
     }
   }
   return bets;

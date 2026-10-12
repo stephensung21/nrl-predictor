@@ -182,7 +182,7 @@ function SeasonTab({ src }: { src: OddsSource }) {
   }
   const vs = tipsVsMarket(src.games);
   const profit = profitCurve(src.bets);
-  const dogs = profitCurve(underdogBets(src.bets, src.games));
+  const dogs = profitCurve(underdogBets(src.bets));
   const cal = { model: calibration("model", src.games), market: calibration("market", src.games) };
   // Label the x-axis at the start of every sixth round, and the finals.
   const starts = vs
@@ -258,7 +258,8 @@ function SeasonTab({ src }: { src: OddsSource }) {
           If you&rsquo;d bet it
         </h3>
         <p className="mt-1 text-[13px] leading-snug text-ink-3">
-          $10 on the Model&rsquo;s team whenever it rated them at least 2% better value than the opening price.
+          $10 on a team whenever the Model with odds (the Round page&rsquo;s Model, which paper trading bets on) rated them at
+          least 2% better value than the opening price.
         </p>
         <p className="mt-3 font-display text-[40px] leading-none font-bold text-ink">
           {money(profit.profit)}

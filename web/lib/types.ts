@@ -208,7 +208,8 @@ export type SeasonGame = {
   elo: number | null;
 };
 
-export type SeasonBet = { matchId: string; side: "home" | "away"; odds: number; won: boolean; profit: number };
+/** A head-to-head bet on the Model with odds (as paper trading); `prob` is its chance for the side backed. */
+export type SeasonBet = { matchId: string; side: "home" | "away"; prob: number; odds: number; won: boolean; profit: number };
 
 /** One season of Elo: each team's rating after every round (finals as "F"). */
 export type EloSeason = {

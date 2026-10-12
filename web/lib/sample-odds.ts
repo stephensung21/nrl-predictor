@@ -3867,11 +3867,12 @@ export const SEASON_GAMES: SeasonGame[] = [
   }
 ] as SeasonGame[];
 
-/** Head-to-head bets at a 2% minimum edge, 1 unit at the opening price (reports/betting_2026.md). */
+/** The Model with odds' head-to-head bets at a 2% minimum edge, 1 unit at the opening price (reports/betting_2026.md). */
 export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110110",
     "side": "home",
+    "prob": 0.5534,
     "odds": 2.25,
     "won": true,
     "profit": 1.25
@@ -3879,6 +3880,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110140",
     "side": "home",
+    "prob": 0.5165,
     "odds": 2.2,
     "won": true,
     "profit": 1.2
@@ -3886,6 +3888,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110150",
     "side": "away",
+    "prob": 0.4908,
     "odds": 2.2,
     "won": true,
     "profit": 1.2
@@ -3893,20 +3896,15 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110170",
     "side": "home",
+    "prob": 0.5918,
     "odds": 1.89,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261110180",
-    "side": "home",
-    "odds": 1.61,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261110210",
     "side": "away",
+    "prob": 0.2784,
     "odds": 4.4,
     "won": true,
     "profit": 3.4
@@ -3914,6 +3912,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110220",
     "side": "home",
+    "prob": 0.6072,
     "odds": 1.8,
     "won": true,
     "profit": 0.8
@@ -3921,6 +3920,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110280",
     "side": "home",
+    "prob": 0.7077,
     "odds": 1.46,
     "won": true,
     "profit": 0.46
@@ -3928,6 +3928,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110330",
     "side": "home",
+    "prob": 0.7623,
     "odds": 1.44,
     "won": false,
     "profit": -1.0
@@ -3935,6 +3936,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110340",
     "side": "home",
+    "prob": 0.4615,
     "odds": 2.65,
     "won": false,
     "profit": -1.0
@@ -3942,20 +3944,15 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110350",
     "side": "home",
+    "prob": 0.7486,
     "odds": 1.44,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261110360",
-    "side": "away",
-    "odds": 2.4,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261110380",
     "side": "away",
+    "prob": 0.3912,
     "odds": 2.65,
     "won": false,
     "profit": -1.0
@@ -3963,27 +3960,15 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110410",
     "side": "home",
+    "prob": 0.4881,
     "odds": 2.9,
     "won": false,
     "profit": -1.0
   },
   {
-    "matchId": "20261110440",
-    "side": "away",
-    "odds": 3.9,
-    "won": true,
-    "profit": 2.9
-  },
-  {
-    "matchId": "20261110450",
-    "side": "home",
-    "odds": 1.25,
-    "won": true,
-    "profit": 0.25
-  },
-  {
     "matchId": "20261110460",
     "side": "home",
+    "prob": 0.2884,
     "odds": 3.7,
     "won": true,
     "profit": 2.7
@@ -3991,6 +3976,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110470",
     "side": "away",
+    "prob": 0.5299,
     "odds": 2.0,
     "won": true,
     "profit": 1.0
@@ -3998,6 +3984,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110520",
     "side": "home",
+    "prob": 0.5261,
     "odds": 1.95,
     "won": true,
     "profit": 0.95
@@ -4005,6 +3992,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110530",
     "side": "home",
+    "prob": 0.6993,
     "odds": 1.48,
     "won": true,
     "profit": 0.48
@@ -4012,6 +4000,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110540",
     "side": "home",
+    "prob": 0.5431,
     "odds": 2.0,
     "won": false,
     "profit": -1.0
@@ -4019,6 +4008,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110550",
     "side": "home",
+    "prob": 0.3263,
     "odds": 4.5,
     "won": false,
     "profit": -1.0
@@ -4026,6 +4016,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110570",
     "side": "home",
+    "prob": 0.5274,
     "odds": 2.25,
     "won": true,
     "profit": 1.25
@@ -4033,6 +4024,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110580",
     "side": "away",
+    "prob": 0.4837,
     "odds": 2.15,
     "won": true,
     "profit": 1.15
@@ -4040,13 +4032,23 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110610",
     "side": "home",
+    "prob": 0.2298,
     "odds": 4.8,
     "won": true,
     "profit": 3.8
   },
   {
+    "matchId": "20261110620",
+    "side": "home",
+    "prob": 0.456,
+    "odds": 2.4,
+    "won": false,
+    "profit": -1.0
+  },
+  {
     "matchId": "20261110630",
     "side": "home",
+    "prob": 0.615,
     "odds": 1.8,
     "won": false,
     "profit": -1.0
@@ -4054,6 +4056,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110640",
     "side": "away",
+    "prob": 0.4105,
     "odds": 2.55,
     "won": true,
     "profit": 1.55
@@ -4061,6 +4064,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110650",
     "side": "home",
+    "prob": 0.5438,
     "odds": 2.0,
     "won": false,
     "profit": -1.0
@@ -4068,6 +4072,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110660",
     "side": "away",
+    "prob": 0.3516,
     "odds": 3.0,
     "won": true,
     "profit": 2.0
@@ -4075,6 +4080,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110670",
     "side": "home",
+    "prob": 0.6658,
     "odds": 1.55,
     "won": false,
     "profit": -1.0
@@ -4082,6 +4088,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110710",
     "side": "away",
+    "prob": 0.4023,
     "odds": 2.55,
     "won": true,
     "profit": 1.55
@@ -4089,6 +4096,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110720",
     "side": "home",
+    "prob": 0.5387,
     "odds": 2.2,
     "won": true,
     "profit": 1.2
@@ -4096,6 +4104,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110730",
     "side": "home",
+    "prob": 0.2527,
     "odds": 4.5,
     "won": false,
     "profit": -1.0
@@ -4103,6 +4112,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110750",
     "side": "away",
+    "prob": 0.2644,
     "odds": 4.0,
     "won": false,
     "profit": -1.0
@@ -4110,6 +4120,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110770",
     "side": "home",
+    "prob": 0.7296,
     "odds": 1.42,
     "won": true,
     "profit": 0.42
@@ -4117,13 +4128,23 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110780",
     "side": "home",
+    "prob": 0.4418,
     "odds": 3.3,
     "won": true,
     "profit": 2.3
   },
   {
+    "matchId": "20261110820",
+    "side": "home",
+    "prob": 0.5022,
+    "odds": 2.1,
+    "won": true,
+    "profit": 1.1
+  },
+  {
     "matchId": "20261110830",
     "side": "home",
+    "prob": 0.5975,
     "odds": 1.9,
     "won": true,
     "profit": 0.9
@@ -4131,6 +4152,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110840",
     "side": "home",
+    "prob": 0.2575,
     "odds": 6.5,
     "won": false,
     "profit": -1.0
@@ -4138,34 +4160,15 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261110930",
     "side": "home",
+    "prob": 0.5408,
     "odds": 2.15,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261110940",
-    "side": "away",
-    "odds": 1.51,
-    "won": true,
-    "profit": 0.51
-  },
-  {
-    "matchId": "20261110950",
-    "side": "away",
-    "odds": 2.8,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261110960",
-    "side": "away",
-    "odds": 1.46,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261111010",
     "side": "home",
+    "prob": 0.6589,
     "odds": 1.63,
     "won": true,
     "profit": 0.63
@@ -4173,6 +4176,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111020",
     "side": "away",
+    "prob": 0.2584,
     "odds": 4.55,
     "won": false,
     "profit": -1.0
@@ -4180,6 +4184,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111030",
     "side": "home",
+    "prob": 0.7397,
     "odds": 1.39,
     "won": false,
     "profit": -1.0
@@ -4187,6 +4192,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111040",
     "side": "home",
+    "prob": 0.4749,
     "odds": 2.85,
     "won": false,
     "profit": -1.0
@@ -4194,6 +4200,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111050",
     "side": "away",
+    "prob": 0.4761,
     "odds": 2.45,
     "won": false,
     "profit": -1.0
@@ -4201,27 +4208,31 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111060",
     "side": "home",
+    "prob": 0.6044,
     "odds": 2.1,
     "won": true,
     "profit": 1.1
   },
   {
+    "matchId": "20261111070",
+    "side": "home",
+    "prob": 0.6627,
+    "odds": 1.59,
+    "won": true,
+    "profit": 0.59
+  },
+  {
     "matchId": "20261111120",
     "side": "away",
+    "prob": 0.478,
     "odds": 2.15,
     "won": true,
     "profit": 1.15
   },
   {
-    "matchId": "20261111140",
-    "side": "away",
-    "odds": 4.2,
-    "won": true,
-    "profit": 3.2
-  },
-  {
     "matchId": "20261111150",
     "side": "home",
+    "prob": 0.4167,
     "odds": 2.75,
     "won": false,
     "profit": -1.0
@@ -4229,48 +4240,31 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111160",
     "side": "home",
+    "prob": 0.4514,
     "odds": 3.15,
     "won": false,
     "profit": -1.0
   },
   {
-    "matchId": "20261111170",
-    "side": "home",
-    "odds": 1.65,
-    "won": true,
-    "profit": 0.65
-  },
-  {
     "matchId": "20261111180",
     "side": "away",
+    "prob": 0.1482,
     "odds": 12.0,
     "won": false,
     "profit": -1.0
   },
   {
-    "matchId": "20261111220",
+    "matchId": "20261111240",
     "side": "away",
-    "odds": 2.1,
+    "prob": 0.3794,
+    "odds": 3.75,
     "won": false,
     "profit": -1.0
-  },
-  {
-    "matchId": "20261111310",
-    "side": "away",
-    "odds": 2.15,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261111330",
-    "side": "home",
-    "odds": 1.85,
-    "won": true,
-    "profit": 0.85
   },
   {
     "matchId": "20261111340",
     "side": "away",
+    "prob": 0.5368,
     "odds": 1.95,
     "won": false,
     "profit": -1.0
@@ -4278,41 +4272,55 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111350",
     "side": "away",
+    "prob": 0.1864,
     "odds": 5.75,
     "won": true,
     "profit": 4.75
   },
   {
-    "matchId": "20261111360",
+    "matchId": "20261111370",
     "side": "away",
-    "odds": 2.15,
+    "prob": 0.3983,
+    "odds": 2.65,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261111410",
     "side": "home",
+    "prob": 0.7191,
     "odds": 1.51,
     "won": true,
     "profit": 0.51
   },
   {
-    "matchId": "20261111420",
+    "matchId": "20261111430",
     "side": "home",
-    "odds": 1.58,
-    "won": true,
-    "profit": 0.58
+    "prob": 0.4285,
+    "odds": 2.45,
+    "won": false,
+    "profit": -1.0
   },
   {
     "matchId": "20261111450",
     "side": "away",
+    "prob": 0.2865,
     "odds": 4.55,
     "won": true,
     "profit": 3.55
   },
   {
+    "matchId": "20261111470",
+    "side": "away",
+    "prob": 0.2324,
+    "odds": 4.7,
+    "won": false,
+    "profit": -1.0
+  },
+  {
     "matchId": "20261111520",
     "side": "home",
+    "prob": 0.6154,
     "odds": 1.7,
     "won": true,
     "profit": 0.7
@@ -4320,6 +4328,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111530",
     "side": "away",
+    "prob": 0.3619,
     "odds": 3.2,
     "won": true,
     "profit": 2.2
@@ -4327,6 +4336,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111540",
     "side": "home",
+    "prob": 0.5449,
     "odds": 2.25,
     "won": true,
     "profit": 1.25
@@ -4334,90 +4344,63 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111550",
     "side": "away",
+    "prob": 0.3937,
     "odds": 3.35,
     "won": false,
     "profit": -1.0
   },
   {
+    "matchId": "20261111630",
+    "side": "home",
+    "prob": 0.2994,
+    "odds": 3.9,
+    "won": true,
+    "profit": 2.9
+  },
+  {
     "matchId": "20261111650",
     "side": "away",
+    "prob": 0.3483,
     "odds": 3.45,
     "won": false,
     "profit": -1.0
   },
   {
-    "matchId": "20261111670",
-    "side": "away",
-    "odds": 2.65,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261111710",
-    "side": "away",
-    "odds": 1.53,
-    "won": true,
-    "profit": 0.53
-  },
-  {
-    "matchId": "20261111720",
-    "side": "away",
-    "odds": 1.9,
-    "won": true,
-    "profit": 0.9
-  },
-  {
     "matchId": "20261111730",
     "side": "away",
+    "prob": 0.6816,
     "odds": 1.69,
     "won": true,
     "profit": 0.69
   },
   {
-    "matchId": "20261111740",
+    "matchId": "20261111820",
     "side": "home",
-    "odds": 1.63,
+    "prob": 0.3708,
+    "odds": 2.8,
     "won": true,
-    "profit": 0.63
-  },
-  {
-    "matchId": "20261111750",
-    "side": "away",
-    "odds": 1.32,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261111810",
-    "side": "home",
-    "odds": 1.58,
-    "won": true,
-    "profit": 0.58
+    "profit": 1.8
   },
   {
     "matchId": "20261111830",
     "side": "home",
+    "prob": 0.4476,
     "odds": 2.65,
     "won": false,
     "profit": -1.0
   },
   {
-    "matchId": "20261111850",
-    "side": "away",
-    "odds": 1.69,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261111910",
-    "side": "away",
-    "odds": 1.51,
+    "matchId": "20261111840",
+    "side": "home",
+    "prob": 0.3029,
+    "odds": 3.45,
     "won": true,
-    "profit": 0.51
+    "profit": 2.45
   },
   {
     "matchId": "20261111940",
     "side": "away",
+    "prob": 0.3246,
     "odds": 4.55,
     "won": false,
     "profit": -1.0
@@ -4425,6 +4408,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111950",
     "side": "home",
+    "prob": 0.5763,
     "odds": 1.9,
     "won": true,
     "profit": 0.9
@@ -4432,13 +4416,23 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261111960",
     "side": "home",
+    "prob": 0.6978,
     "odds": 1.53,
+    "won": false,
+    "profit": -1.0
+  },
+  {
+    "matchId": "20261111970",
+    "side": "away",
+    "prob": 0.3207,
+    "odds": 3.2,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261112020",
     "side": "home",
+    "prob": 0.6512,
     "odds": 1.63,
     "won": true,
     "profit": 0.63
@@ -4446,6 +4440,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112040",
     "side": "away",
+    "prob": 0.4771,
     "odds": 2.15,
     "won": false,
     "profit": -1.0
@@ -4453,6 +4448,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112070",
     "side": "away",
+    "prob": 0.6788,
     "odds": 1.55,
     "won": false,
     "profit": -1.0
@@ -4460,6 +4456,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112080",
     "side": "home",
+    "prob": 0.6408,
     "odds": 1.6,
     "won": true,
     "profit": 0.6
@@ -4467,6 +4464,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112110",
     "side": "home",
+    "prob": 0.2259,
     "odds": 5.25,
     "won": false,
     "profit": -1.0
@@ -4474,55 +4472,63 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112120",
     "side": "away",
+    "prob": 0.6492,
     "odds": 1.69,
     "won": true,
     "profit": 0.69
   },
   {
-    "matchId": "20261112130",
+    "matchId": "20261112150",
+    "side": "home",
+    "prob": 0.3862,
+    "odds": 2.8,
+    "won": true,
+    "profit": 1.8
+  },
+  {
+    "matchId": "20261112160",
     "side": "away",
-    "odds": 2.4,
+    "prob": 0.4619,
+    "odds": 2.25,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261112170",
     "side": "home",
+    "prob": 0.5546,
     "odds": 1.97,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261112180",
-    "side": "home",
-    "odds": 1.89,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261112230",
     "side": "away",
+    "prob": 0.5077,
     "odds": 2.25,
     "won": true,
     "profit": 1.25
   },
   {
-    "matchId": "20261112240",
-    "side": "away",
-    "odds": 1.51,
-    "won": true,
-    "profit": 0.51
-  },
-  {
     "matchId": "20261112270",
     "side": "home",
+    "prob": 0.7701,
     "odds": 1.42,
     "won": true,
     "profit": 0.42
   },
   {
+    "matchId": "20261112280",
+    "side": "away",
+    "prob": 0.5679,
+    "odds": 1.81,
+    "won": true,
+    "profit": 0.81
+  },
+  {
     "matchId": "20261112310",
     "side": "home",
+    "prob": 0.535,
     "odds": 2.25,
     "won": false,
     "profit": -1.0
@@ -4530,6 +4536,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112320",
     "side": "home",
+    "prob": 0.5109,
     "odds": 2.45,
     "won": true,
     "profit": 1.45
@@ -4537,6 +4544,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112350",
     "side": "home",
+    "prob": 0.7452,
     "odds": 1.46,
     "won": true,
     "profit": 0.46
@@ -4544,6 +4552,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112360",
     "side": "home",
+    "prob": 0.7242,
     "odds": 1.43,
     "won": true,
     "profit": 0.43
@@ -4551,6 +4560,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112380",
     "side": "home",
+    "prob": 0.2509,
     "odds": 4.6,
     "won": true,
     "profit": 3.6
@@ -4558,27 +4568,15 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112410",
     "side": "home",
+    "prob": 0.5933,
     "odds": 1.75,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261112430",
-    "side": "home",
-    "odds": 1.68,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261112440",
-    "side": "home",
-    "odds": 1.3,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261112450",
     "side": "home",
+    "prob": 0.5057,
     "odds": 2.3,
     "won": true,
     "profit": 1.3
@@ -4586,6 +4584,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112460",
     "side": "away",
+    "prob": 0.6774,
     "odds": 1.52,
     "won": true,
     "profit": 0.52
@@ -4593,20 +4592,15 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112510",
     "side": "home",
+    "prob": 0.3842,
     "odds": 3.3,
-    "won": false,
-    "profit": -1.0
-  },
-  {
-    "matchId": "20261112520",
-    "side": "home",
-    "odds": 1.45,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261112540",
     "side": "away",
+    "prob": 0.3862,
     "odds": 2.95,
     "won": true,
     "profit": 1.95
@@ -4614,20 +4608,15 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112560",
     "side": "home",
+    "prob": 0.4614,
     "odds": 2.8,
     "won": false,
     "profit": -1.0
   },
   {
-    "matchId": "20261112570",
-    "side": "away",
-    "odds": 1.48,
-    "won": true,
-    "profit": 0.48
-  },
-  {
     "matchId": "20261112610",
     "side": "away",
+    "prob": 0.5631,
     "odds": 1.97,
     "won": true,
     "profit": 0.97
@@ -4635,34 +4624,39 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112620",
     "side": "home",
+    "prob": 0.7871,
     "odds": 1.4,
     "won": true,
     "profit": 0.4
   },
   {
-    "matchId": "20261112630",
+    "matchId": "20261112640",
     "side": "home",
-    "odds": 1.37,
-    "won": true,
-    "profit": 0.37
+    "prob": 0.3839,
+    "odds": 2.9,
+    "won": false,
+    "profit": -1.0
   },
   {
     "matchId": "20261112660",
     "side": "away",
+    "prob": 0.255,
     "odds": 4.0,
     "won": false,
     "profit": -1.0
   },
   {
-    "matchId": "20261112680",
-    "side": "away",
-    "odds": 1.46,
+    "matchId": "20261112720",
+    "side": "home",
+    "prob": 0.2821,
+    "odds": 3.75,
     "won": false,
     "profit": -1.0
   },
   {
     "matchId": "20261112730",
     "side": "home",
+    "prob": 0.7147,
     "odds": 1.8,
     "won": true,
     "profit": 0.8
@@ -4670,6 +4664,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112740",
     "side": "away",
+    "prob": 0.3074,
     "odds": 3.4,
     "won": false,
     "profit": -1.0
@@ -4677,6 +4672,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112760",
     "side": "away",
+    "prob": 0.5583,
     "odds": 2.5,
     "won": true,
     "profit": 1.5
@@ -4684,6 +4680,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112770",
     "side": "away",
+    "prob": 0.6656,
     "odds": 1.81,
     "won": false,
     "profit": -1.0
@@ -4691,6 +4688,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112780",
     "side": "home",
+    "prob": 0.8383,
     "odds": 1.4,
     "won": true,
     "profit": 0.4
@@ -4698,6 +4696,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112830",
     "side": "home",
+    "prob": 0.7434,
     "odds": 1.45,
     "won": true,
     "profit": 0.45
@@ -4705,6 +4704,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261112920",
     "side": "home",
+    "prob": 0.7258,
     "odds": 1.47,
     "won": false,
     "profit": -1.0
@@ -4712,6 +4712,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261113010",
     "side": "away",
+    "prob": 0.4738,
     "odds": 2.35,
     "won": true,
     "profit": 1.35
@@ -4719,6 +4720,7 @@ export const SEASON_BETS: SeasonBet[] = [
   {
     "matchId": "20261113110",
     "side": "home",
+    "prob": 0.7428,
     "odds": 1.44,
     "won": true,
     "profit": 0.44

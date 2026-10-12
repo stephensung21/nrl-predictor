@@ -69,7 +69,7 @@ export function calibration(k: "model" | "market", games: SeasonGame[] = SEASON_
 
 export const STAKE = 10;
 
-/** Running profit of flat $10 bets on the Model's 2%+ edges at the opening price. */
+/** Running profit of flat $10 bets on the Model with odds' 2%+ edges at the opening price. */
 export function profitCurve(bets: SeasonBet[] = SEASON_BETS) {
   let total = 0;
   const points = bets.map((b, i) => {
@@ -105,11 +105,7 @@ export function valueUnderdog(e: Edge) {
   };
 }
 
-/** The season's bets on a team the same Model rated under 50%: its value underdogs. */
-export function underdogBets(bets: SeasonBet[] = SEASON_BETS, games: SeasonGame[] = SEASON_GAMES) {
-  const homeProb = new Map(games.map((g) => [g.matchId, g.model]));
-  return bets.filter((b) => {
-    const p = homeProb.get(b.matchId);
-    return p != null && (b.side === "home" ? p : 1 - p) < 0.5;
-  });
+/** The season's bets on a team the Model tipped to lose: its value underdogs. */
+export function underdogBets(bets: SeasonBet[] = SEASON_BETS) {
+  return bets.filter((b) => b.prob < 0.5);
 }
