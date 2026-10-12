@@ -660,7 +660,7 @@ Rule details to settle while building:
 - **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** and a "personal project" tag, and every page has a one-line footer: "Tipping comp and predictor for the boys. I'm not responsible if you lose money." Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
 - **Kept out of search engines:** `noindex` on every page and a `robots.txt` that blocks crawlers. Friends get the link directly.
 - **Phone first:** most tipping happens on a phone. Design every page for a narrow screen first.
-- **Dark only** (see DESIGN_BRIEF.md), with team colours lightened where needed to read on the dark background.
+- **Dark by default, with a light mode** (see DESIGN.md, "Day Game"): team colours are lightened where needed to read on the dark background and use the real club colours by day.
 - **Caching:** prediction, odds and Elo pages are cached and refreshed when the pipeline calls the revalidation hook. Tipping pages are rendered per user and never cached.
 - **Times:** store everything in UTC; show times in the viewer's time zone.
 - **Privacy:** a short note on the about page saying the site stores only email addresses, display names and tips, for running the comp. Let users delete their account and tips.

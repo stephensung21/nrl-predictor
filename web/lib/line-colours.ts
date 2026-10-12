@@ -1,6 +1,7 @@
 // Line colours for highlighted teams. Kept apart from lib/elo.ts so client charts
 // can use it without bundling the rating data.
 
+import { readsOnLight, splitThemed, themed } from "./theme";
 import { team, type TeamName } from "./teams";
 
 type Vision = "normal" | "protan" | "deutan";
@@ -50,13 +51,18 @@ function clearance(x: string, used: string[]) {
 /**
  * A colour for a team joining the lit set: its bar colour, unless that's too close to a
  * colour already in use (for normal or colour-blind vision), in which case whichever of
- * its colours stands furthest from them.
+ * its colours stands furthest from them. Dark and light mode are picked separately.
  */
 export function colourFor(t: TeamName, used: string[]): string {
   const c = team(t);
-  const options = [c.bar, c.secondary, c.primary];
-  if (clearance(c.bar, used) >= 1) return c.bar;
-  return options.sort((a, b) => clearance(b, used) - clearance(a, used))[0];
+  const halves = used.map(splitThemed);
+  const pick = (bar: string, options: string[], inUse: string[]) => {
+    if (clearance(bar, inUse) >= 1) return bar;
+    return [bar, ...options].sort((a, b) => clearance(b, inUse) - clearance(a, inUse))[0];
+  };
+  const dark = pick(c.bar, [c.secondary, c.primary], halves.map((x) => x[0]));
+  const light = pick(c.lightBar, [c.primary, c.secondary].filter((x) => readsOnLight(x)), halves.map((x) => x[1]));
+  return themed(dark, light);
 }
 
 /** Colours for a list of teams lit in order (server-side default, and the team view). */

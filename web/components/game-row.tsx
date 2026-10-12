@@ -28,7 +28,7 @@ function TeamLine({ game, name, score, side }: { game: Game; name: TeamName; sco
       </span>
       {yours && (
         <span
-          className={`flex shrink-0 items-center gap-1 text-[11px] font-bold tracking-[0.06em] uppercase ${right ? "text-lime" : wrong ? "text-miss" : "text-lime"}`}
+          className={`flex shrink-0 items-center gap-1 text-[11px] font-bold tracking-[0.06em] uppercase ${right ? "text-lime-fg" : wrong ? "text-miss" : "text-lime-fg"}`}
         >
           {right && <Check className="tick-pop size-3.5" strokeWidth={3} aria-hidden />}
           {wrong && <X className="size-3.5" strokeWidth={3} aria-hidden />}

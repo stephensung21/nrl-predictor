@@ -17,7 +17,7 @@ import { sydney } from "@/lib/time";
 import { TeamBadge } from "./team-badge";
 
 const pill =
-  "inline-flex items-center justify-center gap-1.5 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-[oklch(0.94_0.19_126)]";
+  "inline-flex items-center justify-center gap-1.5 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-lime-hover";
 const ghost = "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-ink-2 ring-1 ring-line ring-inset hover:text-ink";
 /** Text actions in a row: a 44px hit area without changing the row's look. */
 const rowAction = "-my-2 -mr-2 inline-flex min-h-11 shrink-0 items-center px-2 text-[13px] font-semibold underline decoration-line";
@@ -233,7 +233,7 @@ export function Tippers() {
               {t.favTeam && <TeamBadge name={t.favTeam} size="sm" />}
               <span className="min-w-0 flex-1">
                 <span className="font-semibold text-ink">{t.name}</span>
-                {t.isYou && <span className="ml-1.5 text-[11px] font-bold tracking-[0.06em] text-lime uppercase">You</span>}
+                {t.isYou && <span className="ml-1.5 text-[11px] font-bold tracking-[0.06em] text-lime-fg uppercase">You</span>}
                 <span className="block text-[12px] text-ink-3">Joined {sydney(t.joined, "day")}</span>
               </span>
               <span className={`shrink-0 text-right text-[13px] ${t.missing ? "font-semibold text-ink" : "text-ink-3"}`}>

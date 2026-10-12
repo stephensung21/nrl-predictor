@@ -22,7 +22,7 @@ The visual and UX design for the website in [PLAN_WEB.md](PLAN_WEB.md) §3. Agre
 
 ## Visual direction
 
-- **Dark only** for now. Mood: **night game under lights.** A deep charcoal or green-black base and **one bright brand accent** (floodlight white or a sharp lime), with the feel of a stadium scoreboard. One accent keeps the brand from fighting 17 sets of team colours.
+- **Dark by default**, with a light "Day Game" mode added in October 2026 (see DESIGN.md). Mood: **night game under lights.** A deep charcoal or green-black base and **one bright brand accent** (floodlight white or a sharp lime), with the feel of a stadium scoreboard. One accent keeps the brand from fighting 17 sets of team colours.
 - **Typography:** a condensed, scoreboard-like display face for headlines and scores, a clean sans for body text, and **fixed-width figures** for every number so scores and percentages line up.
 - **Teams:** no logos. Each team gets a **badge in its two colours with a 3-letter code** (e.g. MEL). Lighten team colours where needed so they read on the dark background; navy and maroon teams will need it.
 - **Brand:** a wordmark only ("rugbyleague-tipper" in the display face, plus a small "personal project" tag) and a simple favicon. No logo.

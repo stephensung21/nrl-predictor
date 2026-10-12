@@ -247,8 +247,8 @@ function TipRow({
                   ? locked
                     ? right === false
                       ? "bg-miss-wash text-ink ring-1 ring-miss/60 ring-inset"
-                      : "bg-lime-wash text-ink ring-1 ring-lime/50 ring-inset"
-                    : "bg-lime-wash text-ink ring-2 ring-lime ring-inset"
+                      : "bg-lime-wash text-ink ring-1 ring-lime-fg/50 ring-inset"
+                    : "bg-lime-wash text-ink ring-2 ring-lime-fg ring-inset"
                   : locked
                     ? "text-ink-3 ring-1 ring-line-soft ring-inset"
                     : "text-ink-2 ring-1 ring-line ring-inset hover:bg-raised hover:text-ink"
@@ -261,8 +261,8 @@ function TipRow({
                 {t}
                 {final && <span className="ml-1.5 font-score text-[17px] text-ink-3">{g.score![i]}</span>}
               </span>
-              {chosen && !locked && <Check className="tick-pop size-5 shrink-0 text-lime" strokeWidth={3} aria-hidden />}
-              {chosen && right === true && <Check className="size-5 shrink-0 text-lime" strokeWidth={3} aria-label="Right" />}
+              {chosen && !locked && <Check className="tick-pop size-5 shrink-0 text-lime-fg" strokeWidth={3} aria-hidden />}
+              {chosen && right === true && <Check className="size-5 shrink-0 text-lime-fg" strokeWidth={3} aria-label="Right" />}
               {chosen && right === false && <X className="size-5 shrink-0 text-miss" strokeWidth={3} aria-label="Wrong" />}
               {won && !chosen && <span className="sr-only">(won)</span>}
             </button>
@@ -357,7 +357,7 @@ function MarginInput({
               const n = Number(e.target.value);
               if (Number.isInteger(n) && n >= 1 && n <= 99) onChange(n);
             }}
-            className="h-11 w-14 rounded-md bg-ground text-center font-score text-[24px] font-bold text-ink ring-1 ring-line ring-inset [appearance:textfield] focus:ring-2 focus:ring-lime focus:outline-none disabled:text-ink-3 [&::-webkit-inner-spin-button]:appearance-none"
+            className="h-11 w-14 rounded-md bg-ground text-center font-score text-[24px] font-bold text-ink ring-1 ring-line ring-inset [appearance:textfield] focus:ring-2 focus:ring-lime-fg focus:outline-none disabled:text-ink-3 [&::-webkit-inner-spin-button]:appearance-none"
           />
           <button type="button" className={btn} disabled={disabled || value >= 99} onClick={() => step(1)} aria-label="One point more">
             <Plus className="size-4" aria-hidden />

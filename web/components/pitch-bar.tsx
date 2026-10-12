@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { team, type TeamName } from "@/lib/teams";
+import { readsOnLight, themed } from "@/lib/theme";
 
 function hexDistance(a: string, b: string) {
   const n = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -11,13 +12,17 @@ function hexDistance(a: string, b: string) {
 
 /** Bar colours for a game. When the two bars would look alike (Cowboys v Eels
  *  are both gold, Sea Eagles v Broncos both maroon), the away team switches to
- *  whichever of its colours is furthest from the home bar. */
+ *  whichever of its colours is furthest from the home bar. Dark and light mode
+ *  are picked separately, from each mode's own bar colours. */
 export function barColours(home: TeamName, away: TeamName): [string, string] {
-  const h = team(home).bar;
-  const a = team(away);
-  if (hexDistance(h, a.bar) >= 90) return [h, a.bar];
-  const alt = [a.primary, a.secondary].sort((x, y) => hexDistance(h, y) - hexDistance(h, x))[0];
-  return [h, alt];
+  const [h, a] = [team(home), team(away)];
+  const pick = (hb: string, ab: string, alts: string[]): [string, string] => {
+    if (hexDistance(hb, ab) >= 90 || !alts.length) return [hb, ab];
+    return [hb, [...alts].sort((x, y) => hexDistance(hb, y) - hexDistance(hb, x))[0]];
+  };
+  const dark = pick(h.bar, a.bar, [a.primary, a.secondary]);
+  const light = pick(h.lightBar, a.lightBar, [a.primary, a.secondary].filter((c) => readsOnLight(c, 1.3)));
+  return [themed(dark[0], light[0]), themed(dark[1], light[1])];
 }
 
 /**
@@ -78,7 +83,7 @@ export function PitchBar({
           className="absolute inset-0"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px), rgb(10 20 16 / 0.55) calc(10% - 1px), rgb(10 20 16 / 0.55) 10%)",
+              "repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px), color-mix(in srgb, var(--color-tenline) 55%, transparent) calc(10% - 1px), color-mix(in srgb, var(--color-tenline) 55%, transparent) 10%)",
           }}
         />
       </div>

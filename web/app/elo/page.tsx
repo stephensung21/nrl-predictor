@@ -98,7 +98,7 @@ export default async function EloPage({ searchParams }: Props) {
                       >
                         <TeamBadge name={r.team} size="sm" />
                         <span className={picked ? "font-semibold" : ""}>{r.team}</span>
-                        {r.team === yours && <span className="text-[11px] font-bold tracking-[0.06em] text-lime uppercase">Yours</span>}
+                        {r.team === yours && <span className="text-[11px] font-bold tracking-[0.06em] text-lime-fg uppercase">Yours</span>}
                       </Link>
                     </td>
                     <td className="py-2 text-right font-score text-[19px] font-bold text-ink">{Math.round(r.rating)}</td>

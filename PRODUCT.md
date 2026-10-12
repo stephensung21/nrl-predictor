@@ -56,7 +56,7 @@ The opponent in this comp is a real, tested model, not a pundit. The Model tips 
 - **Name:** rugbyleague-tipper, shown as a wordmark with a small "personal project" tag. No logo.
 - **Voice:** clean data editorial (FiveThirtyEight, The Athletic) with a mates' footy-comp voice. Trash talk appears in only four places: the ladder, the round recap, the home tipping strip, and empty and error states. It is generated from results with templates. Predictions, odds, Elo and about pages stay straight.
 - **The Model** is a light character, called plainly "the Model", with its own badge and the occasional smug line in the recap.
-- **Visual rules:** dark only, "night game under lights", one bright accent, condensed scoreboard-style display type with fixed-width figures, two-colour team badges with 3-letter codes (team colours lightened where needed), minimal motion that respects reduced motion.
+- **Visual rules:** dark by default with a light "day game" mode, "night game under lights", one bright accent, condensed scoreboard-style display type with fixed-width figures, two-colour team badges with 3-letter codes (team colours lightened where needed), minimal motion that respects reduced motion.
 - **Numbers:** lead with the plain call ("Storm by 8"), show win probability as a bar, and keep technical metrics (log loss, calibration) to the model pages.
 - **Footer on every page:** "Tipping comp and predictor for the boys. I'm not responsible if you lose money."
 - **Odds:** shown plainly, with no disclaimer or gambling message. Bookmaker names as plain text, with no logos, colours or links.

@@ -17,7 +17,7 @@ function Quiet({ title, body, retry }: { title: string; body: string; retry: str
       <p className="mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink-2">{body}</p>
       <a
         href={retry}
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-[oklch(0.94_0.19_126)]"
+        className="mt-6 inline-flex items-center gap-2 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-lime-hover"
       >
         <RotateCw className="size-4" strokeWidth={2.5} aria-hidden />
         Try again

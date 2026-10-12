@@ -11,7 +11,7 @@ export function TeamBadge({ name, size = "md", dim = false }: { name: TeamName; 
   const t = team(name);
   return (
     <span
-      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[5px] font-display leading-none font-bold tracking-[0.04em] ring-1 ring-white/10 ring-inset ${SIZES[size]} ${dim ? "opacity-55" : ""}`}
+      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[5px] font-display leading-none font-bold tracking-[0.04em] ring-1 ring-ink/10 ring-inset ${SIZES[size]} ${dim ? "opacity-55" : ""}`}
       style={{ backgroundColor: t.primary, color: t.ink ?? t.secondary }}
       aria-hidden
     >

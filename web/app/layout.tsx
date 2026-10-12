@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Saira_Extra_Condensed, Sofia_Sans } from "next/font/google";
 import { AppNav } from "@/components/app-nav";
+import { THEME_COLOURS, THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const saira = Saira_Extra_Condensed({
@@ -22,13 +23,20 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d1a15",
-  colorScheme: "dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOURS.dark },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOURS.light },
+  ],
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-AU" className={`${saira.variable} ${sofia.variable}`}>
+    // The theme script sets color-scheme on <html> before React hydrates.
+    <html lang="en-AU" className={`${saira.variable} ${sofia.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-dvh">
         <AppNav />
         <div className="mx-auto w-full max-w-[34rem] px-4 pb-28 md:pb-12">

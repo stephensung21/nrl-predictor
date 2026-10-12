@@ -16,6 +16,8 @@ colors:
   lime-hover: "oklch(0.94 0.19 126)"
   lime-ink: "oklch(0.22 0.05 135)"
   lime-wash: "oklch(0.91 0.2 126 / 0.12)"
+  lime-fg: "oklch(0.91 0.2 126)"
+  ink-max: "oklch(1 0 0)"
   miss: "oklch(0.74 0.15 28)"
   miss-wash: "oklch(0.74 0.15 28 / 0.12)"
   live: "oklch(0.78 0.16 60)"
@@ -305,10 +307,10 @@ The site is a stadium scoreboard read from the stands: a green-black ground, flo
 
 Density follows the dark match-row apps (Sofascore, Fotmob): one centred phone column, games as dense hairline-divided rows, and a single lit board for the game that matters most. The system rejects the betting-app card grid and the sports-portal hero: no stacks of tiles, no photography, no club logos, no gambling chrome. Teams exist only as their two colours and a three-letter code.
 
-Dark only. Motion is rare and earns its place: bars fill as they appear, a correct tip pops, a perfect round chases its lamps once. With reduce motion, nothing moves.
+Dark by default, with a light "Day Game" version (below) for anyone whose device or account setting asks for it. Motion is rare and earns its place: bars fill as they appear, a correct tip pops, a perfect round chases its lamps once. With reduce motion, nothing moves.
 
 **Key Characteristics:**
-- Green-black tonal ground with floodlight-white ink in three steps; no light theme.
+- Green-black tonal ground with floodlight-white ink in three steps; in light mode, a green-tinted near-white ground with green-black ink.
 - One accent (lime), reserved for you, actions and right calls.
 - Saira Extra Condensed uppercase for calls, headings and every score; Sofia Sans for everything you read as sentences.
 - Tabular, lining figures everywhere.
@@ -321,7 +323,7 @@ Dark only. Motion is rare and earns its place: bars fill as they appear, a corre
 A cool green-black ground lit by near-white ink, with a single acid-lime lamp and two quiet signal colours for wrong and live.
 
 ### Primary
-- **Floodlight Lime** (`lime`): the only accent. Your tips ("Your tip" labels, the "You" tag), primary actions (the loud tipping strip, "Try again", the active tab mark and icon, focus rings, text selection), and right calls (correct-tip ticks, perfect-round lamps, a perfect-round recap line). Hover lifts it to **Lamp Glare** (`lime-hover`). Text on lime is always **Lime Ink** (`lime-ink`), a near-black olive.
+- **Floodlight Lime** (`lime`): the only accent. Your tips ("Your tip" labels, the "You" tag), primary actions (the loud tipping strip, "Try again", the active tab mark and icon, focus rings, text selection), and right calls (correct-tip ticks, perfect-round lamps, a perfect-round recap line). Hover lifts it to **Lamp Glare** (`lime-hover`). Text on lime is always **Lime Ink** (`lime-ink`), a near-black olive. Where lime is the mark itself rather than a fill with text on it (lime text, rings, focus outlines, the active tab mark, lamps, the radio accent), use **Lamp Line** (`lime-fg`): the same lime at night, a deeper lime by day so it reads on the light ground.
 - **Lime Wash** (`lime-wash`, 12% lime): the tint behind your correct tip in a row, your selected tip button, your own row in the recap table, the ladder and the round-by-round grid, your chosen favourite team and auto-tip option in the profile fields, and the panel holding a new invite you just made.
 
 ### Secondary
@@ -339,8 +341,27 @@ A cool green-black ground lit by near-white ink, with a single acid-lime lamp an
 - **Grandstand** (`ink-2`): secondary text, team names under badges and on open tip buttons, predicted scores, ladder positions, supporting copy, and the on switch track.
 - **Back Row** (`ink-3`): meta lines, captions, losing scores, the "–" placeholder, inactive tabs, the dissent half of a verdict, recap placings, struck-through "Out:" players, locked unchosen tip buttons, the Model hint and tip tally, ladder tags, movement and margin scores, and every round-by-round figure but the round's best.
 
+### Day Game (light mode)
+Every token is `light-dark(day, night)` in `web/app/globals.css`, so the html element's `color-scheme` switches the whole site. The day values:
+
+| Token | Day value | | Token | Day value |
+|---|---|---|---|---|
+| `ground` | `oklch(0.972 0.008 140)` | | `ink` | `oklch(0.22 0.02 160)` |
+| `raised` | `oklch(0.995 0.004 140)` | | `ink-2` | `oklch(0.38 0.02 158)` |
+| `raised-2` | `oklch(0.945 0.012 145)` | | `ink-3` | `oklch(0.5 0.02 156)` |
+| `line` | `oklch(0.86 0.016 150)` | | `ink-max` | `oklch(0.1 0.01 160)` |
+| `line-soft` | `oklch(0.915 0.012 150)` | | `lime` | `oklch(0.88 0.2 128)` |
+| `pitch` | `oklch(0.9 0.035 145)` | | `lime-hover` | `oklch(0.84 0.2 128)` |
+| `pitch-line` | `oklch(0.72 0.04 148)` | | `lime-fg` | `oklch(0.5 0.14 134)` |
+| `miss` | `oklch(0.53 0.17 28)` | | `lime-wash` | `lime-fg` at 14% |
+| `live` | `oklch(0.55 0.14 55)` | | `miss-wash` | `miss` at 12% |
+
+Every text pairing clears WCAG AA (4.5:1) by day: `ink-3` is 5.1:1 on `raised-2`, `lime-fg` 4.6:1 on its own wash. `lime-ink` stays the same in both, and the lime fill stays bright so lime buttons look the same. Raised surfaces are the exception to "lighter is higher": by day `raised` is white and `raised-2` is a shade darker than the ground, so menus and the Model's row still stand apart.
+
+**Choosing:** the account page's Appearance setting (Device default, Light, Dark) writes a `theme` cookie; a script in `<head>` (`web/lib/theme.ts`) sets `color-scheme` from it before the first paint, so pages stay static and never flash. A change applies on the next page load. With no cookie the site follows the device.
+
 ### Team colours
-Team colours live in `web/lib/teams.ts`, not in the token set: `primary` (badge fill), `secondary` (code lettering and badge stripe), optional `ink` (lettering when secondary is too dark on the fill), and `bar` (pitch-bar fill, lightened so navy, maroon and black teams read on the ground). They appear only inside badges, pitch bars and the Elo page's lit lines (Team-colour series, below), never as text, borders or backgrounds of UI chrome.
+Team colours live in `web/lib/teams.ts`, not in the token set: `primary` (badge fill), `secondary` (code lettering and badge stripe), optional `ink` (lettering when secondary is too dark on the fill), `bar` (pitch-bar fill, lightened so navy, maroon and black teams read on the dark ground) and `lightBar` (the real club colour, used by day; each at least 3:1 on white). Colours that change by mode are passed as `light-dark()` strings built by `themed()`. They appear only inside badges, pitch bars and the Elo page's lit lines (Team-colour series, below), never as text, borders or backgrounds of UI chrome.
 
 ### Chart series
 A page-scoped family for chart pages only (first shipped on Model vs market, `SERIES` in `web/lib/odds.ts`), validated all-pairs on `ground` with the dataviz validator: worst colour-vision-deficiency ΔE 9.4, normal-vision ΔE 20.9, every colour at least 3:1 against the ground.
@@ -352,7 +373,7 @@ Series colours appear only as marks: lines, dots, the track's markers and connec
 
 ### Team-colour series (Elo only)
 The `/elo` charts plot teams, not forecasters, so they leave the fixed palette and draw each team in its own colour (`colourFor` and `lineColours` in `web/lib/line-colours.ts`).
-- **Colour:** a lit team takes its `bar` colour unless that is too close to a colour already lit. `clearance()` measures OKLab ΔE×100 against each lit colour and needs at least 15 for normal vision and at least 8 under protan and deutan simulation (Machado 2009, full severity), the dataviz validator's floors. A team that fails takes whichever of its `bar`, `secondary` or `primary` clears best.
+- **Colour:** a lit team takes its `bar` colour (`lightBar` by day) unless that is too close to a colour already lit. `clearance()` measures OKLab ΔE×100 against each lit colour and needs at least 15 for normal vision and at least 8 under protan and deutan simulation (Machado 2009, full severity), the dataviz validator's floors. A team that fails takes whichever of its `bar`, `secondary` or `primary` clears best. Night and day are picked separately; by day, `primary` and `secondary` only qualify at 2.5:1 on white, which rules out white and gold lines.
 - **Lit set:** at most three teams. A team's colour is fixed when it is lit and held in state, so switching another team off never repaints it. The team view's single line is that team's `bar`.
 - **The field:** every unlit team is a 1.25px `ink-3` line at 0.28 opacity.
 - **Labels:** each lit line ends in an r=5 dot and an end label (team code and rating, "PEN 1650", 13px semibold score face `ink-2`) in place of a legend; the team chips above the chart are the key.
@@ -364,7 +385,7 @@ The `/elo` charts plot teams, not forecasters, so they leave the fixed palette a
 
 **The One Lamp Rule.** Lime means you, an action, or a right call. Never use it for a label, a category, a heading or decoration ("Margin game" is `ink-3`/`ink-2`, not lime). If removing the lime would not change what the user can do or what they got right, it should not be lime. Wherever the Model is a row among others (the recap table, the ladder and its round-by-round grid, the match page's voice list, the tips page's "Show the Model's pick" switch), it is marked with the sm MDL badge and an `ink` label, never lime text.
 
-**The Clash Rule.** A game's two bar colours must sit at least 90 RGB distance apart. When the away team's `bar` is closer than that to the home team's, the away fill switches to whichever of its `primary` or `secondary` sits furthest from the home bar (`barColours` in `pitch-bar.tsx`), so Sea Eagles v Broncos draws the Broncos in gold. New team colours must be checked against likely opponents.
+**The Clash Rule.** A game's two bar colours must sit at least 90 RGB distance apart. When the away team's `bar` is closer than that to the home team's, the away fill switches to whichever of its `primary` or `secondary` sits furthest from the home bar (`barColours` in `pitch-bar.tsx`), so Sea Eagles v Broncos draws the Broncos in gold. Night and day are picked separately from `bar` and `lightBar`; by day an alternative only has to beat white (1.3:1), so gold still qualifies for a bar. New team colours must be checked against likely opponents.
 
 ## Typography
 
@@ -429,8 +450,10 @@ Tip rows are two equal half-width buttons on an 8px gap. Tables (ladder, round-b
 Flat and tonal. Depth comes from stepping the ground: `ground` to `raised` to `raised-2`, with hairline borders. The sticky header and tab bar are translucent (`ground` at 92%, `raised` at 95%) with a medium backdrop blur so rows slide under them.
 
 ### Shadow Vocabulary
-- **Menu drop** (`box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.6)`): the More menu only.
-- **Tooltip lift** (`box-shadow: 0 6px 20px rgb(0 0 0 / 0.45)`): chart tooltips only, which float over the plot while hovered or focused.
+- **Menu drop** (`box-shadow: 0 12px 32px -8px`, `shadow` at 60%): the More menu only.
+- **Tooltip lift** (`box-shadow: 0 6px 20px`, `shadow` at 45%): chart tooltips only, which float over the plot while hovered or focused.
+
+The `shadow` token is black at night and a 40% green-black by day, so shadows soften on the light ground. The pitch bar's ten-metre lines use `tenline` the same way: near-black at night, near-white by day.
 - **Lamp glow** (`box-shadow: 0 0 10px 1px` lime at 55%, transient): the perfect-round lamp chase; never at rest.
 
 ### Named Rules

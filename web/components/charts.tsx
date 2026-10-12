@@ -118,7 +118,7 @@ export function LineChart({
             role="img"
             aria-label={label}
             tabIndex={0}
-            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
+            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-lime-fg focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
             onPointerMove={(e) => setHover(nearest(e.clientX, e.currentTarget.getBoundingClientRect()))}
             onPointerLeave={() => setHover(null)}
             onFocus={() => setHover(last)}
@@ -175,7 +175,7 @@ export function LineChart({
         {hover != null && width > 0 && (
           <div
             role="status"
-            className="pointer-events-none absolute top-0 z-10 min-w-36 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_rgb(0_0_0/0.45)] ring-1 ring-line"
+            className="pointer-events-none absolute top-0 z-10 min-w-36 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_color-mix(in_oklab,var(--color-shadow)_45%,transparent)] ring-1 ring-line"
             style={{ left: Math.min(Math.max(xs(hover) - 72, 0), width - 150) }}
           >
             <p className="text-ink-3">{xLabel(data[hover])}</p>
@@ -267,7 +267,7 @@ export function CalibrationChart({ bins, series, label }: { bins: Record<string,
                         onPointerLeave={() => setHover(null)}
                         onFocus={() => setHover({ key: s.key, i })}
                         onBlur={() => setHover(null)}
-                        className="cursor-default outline-none focus-visible:[stroke-width:2] focus-visible:[stroke:var(--color-lime)]"
+                        className="cursor-default outline-none focus-visible:[stroke-width:2] focus-visible:[stroke:var(--color-lime-fg)]"
                       />
                     </g>
                   ) : null,
@@ -279,7 +279,7 @@ export function CalibrationChart({ bins, series, label }: { bins: Record<string,
         {hb && hover && (
           <div
             role="status"
-            className="pointer-events-none absolute z-10 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_rgb(0_0_0/0.45)] ring-1 ring-line"
+            className="pointer-events-none absolute z-10 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_color-mix(in_oklab,var(--color-shadow)_45%,transparent)] ring-1 ring-line"
             style={{ left: Math.min(xs(hb.predicted) + 10, size - 170), top: Math.max(0, ys(hb.actual) - 70) }}
           >
             <p className="flex items-center gap-2 text-ink-3">

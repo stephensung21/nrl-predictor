@@ -70,7 +70,7 @@ function MoreMenu({ placement }: { placement: "up" | "down" }) {
       {open && (
         <div
           role="menu"
-          className={`absolute z-50 min-w-48 overflow-hidden rounded-lg border border-line bg-raised-2 py-1 shadow-[0_12px_32px_-8px_rgb(0_0_0/0.6)] ${
+          className={`absolute z-50 min-w-48 overflow-hidden rounded-lg border border-line bg-raised-2 py-1 shadow-[0_12px_32px_-8px_color-mix(in_oklab,var(--color-shadow)_60%,transparent)] ${
             tab ? "right-2 bottom-[calc(100%+8px)]" : "top-[calc(100%+6px)] right-0"
           }`}
         >
@@ -98,7 +98,7 @@ export function AppNav() {
         <div className="mx-auto flex h-14 w-full max-w-[34rem] items-center justify-between px-4 md:max-w-5xl">
           <Link href="/" className="flex items-baseline gap-2.5" aria-label="rugbyleague-tipper, home">
             <span className="font-display text-[23px] leading-none font-bold tracking-[0.01em] text-ink">
-              rugbyleague<span className="text-lime">-</span>tipper
+              rugbyleague<span className="text-lime-fg">-</span>tipper
             </span>
             <span className="rounded-sm border border-line px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-[0.06em] text-ink-3 uppercase">
               personal project
@@ -115,7 +115,7 @@ export function AppNav() {
                   className={`relative rounded-md px-3 py-2 text-sm font-semibold transition-colors hover:text-ink ${on ? "text-ink" : "text-ink-3"}`}
                 >
                   {item.label}
-                  {on && <span className="absolute inset-x-3 -bottom-[11px] h-[2px] rounded-full bg-lime" />}
+                  {on && <span className="absolute inset-x-3 -bottom-[11px] h-[2px] rounded-full bg-lime-fg" />}
                 </Link>
               );
             })}
@@ -139,8 +139,8 @@ export function AppNav() {
                 aria-current={on ? "page" : undefined}
                 className={`relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide ${on ? "text-ink" : "text-ink-3"}`}
               >
-                {on && <span className="absolute top-0 h-[3px] w-8 rounded-b-full bg-lime" />}
-                <Icon className={`size-[22px] ${on ? "text-lime" : ""}`} strokeWidth={on ? 2.25 : 2} aria-hidden />
+                {on && <span className="absolute top-0 h-[3px] w-8 rounded-b-full bg-lime-fg" />}
+                <Icon className={`size-[22px] ${on ? "text-lime-fg" : ""}`} strokeWidth={on ? 2.25 : 2} aria-hidden />
                 {item.label}
               </Link>
             );

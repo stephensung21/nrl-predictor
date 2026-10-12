@@ -188,7 +188,7 @@ function LadderTable({ ladder, tags, round, youId }: { ladder: LadderEntry[]; ta
                     <span className={`text-[15px] ${you || e.tipper.isModel ? "font-semibold text-ink" : "text-ink"}`}>
                       {e.tipper.isModel ? "The Model" : e.tipper.name}
                     </span>
-                    {you && <span className="ml-1.5 text-[11px] font-bold tracking-[0.06em] text-lime uppercase">You</span>}
+                    {you && <span className="ml-1.5 text-[11px] font-bold tracking-[0.06em] text-lime-fg uppercase">You</span>}
                     {tag && <span className="block text-[12px] leading-tight text-ink-3">{tag}</span>}
                   </span>
                   <span className="ml-auto">

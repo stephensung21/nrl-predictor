@@ -20,9 +20,9 @@ import { TEAMS, type TeamName } from "@/lib/teams";
 import { TeamBadge } from "./team-badge";
 
 const pill =
-  "inline-flex items-center justify-center gap-1.5 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-[oklch(0.94_0.19_126)]";
+  "inline-flex items-center justify-center gap-1.5 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-lime-hover";
 const field =
-  "h-12 w-full rounded-lg bg-raised px-3 text-[16px] text-ink ring-1 ring-line ring-inset placeholder:text-ink-3 focus:ring-2 focus:ring-lime focus:outline-none";
+  "h-12 w-full rounded-lg bg-raised px-3 text-[16px] text-ink ring-1 ring-line ring-inset placeholder:text-ink-3 focus:ring-2 focus:ring-lime-fg focus:outline-none";
 
 /** Moves focus to an element when it appears, so swapping a panel never drops focus to the page. */
 function useFocusOnMount<T extends HTMLElement>() {
@@ -99,7 +99,7 @@ export function SignInPanel({ intent, returnTo }: { intent: Intent; returnTo: st
       <button
         type="button"
         onClick={() => store.startSignIn({ provider: "google" }, { intent, returnTo }).catch((e) => setError(e.message))}
-        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-full bg-ink text-[15px] font-semibold text-ground hover:bg-white"
+        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-full bg-ink text-[15px] font-semibold text-ground hover:bg-ink-max"
       >
         <GoogleMark />
         Continue with Google
@@ -172,8 +172,8 @@ function TeamPicker({ value, onChange }: { value?: TeamName; onChange: (t: TeamN
           return (
             <label
               key={t}
-              className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime ${
-                on ? "bg-lime-wash text-ink ring-2 ring-lime ring-inset" : "text-ink-3 ring-1 ring-line-soft ring-inset hover:text-ink-2"
+              className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime-fg ${
+                on ? "bg-lime-wash text-ink ring-2 ring-lime-fg ring-inset" : "text-ink-3 ring-1 ring-line-soft ring-inset hover:text-ink-2"
               }`}
             >
               <input type="radio" name="favTeam" value={t} checked={on} onChange={() => onChange(t)} className="sr-only" />
@@ -213,7 +213,7 @@ function AutoTipPicker({ value, onChange, mode }: { value?: AutoTip; onChange: (
                 value={o.value}
                 checked={on}
                 onChange={() => onChange(o.value)}
-                className="mt-1 size-4 accent-[var(--color-lime)]"
+                className="mt-1 size-4 accent-[var(--color-lime-fg)]"
               />
               <span>
                 <span className={`block text-[15px] font-semibold ${on ? "text-ink" : "text-ink-2"}`}>{o.label}</span>
@@ -301,7 +301,7 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
       }}
     >
       <p ref={heading} tabIndex={-1} className="mb-5 flex items-start gap-2 text-[14px] text-ink-2 outline-none">
-        <Check className="mt-0.5 size-4 shrink-0 text-lime" strokeWidth={3} aria-hidden />
+        <Check className="mt-0.5 size-4 shrink-0 text-lime-fg" strokeWidth={3} aria-hidden />
         <span>
           Signed in as <span className="font-semibold text-ink">{session.email}</span>.{" "}
           <button

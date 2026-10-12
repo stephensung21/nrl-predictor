@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AccountPanel } from "@/components/auth-forms";
 import { SampleNote } from "@/components/sample-note";
+import { ThemeSetting } from "@/components/theme-setting";
 import { tippingLive } from "@/lib/supabase";
 
 export const metadata: Metadata = { title: "Your account · rugbyleague-tipper" };
@@ -9,6 +10,7 @@ export default function Page() {
   return (
     <main>
       <AccountPanel />
+      <ThemeSetting />
       {!tippingLive && (
       <SampleNote>
         Your details are saved in this browser until the real accounts exist.

@@ -108,7 +108,7 @@ export function TippingStrip({ view, nowIso, youId }: { view: RoundView; nowIso:
     <section aria-label="Your tips" className="overflow-hidden rounded-xl border border-line bg-raised">
       <Link
         href="/tipping"
-        className={`group flex items-center justify-between gap-3 px-4 pt-3.5 pb-3.5 transition-colors ${loud ? "bg-lime text-lime-ink hover:bg-[oklch(0.94_0.19_126)]" : ""}`}
+        className={`group flex items-center justify-between gap-3 px-4 pt-3.5 pb-3.5 transition-colors ${loud ? "bg-lime text-lime-ink hover:bg-lime-hover" : ""}`}
       >
         <div className="min-w-0">
           <p className="font-display text-[56px] leading-[0.86] font-extrabold uppercase">
@@ -130,7 +130,7 @@ export function TippingStrip({ view, nowIso, youId }: { view: RoundView; nowIso:
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} aria-hidden />
           </span>
         ) : (
-          <Check className="size-7 shrink-0 text-lime" strokeWidth={2.5} aria-label="All tipped" />
+          <Check className="size-7 shrink-0 text-lime-fg" strokeWidth={2.5} aria-label="All tipped" />
         )}
       </Link>
       <StandingLine you={you} leader={leader} model={model} seed={view.round} />
@@ -167,7 +167,7 @@ export function FeaturedGame({ game, yourMargin }: { game: Game; yourMargin?: nu
           </h2>
           {game.yourTip && (
             <span
-              className={`flex shrink-0 items-center gap-1 text-[13px] font-semibold ${game.yourCorrect === true ? "text-lime" : game.yourCorrect === false ? "text-miss line-through decoration-2" : "text-ink"}`}
+              className={`flex shrink-0 items-center gap-1 text-[13px] font-semibold ${game.yourCorrect === true ? "text-lime-fg" : game.yourCorrect === false ? "text-miss line-through decoration-2" : "text-ink"}`}
             >
               {game.yourCorrect === true && <Check className="tick-pop size-4" strokeWidth={3} aria-label="Correct" />}
               {game.yourCorrect === false && <X className="size-4" strokeWidth={3} aria-label="Wrong" />}
@@ -283,7 +283,7 @@ function Lamps({ results, chase }: { results: boolean[]; chase: boolean }) {
         <span
           key={i}
           style={{ ["--i" as string]: i }}
-          className={`size-[11px] rounded-[2px] ${r ? "bg-lime" : "bg-raised-2 ring-1 ring-line ring-inset"}`}
+          className={`size-[11px] rounded-[2px] ${r ? "bg-lime-fg" : "bg-raised-2 ring-1 ring-line ring-inset"}`}
         />
       ))}
     </span>
@@ -336,7 +336,7 @@ export function RecapPanel({
         <div className="space-y-1.5 px-4 pt-4 pb-4">
           {signedIn && (
             <p
-              className={`font-display text-[28px] leading-[0.95] font-bold uppercase ${perfect.length ? "text-lime" : "text-ink"}`}
+              className={`font-display text-[28px] leading-[0.95] font-bold uppercase ${perfect.length ? "text-lime-fg" : "text-ink"}`}
             >
               {perfectLine(perfect, n, view.round)}
             </p>
@@ -373,7 +373,7 @@ export function RecapPanel({
                   </span>
                   <span className={`min-w-0 flex-1 truncate text-[15px] ${you || s.tipper.isModel ? "font-semibold text-ink" : "text-ink-2"}`}>
                     {s.tipper.isModel ? "The Model" : s.tipper.name}
-                    {you && <span className="ml-1.5 text-[12px] font-bold text-lime uppercase">You</span>}
+                    {you && <span className="ml-1.5 text-[12px] font-bold text-lime-fg uppercase">You</span>}
                   </span>
                   <Lamps results={results} chase={score === n} />
                   <span className="w-11 text-right font-score text-[19px] font-bold">
@@ -412,7 +412,7 @@ export function EmptyState({ kind, lastRound }: { kind: keyof typeof emptyCopy; 
       {kind === "error" ? (
         <a
           href="?state=error"
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-[oklch(0.94_0.19_126)]"
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-lime-hover"
         >
           <RotateCw className="size-4" strokeWidth={2.5} aria-hidden />
           Try again
@@ -422,7 +422,7 @@ export function EmptyState({ kind, lastRound }: { kind: keyof typeof emptyCopy; 
           {lastRound && (
             <Link
               href={`/round/${lastRound.season}/${lastRound.round}`}
-              className="group inline-flex items-center gap-1 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-[oklch(0.94_0.19_126)]"
+              className="group inline-flex items-center gap-1 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-lime-hover"
             >
               Look back at {lastRound.season}&rsquo;s rounds
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} aria-hidden />

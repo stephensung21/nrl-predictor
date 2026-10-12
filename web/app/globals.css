@@ -1,26 +1,37 @@
 @import "tailwindcss";
 
 /* Night game under lights: green-black ground, floodlight-white ink, one lime
-   accent for you, actions and right calls. Dark only (DESIGN_BRIEF.md). */
+   accent for you, actions and right calls. Day game is the light version:
+   near-white ground with a green tint, green-black ink, deeper lime for text.
+   Each token is light-dark(day, night); the html element's color-scheme picks
+   (components/theme.tsx). */
 @theme {
-  --color-ground: oklch(0.165 0.02 162);
-  --color-raised: oklch(0.205 0.022 162);
-  --color-raised-2: oklch(0.245 0.024 162);
-  --color-line: oklch(0.31 0.022 162);
-  --color-line-soft: oklch(0.255 0.02 162);
-  --color-pitch: oklch(0.235 0.035 152);
-  --color-pitch-line: oklch(0.42 0.03 150);
+  --color-ground: light-dark(oklch(0.972 0.008 140), oklch(0.165 0.02 162));
+  --color-raised: light-dark(oklch(0.995 0.004 140), oklch(0.205 0.022 162));
+  --color-raised-2: light-dark(oklch(0.945 0.012 145), oklch(0.245 0.024 162));
+  --color-line: light-dark(oklch(0.86 0.016 150), oklch(0.31 0.022 162));
+  --color-line-soft: light-dark(oklch(0.915 0.012 150), oklch(0.255 0.02 162));
+  --color-pitch: light-dark(oklch(0.9 0.035 145), oklch(0.235 0.035 152));
+  --color-pitch-line: light-dark(oklch(0.72 0.04 148), oklch(0.42 0.03 150));
+  /* Ten-metre lines across the probability bars. */
+  --color-tenline: light-dark(oklch(0.985 0.005 140), rgb(10 20 16));
+  --color-shadow: light-dark(oklch(0.3 0.03 160 / 0.4), rgb(0 0 0));
 
-  --color-ink: oklch(0.965 0.008 110);
-  --color-ink-2: oklch(0.82 0.016 150);
-  --color-ink-3: oklch(0.68 0.018 155);
+  --color-ink: light-dark(oklch(0.22 0.02 160), oklch(0.965 0.008 110));
+  --color-ink-2: light-dark(oklch(0.38 0.02 158), oklch(0.82 0.016 150));
+  --color-ink-3: light-dark(oklch(0.5 0.02 156), oklch(0.68 0.018 155));
+  /* Hover for buttons filled with ink. */
+  --color-ink-max: light-dark(oklch(0.1 0.01 160), oklch(1 0 0));
 
-  --color-lime: oklch(0.91 0.2 126);
+  /* lime fills (with lime-ink on top); lime-fg is lime as text, rings and small marks. */
+  --color-lime: light-dark(oklch(0.88 0.2 128), oklch(0.91 0.2 126));
+  --color-lime-hover: light-dark(oklch(0.84 0.2 128), oklch(0.94 0.19 126));
+  --color-lime-fg: light-dark(oklch(0.5 0.14 134), oklch(0.91 0.2 126));
   --color-lime-ink: oklch(0.22 0.05 135);
-  --color-lime-wash: oklch(0.91 0.2 126 / 0.12);
-  --color-miss: oklch(0.74 0.15 28);
-  --color-miss-wash: oklch(0.74 0.15 28 / 0.12);
-  --color-live: oklch(0.78 0.16 60);
+  --color-lime-wash: light-dark(oklch(0.5 0.14 134 / 0.14), oklch(0.91 0.2 126 / 0.12));
+  --color-miss: light-dark(oklch(0.53 0.17 28), oklch(0.74 0.15 28));
+  --color-miss-wash: light-dark(oklch(0.53 0.17 28 / 0.12), oklch(0.74 0.15 28 / 0.12));
+  --color-live: light-dark(oklch(0.55 0.14 55), oklch(0.78 0.16 60));
 
   --font-display: var(--font-saira), "Arial Narrow", sans-serif;
   --font-sans: var(--font-sofia), system-ui, sans-serif;
@@ -30,7 +41,7 @@
 
 @layer base {
   html {
-    color-scheme: dark;
+    color-scheme: light dark;
     background: var(--color-ground);
     -webkit-tap-highlight-color: transparent;
     scrollbar-color: var(--color-line) var(--color-ground);
@@ -48,7 +59,7 @@
     color: var(--color-lime-ink);
   }
   :focus-visible {
-    outline: 2px solid var(--color-lime);
+    outline: 2px solid var(--color-lime-fg);
     outline-offset: 2px;
     border-radius: 4px;
   }

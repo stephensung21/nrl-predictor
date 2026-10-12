@@ -161,7 +161,7 @@ function ModelRecordView({
                   <td className="py-2.5">
                     <span className="flex gap-[3px]" aria-label={`${x.model} of ${x.games} right`}>
                       {x.results.map((ok, i) => (
-                        <span key={i} className={`size-[11px] rounded-[2px] ${ok ? "bg-lime" : "bg-raised-2 ring-1 ring-line ring-inset"}`} />
+                        <span key={i} className={`size-[11px] rounded-[2px] ${ok ? "bg-lime-fg" : "bg-raised-2 ring-1 ring-line ring-inset"}`} />
                       ))}
                     </span>
                   </td>

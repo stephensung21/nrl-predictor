@@ -97,7 +97,7 @@ export function EloSeasonChart({
             role="img"
             aria-label={`Elo ratings through ${season}${lit.length ? `, highlighting ${lit.join(", ")}` : ""}`}
             tabIndex={0}
-            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
+            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-lime-fg focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
             onPointerMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               setHover(Math.max(0, Math.min(last, Math.round(((e.clientX - rect.left - pad.left) / (w || 1)) * last))));
@@ -153,7 +153,7 @@ export function EloSeasonChart({
         {hover != null && width > 0 && (
           <div
             role="status"
-            className="pointer-events-none absolute top-0 z-10 min-w-40 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_rgb(0_0_0/0.45)] ring-1 ring-line"
+            className="pointer-events-none absolute top-0 z-10 min-w-40 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_color-mix(in_oklab,var(--color-shadow)_45%,transparent)] ring-1 ring-line"
             style={{ left: Math.min(Math.max(xs(hover) - 80, 0), width - 170) }}
           >
             <p className="text-ink-3">
@@ -228,7 +228,7 @@ export function EloTeamChart({
             role="img"
             aria-label={`${name}'s Elo rating, game by game, ${points[0].season} to ${points[last].season}`}
             tabIndex={0}
-            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
+            className="block touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-lime-fg focus-visible:ring-offset-2 focus-visible:ring-offset-ground"
             onPointerMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               setHover(Math.max(0, Math.min(last, Math.round(((e.clientX - rect.left - pad.left) / (w || 1)) * last))));
@@ -283,7 +283,7 @@ export function EloTeamChart({
         {hover != null && width > 0 && (
           <div
             role="status"
-            className="pointer-events-none absolute top-0 z-10 min-w-44 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_rgb(0_0_0/0.45)] ring-1 ring-line"
+            className="pointer-events-none absolute top-0 z-10 min-w-44 rounded-md bg-raised-2 px-3 py-2 text-[12px] shadow-[0_6px_20px_color-mix(in_oklab,var(--color-shadow)_45%,transparent)] ring-1 ring-line"
             style={{ left: Math.min(Math.max(xs(hover) - 88, 0), width - 190) }}
           >
             <p className="text-ink-3">
@@ -347,7 +347,7 @@ export function SeasonPicker({ seasons, value, team: t }: { seasons: number[]; v
       <select
         value={value}
         onChange={(e) => router.push(`/elo?season=${e.target.value}&team=${encodeURIComponent(t)}`, { scroll: false })}
-        className="h-10 rounded-md bg-raised px-2 font-score text-[16px] font-semibold text-ink ring-1 ring-line ring-inset focus:ring-2 focus:ring-lime focus:outline-none"
+        className="h-10 rounded-md bg-raised px-2 font-score text-[16px] font-semibold text-ink ring-1 ring-line ring-inset focus:ring-2 focus:ring-lime-fg focus:outline-none"
       >
         {[...seasons].reverse().map((s) => (
           <option key={s} value={s}>

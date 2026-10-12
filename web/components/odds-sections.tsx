@@ -66,7 +66,7 @@ function MarketTrack({ g, graded }: { g: OddsGame; graded: boolean }) {
           className="absolute inset-x-0 bottom-2 h-2 rounded-[3px] bg-pitch"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px), rgb(10 20 16 / 0.6) calc(10% - 1px), rgb(10 20 16 / 0.6) 10%)",
+              "repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px), color-mix(in srgb, var(--color-tenline) 60%, transparent) calc(10% - 1px), color-mix(in srgb, var(--color-tenline) 60%, transparent) 10%)",
           }}
         />
         <div className="absolute bottom-1 left-1/2 h-4 w-[2px] -translate-x-1/2 rounded-full bg-ink-3" />

@@ -277,7 +277,7 @@ export function TipLine({ game }: { game: Game }) {
         </span>
         <Link
           href="/tipping"
-          className="group flex shrink-0 items-center gap-1 rounded-full bg-lime px-4 py-2.5 text-[14px] font-bold text-lime-ink hover:bg-[oklch(0.94_0.19_126)]"
+          className="group flex shrink-0 items-center gap-1 rounded-full bg-lime px-4 py-2.5 text-[14px] font-bold text-lime-ink hover:bg-lime-hover"
         >
           {game.yourTip ? "Change tip" : "Tip this game"}
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} aria-hidden />
@@ -290,7 +290,7 @@ export function TipLine({ game }: { game: Game }) {
     <p className="mt-4 flex items-center gap-1.5 text-[14px]">
       <span className="text-ink-3">Your tip:</span>
       <span
-        className={`flex items-center gap-1 font-semibold ${game.yourCorrect === true ? "text-lime" : game.yourCorrect === false ? "text-miss line-through decoration-2" : "text-ink"}`}
+        className={`flex items-center gap-1 font-semibold ${game.yourCorrect === true ? "text-lime-fg" : game.yourCorrect === false ? "text-miss line-through decoration-2" : "text-ink"}`}
       >
         {game.yourCorrect === true && <Check className="tick-pop size-4" strokeWidth={3} aria-label="Correct" />}
         {game.yourCorrect === false && <X className="size-4" strokeWidth={3} aria-label="Wrong" />}
@@ -322,7 +322,7 @@ export function MatchTabs({ id, tab, query }: { id: string; tab: MatchTab; query
           scroll={false}
           aria-current={tab === t ? "page" : undefined}
           className={`-mb-px border-b-2 px-3 py-2.5 text-[14px] font-semibold transition-colors ${
-            tab === t ? "border-lime text-ink" : "border-transparent text-ink-3 hover:text-ink-2"
+            tab === t ? "border-lime-fg text-ink" : "border-transparent text-ink-3 hover:text-ink-2"
           }`}
         >
           {label}
