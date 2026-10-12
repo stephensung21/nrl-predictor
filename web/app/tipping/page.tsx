@@ -12,6 +12,9 @@ import type { TeamName } from "@/lib/teams";
 import type { RoundData } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Tips · rugbyleague-tipper" };
+// Each visitor's own tips: render on every request. Live, the page reads the database before
+// anything that would mark it dynamic, so without this the build prerenders it from the database.
+export const dynamic = "force-dynamic";
 
 type State = "open" | "live";
 
