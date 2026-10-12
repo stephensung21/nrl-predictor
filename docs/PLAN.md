@@ -191,6 +191,42 @@ Planned in detail in [PLAN_WEB.md §7](PLAN_WEB.md#7-agent-features-later):
 - **Model reviewer (7.3):** the one real agent loop. Every 6 rounds, it looks for patterns across many misses, proposes at most 2–3 changes with pass criteria set in advance, tests them on the backtest, and opens a pull request. Small or unclear gains go to "Already tried".
 - **Match briefs (7.4):** one structured fact pack per game (the prediction, its drivers, Elo, form, team news, the market, conditions, and later the result and post-mortem), assembled by code and frozen with the prediction. Every LLM text is written from a brief and checked against it, so new data sources are added as new sections, and a full match summary combining them all is one more prompt.
 
+### 7.9 Odds-move investigator
+
+The team-news agent works from news to the price; this one works from the price back to the news. When a game's price moves sharply and nothing the model can see explains it (no change to the line-up or the weather), an agent searches for the cause: a late withdrawal, a player named but in doubt, a weather change.
+
+- **Trigger:** plain code compares each odds pull with the last one and flags a move past a threshold set in advance.
+- **Output:** the cause it found, with sources, or "no cause found". Each explained move is a labelled example of news the model doesn't see, which shows which kinds of news matter.
+- It never changes a prediction itself. A cause that is a line-up change goes through the normal refresh.
+
+### 7.10 News-archive builder (to backtest the news agents)
+
+The team-news agent (7.1) and the news agent in [NEXT_IDEAS.md](NEXT_IDEAS.md) can't be backtested without past news. `src/teamlists.py` already recovers Tuesday lists from the Internet Archive (344 games); this goes further and rebuilds the late news for 2023–25 (late-mail, the casualty ward, players named but in doubt) from archived pages.
+
+- **Only pages archived before kickoff,** recorded with their snapshot time.
+- **Extraction only:** the agent turns pages into structured facts and never forecasts. Its training data knows the results (the LLM trap above), so it may only copy facts from the page, and a sample of its output is checked by hand.
+- **Payoff:** the news agents can then be judged on the backtest instead of waiting for 2027.
+
+### 7.11 Leakage and pre-registration auditor
+
+Before any experiment runs, whether you or the model reviewer (7.8) proposed it, an agent reads the diff and the written pass criteria and checks:
+- that no feature uses information from after kickoff (against the leakage checklists above);
+- that the pass criteria were written before the results and haven't changed since;
+- that the same idea isn't being retested on the backtest under another name (against "Already tried" in IMPROVEMENTS.md).
+
+It reports and never blocks; a human decides. It matters most for the model reviewer, the step most likely to wear down the adoption rule.
+
+### 7.12 Site consistency checker
+
+The data-quality agent (7.4) checks what comes in; this checks what goes out. After each publish, an agent loads the live pages and compares them with the database: the probabilities shown match the predictions of record, value-bet labels match the odds, the drivers match the prediction, and no page is stale. Mismatches go to the monitoring report (7.7).
+
+### 7.13 Pre-kickoff check on paper bets
+
+An hour before each game with a paper bet, a check looks for line-up changes and odds moves since the bet was chosen, reruns the model, and records whether the bet would still be taken and at what edge.
+
+- **Never changes or places a bet.** It only records.
+- **Payoff:** over 2027 it measures how much value disappears before kickoff, which the backtest can't show.
+
 ### Where not to use agents
 
 - Producing the main probability.
