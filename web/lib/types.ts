@@ -110,7 +110,12 @@ export type RoundData = {
   featuredMatchId: string;
   matches: Match[];
   predictions: Prediction[];
+  /** Paper trading's head-to-head bet on each game that has one (lib/odds.ts paperBet). */
+  bets?: RoundBet[];
 };
+
+/** A paper bet on one game: Betr's latest price before kickoff, the opening price after. */
+export type RoundBet = { matchId: string; side: "home" | "away"; odds: number; edge: number; price: "latest" | "opening" };
 
 /** A past round with its tips and the ladder going into it (sample archive). */
 export type ArchivedRound = {

@@ -189,6 +189,36 @@ describe("the site's data layer", () => {
     expect(earlier[0]).toMatchObject({ homeOdds: 2.6, bet: null });
   });
 
+  it("gives a round's paper bets: Betr's latest price before kickoff, the opening price after", async () => {
+    // A round of its own (2025), so the other tests' games and edges don't change: one game played
+    // last month, one still to come (kickoff after the edges test's clock, so that list doesn't change).
+    // PGlite has one session, shared with `sql`: write as the owner, then read as the site again.
+    await db.exec(`
+      reset role;
+      insert into matches (id, season, round, kickoff, home_team, away_team, venue, city, status, home_score, away_score, neutral) values
+        (101, 2025, 6, now() - interval '30 days', 'Knights', 'Cowboys', 'McDonald Jones', 'Newcastle', 'final', 12, 20, false),
+        (102, 2025, 6, now() + interval '3 days', 'Titans', 'Raiders', 'Cbus Super', 'Gold Coast', 'scheduled', null, null, false);
+      insert into predictions (run_id, match_id, created_at, model_version, model, home_win_prob, margin, total, home_score, away_score, no_odds_home_win_prob) values
+        ('tue', 101, now() - interval '33 days', '2027.1', 'with odds', 0.55, 2, 40, 21, 19, 0.55),
+        ('tue', 102, now() - interval '1 day', '2027.1', 'with odds', 0.62, 4, 40, 22, 18, 0.62);
+      insert into odds_sheet (match_id, bookmaker, home_odds_open, away_odds_open, home_line_open, total_open, home_odds_close, away_odds_close, close_ok)
+        values (101, 'BlueBet', 1.6, 2.5, -1.5, 40.5, 1.4, 3.0, true);
+      insert into odds_snapshots (match_id, bookmaker, captured_at, home_odds, away_odds) values
+        (102, 'betr_au', now() - interval '2 days', 1.3, 3.5),
+        (102, 'betr_au', now() - interval '1 hour', 1.5, 2.8);
+      set role analyst;
+    `);
+    const r = (await roundData(sql, 2025, 6))!;
+    const [played, coming] = r.bets!;
+    // Played: the opening 2.50, not the closing 3.00. Away edge 0.45 x 2.5 - 1.
+    expect(played).toMatchObject({ matchId: "101", side: "away", odds: 2.5, price: "opening" });
+    expect(played.edge).toBeCloseTo(0.125, 12);
+    // Coming: the latest 2.80. Away edge 0.38 x 2.8 - 1.
+    expect(coming).toMatchObject({ matchId: "102", side: "away", odds: 2.8, price: "latest" });
+    expect(coming.edge).toBeCloseTo(0.064, 12);
+    expect((await roundData(sql, 2027, 2))!.bets).toEqual([]); // Betr hasn't priced round 2 by today
+  });
+
   it("reads what drove a game's prediction of record, by group, without the calibration row", async () => {
     const d = (await matchDrivers(sql, "3"))!;
     expect(d.variant).toBe("with_odds");

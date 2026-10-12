@@ -4,6 +4,9 @@
 import { SEASON_BETS, SEASON_GAMES } from "./sample-odds";
 import type { Edge, SeasonBet, SeasonGame } from "./types";
 
+/** Paper trading's smallest edge worth a bet (pipeline/paper.py MIN_EDGE). */
+export const MIN_EDGE = 0.02;
+
 /** Fixed series colours for this page, validated all-pairs on the ground (dataviz validator). */
 export const SERIES = {
   model: { label: "The Model", colour: "#3987e5" },
@@ -103,6 +106,15 @@ export function valueUnderdog(e: Edge) {
     fair: e.bet.side === "home" ? e.fairHome : e.fairAway,
     edge: e.bet.edge,
   };
+}
+
+/** Paper trading's rule (pipeline/paper.py): the side with the bigger expected edge (home on a tie),
+ * if that edge is at least 2%. */
+export function paperBet(homeProb: number, homeOdds: number, awayOdds: number) {
+  const home = homeProb * homeOdds - 1;
+  const away = (1 - homeProb) * awayOdds - 1;
+  const [side, odds, edge] = home >= away ? (["home", homeOdds, home] as const) : (["away", awayOdds, away] as const);
+  return edge >= MIN_EDGE ? { side, odds, edge } : null;
 }
 
 /** The season's bets on a team the Model tipped to lose: its value underdogs. */

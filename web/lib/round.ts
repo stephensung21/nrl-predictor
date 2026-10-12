@@ -1,7 +1,7 @@
 // Turns table rows into what the home page shows: which part of the NRL week
 // we're in, each game's status, and the viewer's standing.
 
-import type { LadderRow, Match, Prediction, RoundData, Tip, Tipper } from "./types";
+import type { LadderRow, Match, Prediction, RoundBet, RoundData, Tip, Tipper } from "./types";
 import type { TeamName } from "./teams";
 
 const MIN = 60_000;
@@ -50,6 +50,8 @@ export type Game = {
   modelCorrect?: boolean;
   yourTip?: TeamName;
   yourCorrect?: boolean;
+  /** Paper trading backs the team the Model tips to lose: the price pays more than its chance. */
+  valueUnderdog?: Omit<RoundBet, "matchId" | "side"> & { team: TeamName; prob: number; won?: boolean };
 };
 
 export type Standing = {
@@ -109,6 +111,8 @@ export function buildRound(opts: {
       const modelTip = homeTipped ? match.home : match.away;
       const winners = status === "final" ? winnersOf(match) : undefined;
       const yourTip = yourTips.find((t) => t.matchId === match.id)?.team;
+      const bet = data.bets?.find((b) => b.matchId === match.id);
+      const dog = bet && (bet.side === "home") !== homeTipped ? (bet.side === "home" ? match.home : match.away) : undefined;
       return {
         match,
         prediction,
@@ -121,6 +125,16 @@ export function buildRound(opts: {
         modelCorrect: winners ? winners.includes(modelTip) : undefined,
         yourTip,
         yourCorrect: winners && yourTip ? winners.includes(yourTip) : undefined,
+        ...(bet && dog
+          ? {
+              valueUnderdog: {
+                team: dog, odds: bet.odds, edge: bet.edge, price: bet.price,
+                prob: homeTipped ? 1 - prediction.homeWinProb : prediction.homeWinProb,
+                // A head-to-head bet loses on a draw.
+                won: winners ? winners.length === 1 && winners[0] === dog : undefined,
+              },
+            }
+          : {}),
       };
     });
 
