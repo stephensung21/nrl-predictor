@@ -30,6 +30,9 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
 };
 
+/** The trial site (pipeline/trial.py): a separate database replaying 2026's Rounds 1–3. */
+const TRIAL = process.env.NEXT_PUBLIC_TRIAL === "1";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     // The theme script sets color-scheme on <html> before React hydrates.
@@ -39,6 +42,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="min-h-dvh">
         <AppNav />
+        {TRIAL && (
+          <p className="mx-auto mt-3 w-full max-w-[34rem] px-4 text-[13px] leading-snug text-ink-3">
+            <span className="font-semibold text-ink-2">Trial.</span> 2026&rsquo;s Rounds 1&ndash;3 played again over nine
+            days, with the real predictions and results. Tips here don&rsquo;t carry over to the real comp.
+          </p>
+        )}
         <div className="mx-auto w-full max-w-[34rem] px-4 pb-28 md:pb-12">
           {children}
           <footer className="mt-12 border-t border-line-soft pt-5 text-sm leading-relaxed text-ink-3">
