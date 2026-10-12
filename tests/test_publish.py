@@ -344,3 +344,45 @@ def test_the_database_edges_match_edges_py(db_url, records):
             assert conn.execute("select bet_side from match_edges").fetchall() == [("away",)]
         finally:
             conn.execute("reset role")
+
+
+def test_drivers_and_briefs_are_published_with_their_predictions(db_url, records):
+    rec, games = records
+    played = int(games["match_id"].iloc[0])
+
+    def drivers(run, mid, scale):
+        return pd.DataFrame([
+            {"run_id": run, "match_id": mid, "variant": "with_odds", "group": "strength", "feature": "elo_logit",
+             "value": 0.3, "margin_pts": 2.0 * scale, "win_logodds": 0.2 * scale},
+            {"run_id": run, "match_id": mid, "variant": "with_odds", "group": "strength", "feature": "team_margin",
+             "value": 1.0, "margin_pts": 1.0 * scale, "win_logodds": 0.1 * scale},
+            {"run_id": run, "match_id": mid, "variant": "with_odds", "group": "baseline", "feature": "(baseline)",
+             "value": None, "margin_pts": 2.8, "win_logodds": 0.3}])
+
+    rec.add_drivers(pd.concat([drivers("tue", 99, 1), drivers("wed", 99, 2), drivers("late", played, 5),
+                               drivers("nope", 99, 1)]))  # "nope" made no prediction: not published
+    brief = lambda run, mid: {"brief_version": "1", "run_id": run, "match_id": mid, "season": 2026, "round": 10,  # noqa: E731
+                              "created_at": "2026-05-06T23:15:00+00:00", "game": {}, "sections": {"prediction": {"run": run}}}
+    rec.add_briefs([brief("tue", 99), brief("wed", 99), brief("nope", 99)])
+    summaries = rec.summaries()
+    summaries.loc[summaries["kind"] == "match_preview", "brief_run_id"] = "wed"
+    rec.summaries_file.unlink()
+    rec.add_summaries(summaries)
+
+    first = publish_to(db_url, publish.live_tables(2026, rec), 2026)
+    assert first == publish_to(db_url, publish.live_tables(2026, rec), 2026)
+    assert first["prediction_drivers"] == 9 and first["match_briefs"] == 2
+
+    # The match page reads its prediction of record's drivers by group (Wednesday's, for game 99), and
+    # nothing for a game whose only drivers came after kickoff.
+    assert query(db_url, "select match_id, run_id, driver_group, margin_pts from record_drivers order by driver_group") == [
+        (99, "wed", "baseline", 2.8), (99, "wed", "strength", 6.0)]
+    assert query(db_url, "select run_id, brief->'sections'->'prediction'->>'run' from record_briefs") == [("wed", "wed")]
+    assert query(db_url, "select kind, brief_run_id from summaries where match_id = 99") == [("match_preview", "wed")]
+
+    # Visitors and the analyst role read them; nobody but the pipeline writes them.
+    with connection(db_url).transaction(force_rollback=True):
+        connection(db_url).execute("set local role anon")
+        assert query(db_url, "select count(*) from record_briefs") == [(1,)]
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            connection(db_url).execute("insert into match_briefs values ('x', 99, '1', '{}', now())")

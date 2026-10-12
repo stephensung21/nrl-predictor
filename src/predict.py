@@ -294,6 +294,11 @@ def predict_fixtures(fixtures, lists, bundle, keep_weather, neutral=(), live_odd
     return out, rows, errors, warns
 
 
+def variant_of(out):
+    """Each prediction's model variant ("with_odds" or "no_odds"), indexed by match id."""
+    return pd.Series(np.where(out["model"] == "with odds", "with_odds", "no_odds"), index=out["match_id"].to_numpy())
+
+
 def write_round(season, rnd, replay, keep_weather, bundle, out, has_odds, errors, warns):
     """The round's run record, and its predictions as CSV and Markdown if validation passed."""
     commit, dirty = git_commit()
