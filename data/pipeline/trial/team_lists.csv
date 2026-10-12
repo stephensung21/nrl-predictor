@@ -1,0 +1,1891 @@
+match_id,team,player_id,player_name,jersey_number,position,version
+20261110260,Panthers,503340,Dylan Edwards,1,Fullback,tuesday
+20261110260,Panthers,100007927,Thomas Jenkins,2,Winger,tuesday
+20261110260,Panthers,100004042,Paul Alamoti,3,Centre,tuesday
+20261110260,Panthers,100011678,Casey McLean,4,Centre,tuesday
+20261110260,Panthers,505410,Brian To'o,5,Winger,tuesday
+20261110260,Panthers,100006848,Blaize Talagi,6,Five-Eighth,tuesday
+20261110260,Panthers,504120,Nathan Cleary,7,Halfback,tuesday
+20261110260,Panthers,501461,Moses Leota,8,Prop,tuesday
+20261110260,Panthers,505414,Mitch Kenny,9,Hooker,tuesday
+20261110260,Panthers,505555,Lindsay Smith,10,Prop,tuesday
+20261110260,Panthers,505976,Isaiah Papali'i,11,2nd Row,tuesday
+20261110260,Panthers,501271,Luke Garner,12,2nd Row,tuesday
+20261110260,Panthers,500534,Isaah Yeo,13,Lock,tuesday
+20261110260,Panthers,502695,Jack Cogger,14,Interchange,tuesday
+20261110260,Panthers,100008487,Billy Phillips,15,Interchange,tuesday
+20261110260,Panthers,500852,Scott Sorensen,16,Interchange,tuesday
+20261110260,Panthers,504144,Kalani Going,17,Interchange,tuesday
+20261110260,Panthers,509467,Izack Tago,18,Interchange,tuesday
+20261110260,Panthers,504830,Freddy Lussick,19,Interchange,tuesday
+20261110260,Panthers,509843,Tom Ale,20,Reserve,tuesday
+20261110260,Panthers,100003896,Jack Cole,21,Reserve,tuesday
+20261110260,Panthers,504711,Sione Fonua,22,Reserve,tuesday
+20261110260,Sharks,504279,William Kennedy,1,Fullback,tuesday
+20261110260,Sharks,503922,Sione Katoa,2,Winger,tuesday
+20261110260,Sharks,502072,Jesse Ramien,3,Centre,tuesday
+20261110260,Sharks,508649,KL Iro,4,Centre,tuesday
+20261110260,Sharks,509559,Samuel Stonestreet,5,Winger,tuesday
+20261110260,Sharks,504321,Braydon Trindall,6,Five-Eighth,tuesday
+20261110260,Sharks,502490,Nicholas Hynes,7,Halfback,tuesday
+20261110260,Sharks,500449,Addin Fonua-Blake,8,Prop,tuesday
+20261110260,Sharks,504274,Blayke Brailey,9,Hooker,tuesday
+20261110260,Sharks,510238,Thomas Hazelton,10,Prop,tuesday
+20261110260,Sharks,507062,Briton Nikora,11,2nd Row,tuesday
+20261110260,Sharks,505413,Billy Burns,12,2nd Row,tuesday
+20261110260,Sharks,100004272,Jesse Colquhoun,13,Lock,tuesday
+20261110260,Sharks,504175,Siosifa Talakai,14,Interchange,tuesday
+20261110260,Sharks,504326,Toby Rudolf,15,Interchange,tuesday
+20261110260,Sharks,504460,Oregon Kaufusi,16,Interchange,tuesday
+20261110260,Sharks,500213,Braden Uele,17,Interchange,tuesday
+20261110260,Sharks,507815,Hohepa Puru,18,Interchange,tuesday
+20261110260,Sharks,100003968,Chris Vea'ila,19,Interchange,tuesday
+20261110260,Sharks,500150,Jayden Berrell,20,Reserve,tuesday
+20261110260,Sharks,509464,Niwhai Puru,21,Reserve,tuesday
+20261110260,Sharks,100011237,Michael Gabrael,22,Reserve,tuesday
+20261110270,Sea Eagles,501505,Tom Trbojevic,1,Fullback,tuesday
+20261110270,Sea Eagles,507670,Jason Saab,2,Winger,tuesday
+20261110270,Sea Eagles,509634,Tolutau Koula,3,Centre,tuesday
+20261110270,Sea Eagles,503443,Reuben Garrick,4,Centre,tuesday
+20261110270,Sea Eagles,100011191,Lehi Hopoate,5,Winger,tuesday
+20261110270,Sea Eagles,500646,Luke Brooks,6,Five-Eighth,tuesday
+20261110270,Sea Eagles,501175,Jamal Fogarty,7,Halfback,tuesday
+20261110270,Sea Eagles,504251,Taniela Paseka,8,Prop,tuesday
+20261110270,Sea Eagles,508629,Jake Simpkin,9,Hooker,tuesday
+20261110270,Sea Eagles,506567,Kobe Hetherington,10,Prop,tuesday
+20261110270,Sea Eagles,508033,Haumole Olakau'atu,11,2nd Row,tuesday
+20261110270,Sea Eagles,507850,Ben Trbojevic,12,2nd Row,tuesday
+20261110270,Sea Eagles,500751,Jake Trbojevic,13,Lock,tuesday
+20261110270,Sea Eagles,100011351,Joey Walsh,14,Interchange,tuesday
+20261110270,Sea Eagles,500647,Nathan Brown,15,Interchange,tuesday
+20261110270,Sea Eagles,506153,Ethan Bullemor,16,Interchange,tuesday
+20261110270,Sea Eagles,100006112,Paul Bryan,17,Interchange,tuesday
+20261110270,Sea Eagles,504307,Brandon Wakeham,18,Interchange,tuesday
+20261110270,Sea Eagles,100006630,Josh Feledy,19,Interchange,tuesday
+20261110270,Sea Eagles,503341,Corey Waddell,20,Reserve,tuesday
+20261110270,Sea Eagles,509494,Jackson Shereb,21,Reserve,tuesday
+20261110270,Sea Eagles,100011203,Simione Laiafi,22,Reserve,tuesday
+20261110270,Knights,504870,Kalyn Ponga,1,Fullback,tuesday
+20261110270,Knights,100008071,Dominic Young,2,Winger,tuesday
+20261110270,Knights,500043,Dane Gagai,3,Centre,tuesday
+20261110270,Knights,506682,Bradman Best,4,Centre,tuesday
+20261110270,Knights,504325,Greg Marzhew,5,Winger,tuesday
+20261110270,Knights,509579,Sandon Smith,6,Five-Eighth,tuesday
+20261110270,Knights,505626,Dylan Brown,7,Halfback,tuesday
+20261110270,Knights,503523,Jacob Saifiti,8,Prop,tuesday
+20261110270,Knights,504597,Phoenix Crossland,9,Hooker,tuesday
+20261110270,Knights,507915,Trey Mooney,10,Prop,tuesday
+20261110270,Knights,505582,Dylan Lucas,11,2nd Row,tuesday
+20261110270,Knights,100008236,Jermaine McEwen,12,2nd Row,tuesday
+20261110270,Knights,500622,Tyson Frizell,13,Lock,tuesday
+20261110270,Knights,509527,Thomas Cant,14,Interchange,tuesday
+20261110270,Knights,504298,Mat Croker,15,Interchange,tuesday
+20261110270,Knights,504079,Pasami Saulo,16,Interchange,tuesday
+20261110270,Knights,100013721,Francis Manuleleua,17,Interchange,tuesday
+20261110270,Knights,100008414,Fletcher Hunt,18,Interchange,tuesday
+20261110270,Knights,506220,Harrison Graham,19,Interchange,tuesday
+20261110270,Knights,508479,Tyson Gamble,20,Reserve,tuesday
+20261110270,Knights,100011256,Cody Hopwood,21,Reserve,tuesday
+20261110270,Knights,100007619,James Schiller,22,Reserve,tuesday
+20261110220,Warriors,501559,Charnze Nicoll-Klokstad,1,Fullback,tuesday
+20261110220,Warriors,500532,Dallin Watene-Zelezniak,2,Winger,tuesday
+20261110220,Warriors,100006296,Ali Leiataua,3,Centre,tuesday
+20261110220,Warriors,508026,Adam Pompey,4,Centre,tuesday
+20261110220,Warriors,500005,Roger Tuivasa-Sheck,5,Winger,tuesday
+20261110220,Warriors,506851,Chanel Harris-Tavita,6,Five-Eighth,tuesday
+20261110220,Warriors,506460,Tanah Boyd,7,Halfback,tuesday
+20261110220,Warriors,502580,James Fisher-Harris,8,Prop,tuesday
+20261110220,Warriors,504123,Wayde Egan,9,Hooker,tuesday
+20261110220,Warriors,505423,Jackson Ford,10,Prop,tuesday
+20261110220,Warriors,500992,Kurt Capewell,11,2nd Row,tuesday
+20261110220,Warriors,100012134,Jacob Laban,12,2nd Row,tuesday
+20261110220,Warriors,503685,Erin Clark,13,Lock,tuesday
+20261110220,Warriors,509563,Sam Healey,14,Interchange,tuesday
+20261110220,Warriors,100013336,Demitric Vaimauga,15,Interchange,tuesday
+20261110220,Warriors,100013674,Leka Halasima,16,Interchange,tuesday
+20261110220,Warriors,100013671,Tanner Stowers-Smith,17,Interchange,tuesday
+20261110220,Warriors,508254,Taine Tuaupiki,18,Interchange,tuesday
+20261110220,Warriors,100008673,Morgan Gannon,20,Interchange,tuesday
+20261110220,Warriors,100001619,Alofiana Khan-Pereira,21,Reserve,tuesday
+20261110220,Warriors,502522,Marata Niukore,22,Reserve,tuesday
+20261110220,Warriors,100015584,Eddie Ieremia-Toeava,23,Reserve,tuesday
+20261110220,Raiders,507846,Kaeo Weekes,1,Fullback,tuesday
+20261110220,Raiders,100013751,Savelio Tamale,2,Winger,tuesday
+20261110220,Raiders,100000129,Simi Sasagi,3,Centre,tuesday
+20261110220,Raiders,504148,Sebastian Kris,4,Centre,tuesday
+20261110220,Raiders,510220,Xavier Savage,5,Winger,tuesday
+20261110220,Raiders,100006524,Ethan Strange,6,Five-Eighth,tuesday
+20261110220,Raiders,100003925,Ethan Sanders,7,Halfback,tuesday
+20261110220,Raiders,100006166,Morgan Smithies,8,Prop,tuesday
+20261110220,Raiders,504072,Tom Starling,9,Hooker,tuesday
+20261110220,Raiders,500555,Joseph Tapine,10,Prop,tuesday
+20261110220,Raiders,504074,Hudson Young,11,2nd Row,tuesday
+20261110220,Raiders,100006323,Noah Martin,12,2nd Row,tuesday
+20261110220,Raiders,506018,Corey Horsburgh,13,Lock,tuesday
+20261110220,Raiders,502016,Jayden Brailey,14,Interchange,tuesday
+20261110220,Raiders,505985,Zac Hosking,15,Interchange,tuesday
+20261110220,Raiders,100004109,Ata Mariota,16,Interchange,tuesday
+20261110220,Raiders,509757,Matthew Timoko,17,Interchange,tuesday
+20261110220,Raiders,507645,Daine Laurie,18,Interchange,tuesday
+20261110220,Raiders,100006817,Joe Roddy,19,Interchange,tuesday
+20261110220,Raiders,100009202,Owen Pattie,20,Reserve,tuesday
+20261110220,Raiders,100012912,Jed Stuart,21,Reserve,tuesday
+20261110220,Raiders,100007297,Chevy Stewart,22,Reserve,tuesday
+20261110240,Wests Tigers,100012669,Jahream Bula,1,Fullback,tuesday
+20261110240,Wests Tigers,509455,Sunia Turuva,2,Winger,tuesday
+20261110240,Wests Tigers,507807,Taylan May,3,Centre,tuesday
+20261110240,Wests Tigers,100013780,Heamasi Makasini,4,Centre,tuesday
+20261110240,Wests Tigers,100011335,Luke Laulilii,5,Winger,tuesday
+20261110240,Wests Tigers,504121,Jarome Luai,6,Five-Eighth,tuesday
+20261110240,Wests Tigers,505811,Adam Doueihi,7,Halfback,tuesday
+20261110240,Wests Tigers,508065,Terrell May,8,Prop,tuesday
+20261110240,Wests Tigers,500109,Apisai Koroisau,9,Hooker,tuesday
+20261110240,Wests Tigers,100004194,Fonua Pole,10,Prop,tuesday
+20261110240,Wests Tigers,510577,Samuela Fainu,11,2nd Row,tuesday
+20261110240,Wests Tigers,100008107,Kai Pearce-Paul,12,2nd Row,tuesday
+20261110240,Wests Tigers,502532,Alex Twal,13,Lock,tuesday
+20261110240,Wests Tigers,505701,Jock Madden,14,Interchange,tuesday
+20261110240,Wests Tigers,509297,Sione Fainu,15,Interchange,tuesday
+20261110240,Wests Tigers,500136,Royce Hunt,16,Interchange,tuesday
+20261110240,Wests Tigers,504609,Alex Seyfarth,17,Interchange,tuesday
+20261110240,Wests Tigers,504376,Tristan Hope,18,Interchange,tuesday
+20261110240,Wests Tigers,100013303,Jeral Skelton,19,Interchange,tuesday
+20261110240,Wests Tigers,507814,Mavrik Geyer,20,Reserve,tuesday
+20261110240,Wests Tigers,100004168,Tony Sukkar,21,Reserve,tuesday
+20261110240,Wests Tigers,100006657,Heath Mason,22,Reserve,tuesday
+20261110240,Cowboys,504087,Scott Drinkwater,1,Fullback,tuesday
+20261110240,Cowboys,506040,Braidon Burns,2,Winger,tuesday
+20261110240,Cowboys,100008940,Jaxon Purdue,3,Centre,tuesday
+20261110240,Cowboys,100004781,Tom Chester,4,Centre,tuesday
+20261110240,Cowboys,508443,Murray Taulagi,5,Winger,tuesday
+20261110240,Cowboys,505894,Jake Clifford,6,Five-Eighth,tuesday
+20261110240,Cowboys,506424,Tom Dearden,7,Halfback,tuesday
+20261110240,Cowboys,500405,Coen Hess,8,Prop,tuesday
+20261110240,Cowboys,505460,Reed Mahoney,9,Hooker,tuesday
+20261110240,Cowboys,500301,Jason Taumalolo,10,Prop,tuesday
+20261110240,Cowboys,100001946,Heilum Luki,11,2nd Row,tuesday
+20261110240,Cowboys,504065,Sam McIntyre,12,2nd Row,tuesday
+20261110240,Cowboys,504374,Reuben Cotter,13,Lock,tuesday
+20261110240,Cowboys,502756,Soni Luke,14,Interchange,tuesday
+20261110240,Cowboys,506555,Kai O'Donnell,15,Interchange,tuesday
+20261110240,Cowboys,100004869,Griffin Neame,16,Interchange,tuesday
+20261110240,Cowboys,500600,Matthew Lodge,17,Interchange,tuesday
+20261110240,Cowboys,100004077,Liam Sutton,18,Interchange,tuesday
+20261110240,Cowboys,100010520,Ethan King,19,Interchange,tuesday
+20261110240,Cowboys,100007686,Robert Derby,20,Reserve,tuesday
+20261110240,Cowboys,505612,Harrison Edwards,21,Reserve,tuesday
+20261110240,Cowboys,100012039,Kaiden Lahrs,22,Reserve,tuesday
+20261110380,Cowboys,504087,Scott Drinkwater,1,Fullback,tuesday
+20261110380,Cowboys,506040,Braidon Burns,2,Winger,tuesday
+20261110380,Cowboys,100008940,Jaxon Purdue,3,Centre,tuesday
+20261110380,Cowboys,100004781,Tom Chester,4,Centre,tuesday
+20261110380,Cowboys,508443,Murray Taulagi,5,Winger,tuesday
+20261110380,Cowboys,505894,Jake Clifford,6,Five-Eighth,tuesday
+20261110380,Cowboys,506424,Tom Dearden,7,Halfback,tuesday
+20261110380,Cowboys,500405,Coen Hess,8,Prop,tuesday
+20261110380,Cowboys,505460,Reed Mahoney,9,Hooker,tuesday
+20261110380,Cowboys,500301,Jason Taumalolo,10,Prop,tuesday
+20261110380,Cowboys,100001946,Heilum Luki,11,2nd Row,tuesday
+20261110380,Cowboys,504065,Sam McIntyre,12,2nd Row,tuesday
+20261110380,Cowboys,504374,Reuben Cotter,13,Lock,tuesday
+20261110380,Cowboys,502756,Soni Luke,14,Interchange,tuesday
+20261110380,Cowboys,506555,Kai O'Donnell,15,Interchange,tuesday
+20261110380,Cowboys,100004869,Griffin Neame,16,Interchange,tuesday
+20261110380,Cowboys,505612,Harrison Edwards,17,Interchange,tuesday
+20261110380,Cowboys,510612,Zac Laybutt,18,Interchange,tuesday
+20261110380,Cowboys,100004077,Liam Sutton,19,Interchange,tuesday
+20261110380,Cowboys,100012039,Kaiden Lahrs,20,Reserve,tuesday
+20261110380,Cowboys,500600,Matthew Lodge,21,Reserve,tuesday
+20261110380,Cowboys,100010520,Ethan King,22,Reserve,tuesday
+20261110380,Titans,100009209,Keano Kini,1,Fullback,tuesday
+20261110380,Titans,100014118,Sialetili Faeamani,2,Winger,tuesday
+20261110380,Titans,100008220,Jojo Fifita,3,Centre,tuesday
+20261110380,Titans,507924,Max Feagai,4,Centre,tuesday
+20261110380,Titans,505918,Phillip Sami,5,Winger,tuesday
+20261110380,Titans,506259,AJ Brimson,6,Five-Eighth,tuesday
+20261110380,Titans,505564,Lachlan Ilias,7,Halfback,tuesday
+20261110380,Titans,506278,Moeaki Fotuaika,8,Prop,tuesday
+20261110380,Titans,504462,Sam Verrills,9,Hooker,tuesday
+20261110380,Titans,506513,Tino Fa'asuamaleaui,10,Prop,tuesday
+20261110380,Titans,100009453,Arama Hau,11,2nd Row,tuesday
+20261110380,Titans,506314,Beau Fermor,12,2nd Row,tuesday
+20261110380,Titans,100001349,Chris Randall,13,Lock,tuesday
+20261110380,Titans,505648,Kurtis Morrin,14,Interchange,tuesday
+20261110380,Titans,510935,Tukimihia Simpkins,15,Interchange,tuesday
+20261110380,Titans,100010109,Klese Haas,16,Interchange,tuesday
+20261110380,Titans,100014512,Cooper Bai,17,Interchange,tuesday
+20261110380,Titans,100010604,Oliver Pascoe,18,Interchange,tuesday
+20261110380,Titans,100001622,Jayden Campbell,19,Interchange,tuesday
+20261110380,Titans,100006861,Jaylan De Groot,20,Reserve,tuesday
+20261110380,Titans,100006318,Jett Liu,21,Reserve,tuesday
+20261110380,Titans,100010891,Josh Patston,22,Reserve,tuesday
+20261110370,Eels,100006093,Isaiah Iongi,1,Fullback,tuesday
+20261110370,Eels,504411,Bailey Simonsson,2,Winger,tuesday
+20261110370,Eels,509558,Jordan Samrani,3,Centre,tuesday
+20261110370,Eels,509762,Sean Russell,4,Centre,tuesday
+20261110370,Eels,501351,Josh Addo-Carr,5,Winger,tuesday
+20261110370,Eels,509524,Jonah Pezet,6,Five-Eighth,tuesday
+20261110370,Eels,500485,Mitchell Moses,7,Halfback,tuesday
+20261110370,Eels,507648,J'maine Hopgood,8,Prop,tuesday
+20261110370,Eels,100003898,Ryley Smith,9,Hooker,tuesday
+20261110370,Eels,500687,Junior Paulo,10,Prop,tuesday
+20261110370,Eels,506628,Kelma Tuilagi,11,2nd Row,tuesday
+20261110370,Eels,507965,Kitione Kautoga,12,2nd Row,tuesday
+20261110370,Eels,502363,Jack Williams,13,Lock,tuesday
+20261110370,Eels,500083,Dylan Walker,14,Interchange,tuesday
+20261110370,Eels,100006424,Sam Tuivaiti,15,Interchange,tuesday
+20261110370,Eels,505631,Matt Doorey,16,Interchange,tuesday
+20261110370,Eels,100006658,Tallyn Da Silva,17,Interchange,tuesday
+20261110370,Eels,500619,Jack De Belin,18,Interchange,tuesday
+20261110370,Eels,100004407,Joash Papalii,19,Interchange,tuesday
+20261110370,Eels,100006434,Charlie Guymer,20,Reserve,tuesday
+20261110370,Eels,500872,Brian Kelly,21,Reserve,tuesday
+20261110370,Eels,505676,Luca Moretti,22,Reserve,tuesday
+20261110370,Dragons,500729,Clinton Gutherson,1,Fullback,tuesday
+20261110370,Dragons,100003194,Christian Tuipulotu,2,Winger,tuesday
+20261110370,Dragons,504101,Moses Suli,3,Centre,tuesday
+20261110370,Dragons,500845,Valentine Holmes,4,Centre,tuesday
+20261110370,Dragons,510696,Setu Tu,5,Winger,tuesday
+20261110370,Dragons,504363,Kyle Flanagan,6,Five-Eighth,tuesday
+20261110370,Dragons,100004700,Daniel Atkinson,7,Halfback,tuesday
+20261110370,Dragons,504426,Emre Guler,8,Prop,tuesday
+20261110370,Dragons,501600,Damien Cook,9,Hooker,tuesday
+20261110370,Dragons,100011308,Toby Couchman,10,Prop,tuesday
+20261110370,Dragons,500459,Luciano Leilua,11,2nd Row,tuesday
+20261110370,Dragons,503528,Jaydn Su'A,12,2nd Row,tuesday
+20261110370,Dragons,100006241,Hamish Stewart,13,Lock,tuesday
+20261110370,Dragons,503449,Jacob Liddle,14,Interchange,tuesday
+20261110370,Dragons,503533,Josh Kerr,15,Interchange,tuesday
+20261110370,Dragons,503440,Blake Lawrie,16,Interchange,tuesday
+20261110370,Dragons,100008396,Ryan Couchman,17,Interchange,tuesday
+20261110370,Dragons,501290,Hame Sele,18,Interchange,tuesday
+20261110370,Dragons,507925,Mathew Feagai,19,Interchange,tuesday
+20261110370,Dragons,100012312,Lyhkan King-Togia,20,Reserve,tuesday
+20261110370,Dragons,100014137,Loko Pasifiki Tonga,21,Reserve,tuesday
+20261110370,Dragons,509484,Tyrell Sloan,22,Reserve,tuesday
+20261110360,Rabbitohs,100009148,Jye Gray,1,Fullback,tuesday
+20261110360,Rabbitohs,500108,Alex Johnston,2,Winger,tuesday
+20261110360,Rabbitohs,502502,Latrell Mitchell,3,Centre,tuesday
+20261110360,Rabbitohs,500339,Jack Wighton,4,Centre,tuesday
+20261110360,Rabbitohs,504294,Campbell Graham,5,Winger,tuesday
+20261110360,Rabbitohs,500611,Cody Walker,6,Five-Eighth,tuesday
+20261110360,Rabbitohs,100006585,Jamie Humphreys,7,Halfback,tuesday
+20261110360,Rabbitohs,503450,Tevita Tatola,8,Prop,tuesday
+20261110360,Rabbitohs,500168,Bronson Garlick,9,Hooker,tuesday
+20261110360,Rabbitohs,504174,Keaon Koloamatangi,10,Prop,tuesday
+20261110360,Rabbitohs,506482,David Fifita,11,2nd Row,tuesday
+20261110360,Rabbitohs,509529,Tallis Duncan,12,2nd Row,tuesday
+20261110360,Rabbitohs,504176,Cameron Murray,13,Lock,tuesday
+20261110360,Rabbitohs,507833,Peter Mamouzelos,14,Interchange,tuesday
+20261110360,Rabbitohs,500441,Euan Aitken,15,Interchange,tuesday
+20261110360,Rabbitohs,504265,Sean Keppie,16,Interchange,tuesday
+20261110360,Rabbitohs,507928,Jayden Sullivan,17,Interchange,tuesday
+20261110360,Rabbitohs,506446,Lachlan Hubner,18,Interchange,tuesday
+20261110360,Rabbitohs,510488,Moala Graham-Taufa,19,Interchange,tuesday
+20261110360,Rabbitohs,100006510,Thomas Fletcher,20,Reserve,tuesday
+20261110360,Rabbitohs,510485,Latrell Siegwalt,21,Reserve,tuesday
+20261110360,Rabbitohs,100009139,Liam Le Blanc,22,Reserve,tuesday
+20261110360,Wests Tigers,100012669,Jahream Bula,1,Fullback,tuesday
+20261110360,Wests Tigers,509455,Sunia Turuva,2,Winger,tuesday
+20261110360,Wests Tigers,100013303,Jeral Skelton,3,Centre,tuesday
+20261110360,Wests Tigers,100013780,Heamasi Makasini,4,Centre,tuesday
+20261110360,Wests Tigers,100011335,Luke Laulilii,5,Winger,tuesday
+20261110360,Wests Tigers,504121,Jarome Luai,6,Five-Eighth,tuesday
+20261110360,Wests Tigers,505811,Adam Doueihi,7,Halfback,tuesday
+20261110360,Wests Tigers,508065,Terrell May,8,Prop,tuesday
+20261110360,Wests Tigers,500109,Apisai Koroisau,9,Hooker,tuesday
+20261110360,Wests Tigers,100004194,Fonua Pole,10,Prop,tuesday
+20261110360,Wests Tigers,510577,Samuela Fainu,11,2nd Row,tuesday
+20261110360,Wests Tigers,100008107,Kai Pearce-Paul,12,2nd Row,tuesday
+20261110360,Wests Tigers,502532,Alex Twal,13,Lock,tuesday
+20261110360,Wests Tigers,505701,Jock Madden,14,Interchange,tuesday
+20261110360,Wests Tigers,509297,Sione Fainu,15,Interchange,tuesday
+20261110360,Wests Tigers,500136,Royce Hunt,16,Interchange,tuesday
+20261110360,Wests Tigers,504609,Alex Seyfarth,17,Interchange,tuesday
+20261110360,Wests Tigers,504376,Tristan Hope,18,Interchange,tuesday
+20261110360,Wests Tigers,504007,Patrick Herbert,19,Interchange,tuesday
+20261110360,Wests Tigers,501744,Bunty Afoa,20,Reserve,tuesday
+20261110360,Wests Tigers,100006826,Faaletino Tavana,21,Reserve,tuesday
+20261110360,Wests Tigers,100004168,Tony Sukkar,22,Reserve,tuesday
+20261110310,Raiders,507846,Kaeo Weekes,1,Fullback,tuesday
+20261110310,Raiders,100013751,Savelio Tamale,2,Winger,tuesday
+20261110310,Raiders,100000129,Simi Sasagi,3,Centre,tuesday
+20261110310,Raiders,504148,Sebastian Kris,4,Centre,tuesday
+20261110310,Raiders,510220,Xavier Savage,5,Winger,tuesday
+20261110310,Raiders,100006524,Ethan Strange,6,Five-Eighth,tuesday
+20261110310,Raiders,100003925,Ethan Sanders,7,Halfback,tuesday
+20261110310,Raiders,500973,Josh Papalii,8,Prop,tuesday
+20261110310,Raiders,504072,Tom Starling,9,Hooker,tuesday
+20261110310,Raiders,500555,Joseph Tapine,10,Prop,tuesday
+20261110310,Raiders,504074,Hudson Young,11,2nd Row,tuesday
+20261110310,Raiders,100006323,Noah Martin,12,2nd Row,tuesday
+20261110310,Raiders,506018,Corey Horsburgh,13,Lock,tuesday
+20261110310,Raiders,502016,Jayden Brailey,14,Interchange,tuesday
+20261110310,Raiders,505985,Zac Hosking,15,Interchange,tuesday
+20261110310,Raiders,100004109,Ata Mariota,16,Interchange,tuesday
+20261110310,Raiders,100006166,Morgan Smithies,17,Interchange,tuesday
+20261110310,Raiders,507645,Daine Laurie,18,Interchange,tuesday
+20261110310,Raiders,509757,Matthew Timoko,19,Interchange,tuesday
+20261110310,Raiders,100009202,Owen Pattie,20,Reserve,tuesday
+20261110310,Raiders,100006817,Joe Roddy,21,Reserve,tuesday
+20261110310,Raiders,100012912,Jed Stuart,22,Reserve,tuesday
+20261110310,Bulldogs,502015,Connor Tracey,1,Fullback,tuesday
+20261110310,Bulldogs,100004133,Jacob Kiraz,2,Winger,tuesday
+20261110310,Bulldogs,504372,Enari Tuala,3,Centre,tuesday
+20261110310,Bulldogs,508062,Stephen Crichton,4,Centre,tuesday
+20261110310,Bulldogs,502487,Marcelo Montoya,5,Winger,tuesday
+20261110310,Bulldogs,509397,Matt Burton,6,Five-Eighth,tuesday
+20261110310,Bulldogs,100007336,Lachlan Galvin,7,Halfback,tuesday
+20261110310,Bulldogs,504397,Max King,8,Prop,tuesday
+20261110310,Bulldogs,505864,Bailey Hayward,9,Hooker,tuesday
+20261110310,Bulldogs,508408,Samuel Hughes,10,Prop,tuesday
+20261110310,Bulldogs,500408,Viliame Kikau,11,2nd Row,tuesday
+20261110310,Bulldogs,507878,Jacob Preston,12,2nd Row,tuesday
+20261110310,Bulldogs,504301,Jaeman Salmon,13,Lock,tuesday
+20261110310,Bulldogs,500601,Kurt Mann,14,Interchange,tuesday
+20261110310,Bulldogs,505361,Sitili Tupouniua,15,Interchange,tuesday
+20261110310,Bulldogs,100006687,Harry Hayes,16,Interchange,tuesday
+20261110310,Bulldogs,504712,Josh Curran,17,Interchange,tuesday
+20261110310,Bulldogs,504842,Sean O'Sullivan,19,Interchange,tuesday
+20261110310,Bulldogs,501280,Jake Turpin,20,Interchange,tuesday
+20261110310,Bulldogs,100011328,Jonathan Sua,21,Reserve,tuesday
+20261110310,Bulldogs,507945,Lipoi Hopoi,22,Reserve,tuesday
+20261110310,Bulldogs,509851,Fletcher Baker,23,Reserve,tuesday
+20261110320,Roosters,500663,James Tedesco,1,Fullback,tuesday
+20261110320,Roosters,500002,Daniel Tupou,2,Winger,tuesday
+20261110320,Roosters,504006,Fetalaiga Pauga,3,Centre,tuesday
+20261110320,Roosters,100008243,Robert Toia,4,Centre,tuesday
+20261110320,Roosters,100018452,Mark Nawaqanitawase,5,Winger,tuesday
+20261110320,Roosters,500024,Daly Cherry-Evans,6,Five-Eighth,tuesday
+20261110320,Roosters,100004843,Sam Walker,7,Halfback,tuesday
+20261110320,Roosters,100006390,Naufahu Whyte,8,Prop,tuesday
+20261110320,Roosters,503944,Reece Robson,9,Hooker,tuesday
+20261110320,Roosters,501781,Lindsay Collins,10,Prop,tuesday
+20261110320,Roosters,503240,Angus Crichton,11,2nd Row,tuesday
+20261110320,Roosters,100004373,Siua Wong,12,2nd Row,tuesday
+20261110320,Roosters,504678,Egan Butcher,13,Lock,tuesday
+20261110320,Roosters,503327,Connor Watson,14,Interchange,tuesday
+20261110320,Roosters,100006533,Blake Steep,15,Interchange,tuesday
+20261110320,Roosters,503639,Nat Butcher,16,Interchange,tuesday
+20261110320,Roosters,100008234,Salesi Foketi,17,Interchange,tuesday
+20261110320,Roosters,509404,Cody Ramsey,18,Interchange,tuesday
+20261110320,Roosters,100007527,Benaiah Ioelu,19,Interchange,tuesday
+20261110320,Roosters,100011333,Toby Rodwell,20,Reserve,tuesday
+20261110320,Roosters,100004271,Tom Rodwell,21,Reserve,tuesday
+20261110320,Roosters,100000336,Taylor Losalu,22,Reserve,tuesday
+20261110320,Panthers,503340,Dylan Edwards,1,Fullback,tuesday
+20261110320,Panthers,100007927,Thomas Jenkins,2,Winger,tuesday
+20261110320,Panthers,100004042,Paul Alamoti,3,Centre,tuesday
+20261110320,Panthers,100011678,Casey McLean,4,Centre,tuesday
+20261110320,Panthers,505410,Brian To'o,5,Winger,tuesday
+20261110320,Panthers,100006848,Blaize Talagi,6,Five-Eighth,tuesday
+20261110320,Panthers,504120,Nathan Cleary,7,Halfback,tuesday
+20261110320,Panthers,501461,Moses Leota,8,Prop,tuesday
+20261110320,Panthers,505414,Mitch Kenny,9,Hooker,tuesday
+20261110320,Panthers,505555,Lindsay Smith,10,Prop,tuesday
+20261110320,Panthers,505976,Isaiah Papali'i,11,2nd Row,tuesday
+20261110320,Panthers,504125,Liam Martin,12,2nd Row,tuesday
+20261110320,Panthers,500534,Isaah Yeo,13,Lock,tuesday
+20261110320,Panthers,504830,Freddy Lussick,14,Interchange,tuesday
+20261110320,Panthers,100008487,Billy Phillips,15,Interchange,tuesday
+20261110320,Panthers,500852,Scott Sorensen,16,Interchange,tuesday
+20261110320,Panthers,501271,Luke Garner,17,Interchange,tuesday
+20261110320,Panthers,509467,Izack Tago,18,Interchange,tuesday
+20261110320,Panthers,504144,Kalani Going,19,Interchange,tuesday
+20261110320,Panthers,509843,Tom Ale,20,Reserve,tuesday
+20261110320,Panthers,100003896,Jack Cole,21,Reserve,tuesday
+20261110320,Panthers,100006574,Jesse McLean,22,Reserve,tuesday
+20261110350,Sharks,504279,William Kennedy,1,Fullback,tuesday
+20261110350,Sharks,503922,Sione Katoa,2,Winger,tuesday
+20261110350,Sharks,502072,Jesse Ramien,3,Centre,tuesday
+20261110350,Sharks,508649,KL Iro,4,Centre,tuesday
+20261110350,Sharks,509559,Samuel Stonestreet,5,Winger,tuesday
+20261110350,Sharks,504321,Braydon Trindall,6,Five-Eighth,tuesday
+20261110350,Sharks,502490,Nicholas Hynes,7,Halfback,tuesday
+20261110350,Sharks,500449,Addin Fonua-Blake,8,Prop,tuesday
+20261110350,Sharks,504274,Blayke Brailey,9,Hooker,tuesday
+20261110350,Sharks,510238,Thomas Hazelton,10,Prop,tuesday
+20261110350,Sharks,507062,Briton Nikora,11,2nd Row,tuesday
+20261110350,Sharks,505413,Billy Burns,12,2nd Row,tuesday
+20261110350,Sharks,100004272,Jesse Colquhoun,13,Lock,tuesday
+20261110350,Sharks,504175,Siosifa Talakai,14,Interchange,tuesday
+20261110350,Sharks,504326,Toby Rudolf,15,Interchange,tuesday
+20261110350,Sharks,504460,Oregon Kaufusi,16,Interchange,tuesday
+20261110350,Sharks,500213,Braden Uele,17,Interchange,tuesday
+20261110350,Sharks,507815,Hohepa Puru,18,Interchange,tuesday
+20261110350,Sharks,100003968,Chris Vea'ila,19,Interchange,tuesday
+20261110350,Sharks,500150,Jayden Berrell,20,Reserve,tuesday
+20261110350,Sharks,504666,Mawene Hiroti,21,Reserve,tuesday
+20261110350,Sharks,507615,Teig Wilton,22,Reserve,tuesday
+20261110350,Dolphins,100001936,Hamiso Tabuai-Fidow,1,Fullback,tuesday
+20261110350,Dolphins,502014,Jamayne Isaako,2,Winger,tuesday
+20261110350,Dolphins,505643,Jake Averillo,3,Centre,tuesday
+20261110350,Dolphins,508300,Herbie Farnworth,4,Centre,tuesday
+20261110350,Dolphins,100004649,Selwyn Cobbo,5,Winger,tuesday
+20261110350,Dolphins,500265,Kodi Nikorima,6,Five-Eighth,tuesday
+20261110350,Dolphins,100006258,Isaiya Katoa,7,Halfback,tuesday
+20261110350,Dolphins,506156,Tom Gilbert,8,Prop,tuesday
+20261110350,Dolphins,100002172,Max Plath,9,Hooker,tuesday
+20261110350,Dolphins,504315,Thomas Flegler,10,Prop,tuesday
+20261110350,Dolphins,507949,Connelly Lemuelu,11,2nd Row,tuesday
+20261110350,Dolphins,100007811,Kulikefu Finefeuiaki,12,2nd Row,tuesday
+20261110350,Dolphins,505736,Morgan Knowles,13,Lock,tuesday
+20261110350,Dolphins,100002660,Bradley Schneider,14,Interchange,tuesday
+20261110350,Dolphins,510366,Oryn Keeley,15,Interchange,tuesday
+20261110350,Dolphins,500598,Felise Kaufusi,16,Interchange,tuesday
+20261110350,Dolphins,503964,Ray Stone,17,Interchange,tuesday
+20261110350,Dolphins,508480,Trai Fuller,18,Interchange,tuesday
+20261110350,Dolphins,100015074,Sebastian Su'a,19,Interchange,tuesday
+20261110350,Dolphins,100009673,Lewis Symonds,20,Reserve,tuesday
+20261110350,Dolphins,100017017,Tevita Naufahu,21,Reserve,tuesday
+20261110350,Dolphins,100011973,Brian Pouniu,22,Reserve,tuesday
+20261110330,Storm,100006297,Sualauvi Faalogo,1,Fullback,tuesday
+20261110330,Storm,100010997,Will Warbrick,2,Winger,tuesday
+20261110330,Storm,100004865,Jack Howarth,3,Centre,tuesday
+20261110330,Storm,100018554,Moses Leo,4,Centre,tuesday
+20261110330,Storm,505537,Nick Meaney,5,Winger,tuesday
+20261110330,Storm,501459,Cameron Munster,6,Five-Eighth,tuesday
+20261110330,Storm,500826,Jahrome Hughes,7,Halfback,tuesday
+20261110330,Storm,505628,Stefano Utoikamanu,8,Prop,tuesday
+20261110330,Storm,505904,Harry Grant,9,Hooker,tuesday
+20261110330,Storm,501247,Josh King,10,Prop,tuesday
+20261110330,Storm,100008216,Joe Chan,11,2nd Row,tuesday
+20261110330,Storm,100010528,Ativalu Lisati,12,2nd Row,tuesday
+20261110330,Storm,500901,Tui Kamikamica,13,Lock,tuesday
+20261110330,Storm,507680,Tyran Wishart,14,Interchange,tuesday
+20261110330,Storm,100001560,Trent Loiero,15,Interchange,tuesday
+20261110330,Storm,509444,Davvy Moale,16,Interchange,tuesday
+20261110330,Storm,100013815,Cooper Clarke,17,Interchange,tuesday
+20261110330,Storm,100007566,Alec MacDonald,18,Interchange,tuesday
+20261110330,Storm,100011324,Siulagi Tuimalatu-Brown,19,Interchange,tuesday
+20261110330,Storm,503336,Jack Hetherington,20,Reserve,tuesday
+20261110330,Storm,100006928,Preston Conn,21,Reserve,tuesday
+20261110330,Storm,508341,Trent Toelau,22,Reserve,tuesday
+20261110330,Broncos,510216,Reece Walsh,1,Fullback,tuesday
+20261110330,Broncos,100006683,Josiah Karapani,2,Winger,tuesday
+20261110330,Broncos,508009,Kotoni Staggs,3,Centre,tuesday
+20261110330,Broncos,100007650,Deine Mariner,4,Centre,tuesday
+20261110330,Broncos,507987,Grant Anderson,5,Winger,tuesday
+20261110330,Broncos,100004534,Ezra Mam,6,Five-Eighth,tuesday
+20261110330,Broncos,500086,Adam Reynolds,7,Halfback,tuesday
+20261110330,Broncos,500406,Corey Jensen,8,Prop,tuesday
+20261110330,Broncos,506492,Cory Paix,9,Hooker,tuesday
+20261110330,Broncos,504300,Payne Haas,10,Prop,tuesday
+20261110330,Broncos,100004833,Xavier Willison,11,2nd Row,tuesday
+20261110330,Broncos,100001736,Jordan Riki,12,2nd Row,tuesday
+20261110330,Broncos,506603,Patrick Carrigan,13,Lock,tuesday
+20261110330,Broncos,500257,Ben Hunt,14,Interchange,tuesday
+20261110330,Broncos,504573,Ben Talty,15,Interchange,tuesday
+20261110330,Broncos,508071,Aublix Tawha,16,Interchange,tuesday
+20261110330,Broncos,504371,Gehamat Shibasaki,17,Interchange,tuesday
+20261110330,Broncos,510228,Brendan Piakura,18,Interchange,tuesday
+20261110330,Broncos,505987,Jaiyden Hunt,19,Interchange,tuesday
+20261110330,Broncos,100009156,Blake Mozer,20,Reserve,tuesday
+20261110330,Broncos,505889,Jesse Arthars,21,Reserve,tuesday
+20261110330,Broncos,100007888,Thomas Duffy,22,Reserve,tuesday
+20261110110,Cowboys,504087,Scott Drinkwater,1,Fullback,tuesday
+20261110110,Cowboys,506040,Braidon Burns,2,Winger,tuesday
+20261110110,Cowboys,100008940,Jaxon Purdue,3,Centre,tuesday
+20261110110,Cowboys,100004781,Tom Chester,4,Centre,tuesday
+20261110110,Cowboys,508443,Murray Taulagi,5,Winger,tuesday
+20261110110,Cowboys,505894,Jake Clifford,6,Five-Eighth,tuesday
+20261110110,Cowboys,506424,Tom Dearden,7,Halfback,tuesday
+20261110110,Cowboys,500405,Coen Hess,8,Prop,tuesday
+20261110110,Cowboys,505460,Reed Mahoney,9,Hooker,tuesday
+20261110110,Cowboys,500301,Jason Taumalolo,10,Prop,tuesday
+20261110110,Cowboys,100001946,Heilum Luki,11,2nd Row,tuesday
+20261110110,Cowboys,504065,Sam McIntyre,12,2nd Row,tuesday
+20261110110,Cowboys,504374,Reuben Cotter,13,Lock,tuesday
+20261110110,Cowboys,502756,Soni Luke,14,Reserve,tuesday
+20261110110,Cowboys,504377,Thomas Mikaele,15,Interchange,tuesday
+20261110110,Cowboys,506555,Kai O'Donnell,17,Interchange,tuesday
+20261110110,Cowboys,100004869,Griffin Neame,18,Interchange,tuesday
+20261110110,Cowboys,500600,Matthew Lodge,21,Interchange,tuesday
+20261110110,Cowboys,100007686,Robert Derby,22,Reserve,tuesday
+20261110110,Knights,504870,Kalyn Ponga,1,Fullback,tuesday
+20261110110,Knights,100008071,Dominic Young,2,Winger,tuesday
+20261110110,Knights,500043,Dane Gagai,3,Centre,tuesday
+20261110110,Knights,506682,Bradman Best,4,Centre,tuesday
+20261110110,Knights,504325,Greg Marzhew,5,Winger,tuesday
+20261110110,Knights,100006482,Fletcher Sharpe,6,Five-Eighth,tuesday
+20261110110,Knights,505626,Dylan Brown,7,Halfback,tuesday
+20261110110,Knights,503523,Jacob Saifiti,8,Prop,tuesday
+20261110110,Knights,504597,Phoenix Crossland,9,Hooker,tuesday
+20261110110,Knights,507915,Trey Mooney,10,Prop,tuesday
+20261110110,Knights,505582,Dylan Lucas,11,2nd Row,tuesday
+20261110110,Knights,100008236,Jermaine McEwen,12,2nd Row,tuesday
+20261110110,Knights,500622,Tyson Frizell,13,Interchange,tuesday
+20261110110,Knights,509579,Sandon Smith,14,Interchange,tuesday
+20261110110,Knights,504298,Mat Croker,15,Lock,tuesday
+20261110110,Knights,509527,Thomas Cant,16,Interchange,tuesday
+20261110110,Knights,504079,Pasami Saulo,17,Interchange,tuesday
+20261110110,Knights,100008414,Fletcher Hunt,18,Reserve,tuesday
+20261110110,Knights,100013721,Francis Manuleleua,19,Reserve,tuesday
+20261110120,Bulldogs,502015,Connor Tracey,1,Fullback,tuesday
+20261110120,Bulldogs,100004133,Jacob Kiraz,2,Winger,tuesday
+20261110120,Bulldogs,504714,Bronson Xerri,3,Centre,tuesday
+20261110120,Bulldogs,508062,Stephen Crichton,4,Centre,tuesday
+20261110120,Bulldogs,502487,Marcelo Montoya,5,Winger,tuesday
+20261110120,Bulldogs,509397,Matt Burton,6,Five-Eighth,tuesday
+20261110120,Bulldogs,100007336,Lachlan Galvin,7,Halfback,tuesday
+20261110120,Bulldogs,504397,Max King,8,Prop,tuesday
+20261110120,Bulldogs,505864,Bailey Hayward,9,Hooker,tuesday
+20261110120,Bulldogs,508408,Samuel Hughes,10,Prop,tuesday
+20261110120,Bulldogs,500408,Viliame Kikau,11,2nd Row,tuesday
+20261110120,Bulldogs,507878,Jacob Preston,12,2nd Row,tuesday
+20261110120,Bulldogs,504301,Jaeman Salmon,13,Lock,tuesday
+20261110120,Bulldogs,500601,Kurt Mann,14,Interchange,tuesday
+20261110120,Bulldogs,505361,Sitili Tupouniua,15,Interchange,tuesday
+20261110120,Bulldogs,100006687,Harry Hayes,16,Interchange,tuesday
+20261110120,Bulldogs,504712,Josh Curran,17,Interchange,tuesday
+20261110120,Bulldogs,501280,Jake Turpin,20,Reserve,tuesday
+20261110120,Bulldogs,504372,Enari Tuala,21,Reserve,tuesday
+20261110120,Dragons,500729,Clinton Gutherson,1,Fullback,tuesday
+20261110120,Dragons,100003194,Christian Tuipulotu,2,Winger,tuesday
+20261110120,Dragons,504101,Moses Suli,3,Centre,tuesday
+20261110120,Dragons,500845,Valentine Holmes,4,Centre,tuesday
+20261110120,Dragons,510696,Setu Tu,5,Winger,tuesday
+20261110120,Dragons,504363,Kyle Flanagan,6,Five-Eighth,tuesday
+20261110120,Dragons,100004700,Daniel Atkinson,7,Halfback,tuesday
+20261110120,Dragons,504426,Emre Guler,8,Prop,tuesday
+20261110120,Dragons,501600,Damien Cook,9,Hooker,tuesday
+20261110120,Dragons,100011308,Toby Couchman,10,Prop,tuesday
+20261110120,Dragons,500459,Luciano Leilua,11,2nd Row,tuesday
+20261110120,Dragons,503528,Jaydn Su'A,12,2nd Row,tuesday
+20261110120,Dragons,100006241,Hamish Stewart,13,Interchange,tuesday
+20261110120,Dragons,501290,Hame Sele,14,Lock,tuesday
+20261110120,Dragons,503533,Josh Kerr,15,Interchange,tuesday
+20261110120,Dragons,503440,Blake Lawrie,16,Reserve,tuesday
+20261110120,Dragons,100008396,Ryan Couchman,17,Interchange,tuesday
+20261110120,Dragons,100012312,Lyhkan King-Togia,18,Reserve,tuesday
+20261110120,Dragons,507925,Mathew Feagai,21,Interchange,tuesday
+20261110130,Eels,100006093,Isaiah Iongi,1,Fullback,tuesday
+20261110130,Eels,504411,Bailey Simonsson,2,Winger,tuesday
+20261110130,Eels,507922,Will Penisini,3,Centre,tuesday
+20261110130,Eels,500872,Brian Kelly,4,Centre,tuesday
+20261110130,Eels,509762,Sean Russell,5,Winger,tuesday
+20261110130,Eels,509524,Jonah Pezet,6,Five-Eighth,tuesday
+20261110130,Eels,500485,Mitchell Moses,7,Halfback,tuesday
+20261110130,Eels,507648,J'maine Hopgood,8,Prop,tuesday
+20261110130,Eels,100003898,Ryley Smith,9,Hooker,tuesday
+20261110130,Eels,500687,Junior Paulo,10,Prop,tuesday
+20261110130,Eels,502363,Jack Williams,11,2nd Row,tuesday
+20261110130,Eels,507965,Kitione Kautoga,12,2nd Row,tuesday
+20261110130,Eels,500619,Jack De Belin,13,Lock,tuesday
+20261110130,Eels,500083,Dylan Walker,14,Interchange,tuesday
+20261110130,Eels,100006424,Sam Tuivaiti,15,Reserve,tuesday
+20261110130,Eels,505631,Matt Doorey,16,Interchange,tuesday
+20261110130,Eels,100006658,Tallyn Da Silva,17,Interchange,tuesday
+20261110130,Eels,506628,Kelma Tuilagi,18,Reserve,tuesday
+20261110130,Eels,100004407,Joash Papalii,19,Interchange,tuesday
+20261110130,Storm,100006297,Sualauvi Faalogo,1,Fullback,tuesday
+20261110130,Storm,100010997,Will Warbrick,2,Winger,tuesday
+20261110130,Storm,100004865,Jack Howarth,3,Centre,tuesday
+20261110130,Storm,100018554,Moses Leo,4,Centre,tuesday
+20261110130,Storm,505537,Nick Meaney,5,Winger,tuesday
+20261110130,Storm,501459,Cameron Munster,6,Five-Eighth,tuesday
+20261110130,Storm,500826,Jahrome Hughes,7,Halfback,tuesday
+20261110130,Storm,505628,Stefano Utoikamanu,8,Prop,tuesday
+20261110130,Storm,505904,Harry Grant,9,Hooker,tuesday
+20261110130,Storm,501247,Josh King,10,Prop,tuesday
+20261110130,Storm,100008216,Joe Chan,11,2nd Row,tuesday
+20261110130,Storm,100010528,Ativalu Lisati,12,2nd Row,tuesday
+20261110130,Storm,100007566,Alec MacDonald,13,Lock,tuesday
+20261110130,Storm,507680,Tyran Wishart,14,Interchange,tuesday
+20261110130,Storm,100013815,Cooper Clarke,15,Interchange,tuesday
+20261110130,Storm,500901,Tui Kamikamica,16,Interchange,tuesday
+20261110130,Storm,509444,Davvy Moale,17,Interchange,tuesday
+20261110130,Storm,100006928,Preston Conn,18,Replacement,tuesday
+20261110130,Storm,100011324,Siulagi Tuimalatu-Brown,19,Reserve,tuesday
+20261110140,Roosters,500663,James Tedesco,1,Fullback,tuesday
+20261110140,Roosters,500002,Daniel Tupou,2,Winger,tuesday
+20261110140,Roosters,509128,Billy Smith,3,Centre,tuesday
+20261110140,Roosters,100018452,Mark Nawaqanitawase,5,Winger,tuesday
+20261110140,Roosters,500024,Daly Cherry-Evans,6,Five-Eighth,tuesday
+20261110140,Roosters,100004843,Sam Walker,7,Halfback,tuesday
+20261110140,Roosters,100006390,Naufahu Whyte,8,Prop,tuesday
+20261110140,Roosters,100007527,Benaiah Ioelu,9,Hooker,tuesday
+20261110140,Roosters,501781,Lindsay Collins,10,Prop,tuesday
+20261110140,Roosters,503240,Angus Crichton,11,2nd Row,tuesday
+20261110140,Roosters,503639,Nat Butcher,12,2nd Row,tuesday
+20261110140,Roosters,100006533,Blake Steep,13,Lock,tuesday
+20261110140,Roosters,503327,Connor Watson,14,Interchange,tuesday
+20261110140,Roosters,100004373,Siua Wong,15,Interchange,tuesday
+20261110140,Roosters,504678,Egan Butcher,16,Interchange,tuesday
+20261110140,Roosters,509404,Cody Ramsey,18,Reserve,tuesday
+20261110140,Roosters,504006,Fetalaiga Pauga,19,Centre,tuesday
+20261110140,Roosters,100008234,Salesi Foketi,20,Interchange,tuesday
+20261110140,Roosters,100011333,Toby Rodwell,22,Reserve,tuesday
+20261110140,Warriors,501559,Charnze Nicoll-Klokstad,1,Fullback,tuesday
+20261110140,Warriors,500532,Dallin Watene-Zelezniak,2,Winger,tuesday
+20261110140,Warriors,100006296,Ali Leiataua,3,Centre,tuesday
+20261110140,Warriors,508026,Adam Pompey,4,Centre,tuesday
+20261110140,Warriors,500005,Roger Tuivasa-Sheck,5,Winger,tuesday
+20261110140,Warriors,506851,Chanel Harris-Tavita,6,Five-Eighth,tuesday
+20261110140,Warriors,506460,Tanah Boyd,7,Halfback,tuesday
+20261110140,Warriors,502580,James Fisher-Harris,8,Prop,tuesday
+20261110140,Warriors,504123,Wayde Egan,9,Hooker,tuesday
+20261110140,Warriors,505423,Jackson Ford,10,Prop,tuesday
+20261110140,Warriors,500992,Kurt Capewell,11,2nd Row,tuesday
+20261110140,Warriors,100012134,Jacob Laban,12,2nd Row,tuesday
+20261110140,Warriors,503685,Erin Clark,13,Lock,tuesday
+20261110140,Warriors,509563,Sam Healey,14,Interchange,tuesday
+20261110140,Warriors,100013336,Demitric Vaimauga,15,Interchange,tuesday
+20261110140,Warriors,100013674,Leka Halasima,16,Interchange,tuesday
+20261110140,Warriors,100013671,Tanner Stowers-Smith,17,Interchange,tuesday
+20261110140,Warriors,508254,Taine Tuaupiki,18,Reserve,tuesday
+20261110140,Warriors,100008673,Morgan Gannon,20,Reserve,tuesday
+20261110150,Broncos,510216,Reece Walsh,1,Fullback,tuesday
+20261110150,Broncos,100006683,Josiah Karapani,2,Winger,tuesday
+20261110150,Broncos,508009,Kotoni Staggs,3,Centre,tuesday
+20261110150,Broncos,504371,Gehamat Shibasaki,4,Centre,tuesday
+20261110150,Broncos,100007650,Deine Mariner,5,Winger,tuesday
+20261110150,Broncos,100004534,Ezra Mam,6,Interchange,tuesday
+20261110150,Broncos,500086,Adam Reynolds,7,Halfback,tuesday
+20261110150,Broncos,500406,Corey Jensen,8,Prop,tuesday
+20261110150,Broncos,506492,Cory Paix,9,Hooker,tuesday
+20261110150,Broncos,504300,Payne Haas,10,Prop,tuesday
+20261110150,Broncos,500170,Jack Gosiewski,11,2nd Row,tuesday
+20261110150,Broncos,100001736,Jordan Riki,12,2nd Row,tuesday
+20261110150,Broncos,506603,Patrick Carrigan,13,Lock,tuesday
+20261110150,Broncos,500257,Ben Hunt,14,Five-Eighth,tuesday
+20261110150,Broncos,100004833,Xavier Willison,15,Interchange,tuesday
+20261110150,Broncos,504573,Ben Talty,16,Interchange,tuesday
+20261110150,Broncos,508071,Aublix Tawha,17,Interchange,tuesday
+20261110150,Broncos,507987,Grant Anderson,18,Reserve,tuesday
+20261110150,Broncos,505987,Jaiyden Hunt,21,Reserve,tuesday
+20261110150,Panthers,503340,Dylan Edwards,1,Fullback,tuesday
+20261110150,Panthers,100004042,Paul Alamoti,2,Winger,tuesday
+20261110150,Panthers,509467,Izack Tago,3,Reserve,tuesday
+20261110150,Panthers,100011678,Casey McLean,4,Centre,tuesday
+20261110150,Panthers,505410,Brian To'o,5,Winger,tuesday
+20261110150,Panthers,100006848,Blaize Talagi,6,Five-Eighth,tuesday
+20261110150,Panthers,504120,Nathan Cleary,7,Halfback,tuesday
+20261110150,Panthers,501461,Moses Leota,8,Prop,tuesday
+20261110150,Panthers,505414,Mitch Kenny,9,Hooker,tuesday
+20261110150,Panthers,505555,Lindsay Smith,10,Prop,tuesday
+20261110150,Panthers,500852,Scott Sorensen,11,Interchange,tuesday
+20261110150,Panthers,501271,Luke Garner,12,2nd Row,tuesday
+20261110150,Panthers,500534,Isaah Yeo,13,Lock,tuesday
+20261110150,Panthers,502695,Jack Cogger,14,Interchange,tuesday
+20261110150,Panthers,505976,Isaiah Papali'i,16,2nd Row,tuesday
+20261110150,Panthers,504144,Kalani Going,17,Interchange,tuesday
+20261110150,Panthers,100007927,Thomas Jenkins,18,Centre,tuesday
+20261110150,Panthers,504830,Freddy Lussick,19,Reserve,tuesday
+20261110150,Panthers,100008487,Billy Phillips,20,Interchange,tuesday
+20261110160,Sharks,504279,William Kennedy,1,Fullback,tuesday
+20261110160,Sharks,503922,Sione Katoa,2,Winger,tuesday
+20261110160,Sharks,502072,Jesse Ramien,3,Centre,tuesday
+20261110160,Sharks,508649,KL Iro,4,Centre,tuesday
+20261110160,Sharks,509559,Samuel Stonestreet,5,Winger,tuesday
+20261110160,Sharks,504321,Braydon Trindall,6,Five-Eighth,tuesday
+20261110160,Sharks,502490,Nicholas Hynes,7,Halfback,tuesday
+20261110160,Sharks,500449,Addin Fonua-Blake,8,Prop,tuesday
+20261110160,Sharks,504274,Blayke Brailey,9,Hooker,tuesday
+20261110160,Sharks,510238,Thomas Hazelton,10,Prop,tuesday
+20261110160,Sharks,507062,Briton Nikora,11,2nd Row,tuesday
+20261110160,Sharks,505413,Billy Burns,12,2nd Row,tuesday
+20261110160,Sharks,100004272,Jesse Colquhoun,13,Lock,tuesday
+20261110160,Sharks,504175,Siosifa Talakai,14,Interchange,tuesday
+20261110160,Sharks,504326,Toby Rudolf,15,Interchange,tuesday
+20261110160,Sharks,504460,Oregon Kaufusi,16,Interchange,tuesday
+20261110160,Sharks,500213,Braden Uele,17,Interchange,tuesday
+20261110160,Sharks,507815,Hohepa Puru,18,Reserve,tuesday
+20261110160,Sharks,100003968,Chris Vea'ila,19,Reserve,tuesday
+20261110160,Titans,100009209,Keano Kini,1,Fullback,tuesday
+20261110160,Titans,100014118,Sialetili Faeamani,2,Winger,tuesday
+20261110160,Titans,100008220,Jojo Fifita,3,Centre,tuesday
+20261110160,Titans,507924,Max Feagai,4,Centre,tuesday
+20261110160,Titans,505918,Phillip Sami,5,Winger,tuesday
+20261110160,Titans,506259,AJ Brimson,6,Five-Eighth,tuesday
+20261110160,Titans,505564,Lachlan Ilias,7,Halfback,tuesday
+20261110160,Titans,506278,Moeaki Fotuaika,8,Prop,tuesday
+20261110160,Titans,504462,Sam Verrills,9,Hooker,tuesday
+20261110160,Titans,506513,Tino Fa'asuamaleaui,10,Prop,tuesday
+20261110160,Titans,100009453,Arama Hau,11,2nd Row,tuesday
+20261110160,Titans,506314,Beau Fermor,12,2nd Row,tuesday
+20261110160,Titans,100001349,Chris Randall,13,Lock,tuesday
+20261110160,Titans,505648,Kurtis Morrin,14,Interchange,tuesday
+20261110160,Titans,510935,Tukimihia Simpkins,15,Interchange,tuesday
+20261110160,Titans,100010109,Klese Haas,16,Interchange,tuesday
+20261110160,Titans,100014512,Cooper Bai,17,Interchange,tuesday
+20261110160,Titans,505633,Luke Sommerton,18,Reserve,tuesday
+20261110160,Titans,100011050,Zane Harrison,19,Reserve,tuesday
+20261110170,Raiders,507846,Kaeo Weekes,1,Fullback,tuesday
+20261110170,Raiders,100013751,Savelio Tamale,2,Winger,tuesday
+20261110170,Raiders,100000129,Simi Sasagi,3,Centre,tuesday
+20261110170,Raiders,504148,Sebastian Kris,4,Centre,tuesday
+20261110170,Raiders,510220,Xavier Savage,5,Winger,tuesday
+20261110170,Raiders,100006524,Ethan Strange,6,Five-Eighth,tuesday
+20261110170,Raiders,100003925,Ethan Sanders,7,Halfback,tuesday
+20261110170,Raiders,500973,Josh Papalii,8,Prop,tuesday
+20261110170,Raiders,504072,Tom Starling,9,Hooker,tuesday
+20261110170,Raiders,500555,Joseph Tapine,10,Prop,tuesday
+20261110170,Raiders,504074,Hudson Young,11,2nd Row,tuesday
+20261110170,Raiders,100006323,Noah Martin,12,2nd Row,tuesday
+20261110170,Raiders,506018,Corey Horsburgh,13,Lock,tuesday
+20261110170,Raiders,502016,Jayden Brailey,14,Interchange,tuesday
+20261110170,Raiders,505985,Zac Hosking,15,Interchange,tuesday
+20261110170,Raiders,100004109,Ata Mariota,16,Interchange,tuesday
+20261110170,Raiders,100006166,Morgan Smithies,17,Interchange,tuesday
+20261110170,Raiders,507645,Daine Laurie,18,Reserve,tuesday
+20261110170,Raiders,100012912,Jed Stuart,19,Reserve,tuesday
+20261110170,Sea Eagles,501505,Tom Trbojevic,1,Fullback,tuesday
+20261110170,Sea Eagles,507670,Jason Saab,2,Winger,tuesday
+20261110170,Sea Eagles,509634,Tolutau Koula,3,Centre,tuesday
+20261110170,Sea Eagles,503443,Reuben Garrick,4,Centre,tuesday
+20261110170,Sea Eagles,100011191,Lehi Hopoate,5,Winger,tuesday
+20261110170,Sea Eagles,500646,Luke Brooks,6,Five-Eighth,tuesday
+20261110170,Sea Eagles,501175,Jamal Fogarty,7,Halfback,tuesday
+20261110170,Sea Eagles,504251,Taniela Paseka,8,Prop,tuesday
+20261110170,Sea Eagles,508629,Jake Simpkin,9,Hooker,tuesday
+20261110170,Sea Eagles,501179,Siosiua Taukeiaho,10,Prop,tuesday
+20261110170,Sea Eagles,508033,Haumole Olakau'atu,11,2nd Row,tuesday
+20261110170,Sea Eagles,507850,Ben Trbojevic,12,2nd Row,tuesday
+20261110170,Sea Eagles,500751,Jake Trbojevic,13,Lock,tuesday
+20261110170,Sea Eagles,100011351,Joey Walsh,14,Reserve,tuesday
+20261110170,Sea Eagles,506567,Kobe Hetherington,15,Interchange,tuesday
+20261110170,Sea Eagles,506153,Ethan Bullemor,16,Interchange,tuesday
+20261110170,Sea Eagles,500647,Nathan Brown,17,Interchange,tuesday
+20261110170,Sea Eagles,100000346,Clayton Faulalo,18,Reserve,tuesday
+20261110170,Sea Eagles,503341,Corey Waddell,20,Interchange,tuesday
+20261110180,Dolphins,100001936,Hamiso Tabuai-Fidow,1,Fullback,tuesday
+20261110180,Dolphins,502014,Jamayne Isaako,2,Winger,tuesday
+20261110180,Dolphins,505643,Jake Averillo,3,Centre,tuesday
+20261110180,Dolphins,508300,Herbie Farnworth,4,Centre,tuesday
+20261110180,Dolphins,100004649,Selwyn Cobbo,5,Winger,tuesday
+20261110180,Dolphins,500265,Kodi Nikorima,6,Five-Eighth,tuesday
+20261110180,Dolphins,100006258,Isaiya Katoa,7,Halfback,tuesday
+20261110180,Dolphins,506156,Tom Gilbert,8,Prop,tuesday
+20261110180,Dolphins,504315,Thomas Flegler,10,Prop,tuesday
+20261110180,Dolphins,507949,Connelly Lemuelu,11,2nd Row,tuesday
+20261110180,Dolphins,100007811,Kulikefu Finefeuiaki,12,2nd Row,tuesday
+20261110180,Dolphins,505736,Morgan Knowles,13,Lock,tuesday
+20261110180,Dolphins,100002660,Bradley Schneider,14,Hooker,tuesday
+20261110180,Dolphins,510366,Oryn Keeley,15,Interchange,tuesday
+20261110180,Dolphins,500598,Felise Kaufusi,16,Interchange,tuesday
+20261110180,Dolphins,508480,Trai Fuller,17,Interchange,tuesday
+20261110180,Dolphins,100015074,Sebastian Su'a,18,Reserve,tuesday
+20261110180,Dolphins,506618,Brent Woolf,19,Interchange,tuesday
+20261110180,Dolphins,100009673,Lewis Symonds,20,Reserve,tuesday
+20261110180,Rabbitohs,100009148,Jye Gray,1,Fullback,tuesday
+20261110180,Rabbitohs,500108,Alex Johnston,2,Winger,tuesday
+20261110180,Rabbitohs,502502,Latrell Mitchell,3,Centre,tuesday
+20261110180,Rabbitohs,500339,Jack Wighton,4,Centre,tuesday
+20261110180,Rabbitohs,504294,Campbell Graham,5,Winger,tuesday
+20261110180,Rabbitohs,500611,Cody Walker,6,Five-Eighth,tuesday
+20261110180,Rabbitohs,100006239,Ashton Ward,7,Halfback,tuesday
+20261110180,Rabbitohs,503450,Tevita Tatola,8,Prop,tuesday
+20261110180,Rabbitohs,500168,Bronson Garlick,9,Hooker,tuesday
+20261110180,Rabbitohs,504174,Keaon Koloamatangi,10,Prop,tuesday
+20261110180,Rabbitohs,506482,David Fifita,11,2nd Row,tuesday
+20261110180,Rabbitohs,500441,Euan Aitken,12,2nd Row,tuesday
+20261110180,Rabbitohs,504176,Cameron Murray,13,Lock,tuesday
+20261110180,Rabbitohs,507833,Peter Mamouzelos,14,Interchange,tuesday
+20261110180,Rabbitohs,509529,Tallis Duncan,15,Interchange,tuesday
+20261110180,Rabbitohs,506446,Lachlan Hubner,16,Interchange,tuesday
+20261110180,Rabbitohs,504265,Sean Keppie,17,Reserve,tuesday
+20261110180,Rabbitohs,507928,Jayden Sullivan,18,Interchange,tuesday
+20261110180,Rabbitohs,510488,Moala Graham-Taufa,19,Reserve,tuesday
+20261110210,Broncos,510216,Reece Walsh,1,Fullback,tuesday
+20261110210,Broncos,100006683,Josiah Karapani,2,Winger,tuesday
+20261110210,Broncos,508009,Kotoni Staggs,3,Centre,tuesday
+20261110210,Broncos,504371,Gehamat Shibasaki,4,Centre,tuesday
+20261110210,Broncos,100007650,Deine Mariner,5,Winger,tuesday
+20261110210,Broncos,100004534,Ezra Mam,6,Five-Eighth,tuesday
+20261110210,Broncos,500086,Adam Reynolds,7,Halfback,tuesday
+20261110210,Broncos,500406,Corey Jensen,8,Prop,tuesday
+20261110210,Broncos,506492,Cory Paix,9,Hooker,tuesday
+20261110210,Broncos,504300,Payne Haas,10,Prop,tuesday
+20261110210,Broncos,500170,Jack Gosiewski,11,2nd Row,tuesday
+20261110210,Broncos,100001736,Jordan Riki,12,2nd Row,tuesday
+20261110210,Broncos,506603,Patrick Carrigan,13,Lock,tuesday
+20261110210,Broncos,500257,Ben Hunt,14,Interchange,tuesday
+20261110210,Broncos,100004833,Xavier Willison,15,Interchange,tuesday
+20261110210,Broncos,504573,Ben Talty,16,Interchange,tuesday
+20261110210,Broncos,508071,Aublix Tawha,17,Interchange,tuesday
+20261110210,Broncos,507987,Grant Anderson,18,Reserve,tuesday
+20261110210,Broncos,505987,Jaiyden Hunt,19,Reserve,tuesday
+20261110210,Eels,100006093,Isaiah Iongi,1,Fullback,tuesday
+20261110210,Eels,504411,Bailey Simonsson,2,Winger,tuesday
+20261110210,Eels,509762,Sean Russell,4,Centre,tuesday
+20261110210,Eels,501351,Josh Addo-Carr,5,Winger,tuesday
+20261110210,Eels,509524,Jonah Pezet,6,Five-Eighth,tuesday
+20261110210,Eels,500485,Mitchell Moses,7,Halfback,tuesday
+20261110210,Eels,502363,Jack Williams,8,Prop,tuesday
+20261110210,Eels,100003898,Ryley Smith,9,Hooker,tuesday
+20261110210,Eels,500687,Junior Paulo,10,Prop,tuesday
+20261110210,Eels,506628,Kelma Tuilagi,11,2nd Row,tuesday
+20261110210,Eels,507965,Kitione Kautoga,12,2nd Row,tuesday
+20261110210,Eels,500619,Jack De Belin,13,Lock,tuesday
+20261110210,Eels,500083,Dylan Walker,14,Interchange,tuesday
+20261110210,Eels,100006424,Sam Tuivaiti,15,Interchange,tuesday
+20261110210,Eels,505631,Matt Doorey,16,Interchange,tuesday
+20261110210,Eels,100006658,Tallyn Da Silva,17,Interchange,tuesday
+20261110210,Eels,100006434,Charlie Guymer,18,Reserve,tuesday
+20261110210,Eels,100004407,Joash Papalii,19,Reserve,tuesday
+20261110210,Eels,509558,Jordan Samrani,20,Centre,tuesday
+20261110230,Rabbitohs,100009148,Jye Gray,1,Fullback,tuesday
+20261110230,Rabbitohs,500108,Alex Johnston,2,Winger,tuesday
+20261110230,Rabbitohs,502502,Latrell Mitchell,3,Centre,tuesday
+20261110230,Rabbitohs,500339,Jack Wighton,4,Centre,tuesday
+20261110230,Rabbitohs,504294,Campbell Graham,5,Winger,tuesday
+20261110230,Rabbitohs,500611,Cody Walker,6,Five-Eighth,tuesday
+20261110230,Rabbitohs,507928,Jayden Sullivan,7,Halfback,tuesday
+20261110230,Rabbitohs,503450,Tevita Tatola,8,Prop,tuesday
+20261110230,Rabbitohs,500168,Bronson Garlick,9,Hooker,tuesday
+20261110230,Rabbitohs,504174,Keaon Koloamatangi,10,Prop,tuesday
+20261110230,Rabbitohs,506482,David Fifita,11,2nd Row,tuesday
+20261110230,Rabbitohs,500441,Euan Aitken,12,2nd Row,tuesday
+20261110230,Rabbitohs,504176,Cameron Murray,13,Lock,tuesday
+20261110230,Rabbitohs,507833,Peter Mamouzelos,14,Interchange,tuesday
+20261110230,Rabbitohs,509529,Tallis Duncan,15,Interchange,tuesday
+20261110230,Rabbitohs,506446,Lachlan Hubner,16,Interchange,tuesday
+20261110230,Rabbitohs,504265,Sean Keppie,17,Interchange,tuesday
+20261110230,Rabbitohs,510485,Latrell Siegwalt,18,Reserve,tuesday
+20261110230,Rabbitohs,510488,Moala Graham-Taufa,19,Reserve,tuesday
+20261110230,Roosters,500663,James Tedesco,1,Fullback,tuesday
+20261110230,Roosters,500002,Daniel Tupou,2,Winger,tuesday
+20261110230,Roosters,100008243,Robert Toia,4,Centre,tuesday
+20261110230,Roosters,100018452,Mark Nawaqanitawase,5,Winger,tuesday
+20261110230,Roosters,500024,Daly Cherry-Evans,6,Five-Eighth,tuesday
+20261110230,Roosters,100004843,Sam Walker,7,Halfback,tuesday
+20261110230,Roosters,100006390,Naufahu Whyte,8,Prop,tuesday
+20261110230,Roosters,100007527,Benaiah Ioelu,9,Hooker,tuesday
+20261110230,Roosters,501781,Lindsay Collins,10,Prop,tuesday
+20261110230,Roosters,503240,Angus Crichton,11,2nd Row,tuesday
+20261110230,Roosters,100004373,Siua Wong,12,2nd Row,tuesday
+20261110230,Roosters,504678,Egan Butcher,13,Lock,tuesday
+20261110230,Roosters,503327,Connor Watson,14,Interchange,tuesday
+20261110230,Roosters,100006533,Blake Steep,15,Interchange,tuesday
+20261110230,Roosters,503639,Nat Butcher,16,Interchange,tuesday
+20261110230,Roosters,100008234,Salesi Foketi,17,Interchange,tuesday
+20261110230,Roosters,509404,Cody Ramsey,18,Reserve,tuesday
+20261110230,Roosters,504006,Fetalaiga Pauga,19,Centre,tuesday
+20261110230,Roosters,100004271,Tom Rodwell,21,Reserve,tuesday
+20261110250,Dragons,500729,Clinton Gutherson,1,Fullback,tuesday
+20261110250,Dragons,100003194,Christian Tuipulotu,2,Winger,tuesday
+20261110250,Dragons,504101,Moses Suli,3,Centre,tuesday
+20261110250,Dragons,500845,Valentine Holmes,4,Centre,tuesday
+20261110250,Dragons,510696,Setu Tu,5,Winger,tuesday
+20261110250,Dragons,504363,Kyle Flanagan,6,Five-Eighth,tuesday
+20261110250,Dragons,100004700,Daniel Atkinson,7,Halfback,tuesday
+20261110250,Dragons,504426,Emre Guler,8,Prop,tuesday
+20261110250,Dragons,501600,Damien Cook,9,Hooker,tuesday
+20261110250,Dragons,100011308,Toby Couchman,10,Prop,tuesday
+20261110250,Dragons,500459,Luciano Leilua,11,2nd Row,tuesday
+20261110250,Dragons,503528,Jaydn Su'A,12,2nd Row,tuesday
+20261110250,Dragons,100006241,Hamish Stewart,13,Interchange,tuesday
+20261110250,Dragons,501290,Hame Sele,14,Lock,tuesday
+20261110250,Dragons,503533,Josh Kerr,15,Interchange,tuesday
+20261110250,Dragons,503440,Blake Lawrie,16,Reserve,tuesday
+20261110250,Dragons,100008396,Ryan Couchman,17,Interchange,tuesday
+20261110250,Dragons,100012312,Lyhkan King-Togia,18,Reserve,tuesday
+20261110250,Dragons,507925,Mathew Feagai,21,Interchange,tuesday
+20261110250,Storm,100006297,Sualauvi Faalogo,1,Fullback,tuesday
+20261110250,Storm,100010997,Will Warbrick,2,Winger,tuesday
+20261110250,Storm,100004865,Jack Howarth,3,Centre,tuesday
+20261110250,Storm,100018554,Moses Leo,4,Centre,tuesday
+20261110250,Storm,505537,Nick Meaney,5,Winger,tuesday
+20261110250,Storm,501459,Cameron Munster,6,Five-Eighth,tuesday
+20261110250,Storm,500826,Jahrome Hughes,7,Halfback,tuesday
+20261110250,Storm,505628,Stefano Utoikamanu,8,Prop,tuesday
+20261110250,Storm,505904,Harry Grant,9,Hooker,tuesday
+20261110250,Storm,501247,Josh King,10,Prop,tuesday
+20261110250,Storm,100008216,Joe Chan,11,2nd Row,tuesday
+20261110250,Storm,100010528,Ativalu Lisati,12,2nd Row,tuesday
+20261110250,Storm,500901,Tui Kamikamica,13,Lock,tuesday
+20261110250,Storm,507680,Tyran Wishart,14,Interchange,tuesday
+20261110250,Storm,100013815,Cooper Clarke,15,Interchange,tuesday
+20261110250,Storm,503336,Jack Hetherington,16,Interchange,tuesday
+20261110250,Storm,509444,Davvy Moale,17,Reserve,tuesday
+20261110250,Storm,100011324,Siulagi Tuimalatu-Brown,19,Reserve,tuesday
+20261110250,Storm,100009124,Angus Hinchey,20,Interchange,tuesday
+20261110280,Dolphins,100001936,Hamiso Tabuai-Fidow,1,Fullback,tuesday
+20261110280,Dolphins,502014,Jamayne Isaako,2,Winger,tuesday
+20261110280,Dolphins,505643,Jake Averillo,3,Centre,tuesday
+20261110280,Dolphins,508300,Herbie Farnworth,4,Centre,tuesday
+20261110280,Dolphins,100004649,Selwyn Cobbo,5,Winger,tuesday
+20261110280,Dolphins,500265,Kodi Nikorima,6,Five-Eighth,tuesday
+20261110280,Dolphins,100006258,Isaiya Katoa,7,Halfback,tuesday
+20261110280,Dolphins,506156,Tom Gilbert,8,Prop,tuesday
+20261110280,Dolphins,100002660,Bradley Schneider,9,Interchange,tuesday
+20261110280,Dolphins,504315,Thomas Flegler,10,Prop,tuesday
+20261110280,Dolphins,507949,Connelly Lemuelu,11,2nd Row,tuesday
+20261110280,Dolphins,100007811,Kulikefu Finefeuiaki,12,2nd Row,tuesday
+20261110280,Dolphins,505736,Morgan Knowles,13,Lock,tuesday
+20261110280,Dolphins,100002172,Max Plath,14,Hooker,tuesday
+20261110280,Dolphins,510366,Oryn Keeley,15,Interchange,tuesday
+20261110280,Dolphins,500598,Felise Kaufusi,16,Interchange,tuesday
+20261110280,Dolphins,503964,Ray Stone,17,Interchange,tuesday
+20261110280,Dolphins,508480,Trai Fuller,18,Reserve,tuesday
+20261110280,Dolphins,100011973,Brian Pouniu,22,Reserve,tuesday
+20261110280,Titans,100009209,Keano Kini,1,Fullback,tuesday
+20261110280,Titans,100014118,Sialetili Faeamani,2,Winger,tuesday
+20261110280,Titans,100008220,Jojo Fifita,3,Centre,tuesday
+20261110280,Titans,507924,Max Feagai,4,Centre,tuesday
+20261110280,Titans,505918,Phillip Sami,5,Winger,tuesday
+20261110280,Titans,506259,AJ Brimson,6,Five-Eighth,tuesday
+20261110280,Titans,505564,Lachlan Ilias,7,Halfback,tuesday
+20261110280,Titans,506278,Moeaki Fotuaika,8,Prop,tuesday
+20261110280,Titans,504462,Sam Verrills,9,Hooker,tuesday
+20261110280,Titans,506513,Tino Fa'asuamaleaui,10,Prop,tuesday
+20261110280,Titans,100009453,Arama Hau,11,2nd Row,tuesday
+20261110280,Titans,506314,Beau Fermor,12,2nd Row,tuesday
+20261110280,Titans,100001349,Chris Randall,13,Lock,tuesday
+20261110280,Titans,505648,Kurtis Morrin,14,Interchange,tuesday
+20261110280,Titans,510935,Tukimihia Simpkins,15,Reserve,tuesday
+20261110280,Titans,100010109,Klese Haas,16,Interchange,tuesday
+20261110280,Titans,100014512,Cooper Bai,17,Interchange,tuesday
+20261110280,Titans,505633,Luke Sommerton,18,Interchange,tuesday
+20261110280,Titans,505684,Jensen Taumoepeau,21,Reserve,tuesday
+20261110340,Knights,100008414,Fletcher Hunt,1,Fullback,tuesday
+20261110340,Knights,100008071,Dominic Young,2,Winger,tuesday
+20261110340,Knights,500043,Dane Gagai,3,Centre,tuesday
+20261110340,Knights,506682,Bradman Best,4,Centre,tuesday
+20261110340,Knights,504325,Greg Marzhew,5,Winger,tuesday
+20261110340,Knights,509579,Sandon Smith,7,Halfback,tuesday
+20261110340,Knights,503523,Jacob Saifiti,8,Prop,tuesday
+20261110340,Knights,504597,Phoenix Crossland,9,Hooker,tuesday
+20261110340,Knights,507915,Trey Mooney,10,Prop,tuesday
+20261110340,Knights,505582,Dylan Lucas,11,2nd Row,tuesday
+20261110340,Knights,100008236,Jermaine McEwen,12,2nd Row,tuesday
+20261110340,Knights,500622,Tyson Frizell,13,Interchange,tuesday
+20261110340,Knights,509527,Thomas Cant,14,Interchange,tuesday
+20261110340,Knights,504298,Mat Croker,15,Lock,tuesday
+20261110340,Knights,504079,Pasami Saulo,16,Interchange,tuesday
+20261110340,Knights,100013721,Francis Manuleleua,17,Interchange,tuesday
+20261110340,Knights,508479,Tyson Gamble,18,Five-Eighth,tuesday
+20261110340,Knights,506220,Harrison Graham,19,Reserve,tuesday
+20261110340,Knights,100011256,Cody Hopwood,21,Reserve,tuesday
+20261110340,Warriors,508254,Taine Tuaupiki,1,Fullback,tuesday
+20261110340,Warriors,500532,Dallin Watene-Zelezniak,2,Winger,tuesday
+20261110340,Warriors,100006296,Ali Leiataua,3,Centre,tuesday
+20261110340,Warriors,500005,Roger Tuivasa-Sheck,5,Winger,tuesday
+20261110340,Warriors,100006264,Luke Hanson,6,Five-Eighth,tuesday
+20261110340,Warriors,506460,Tanah Boyd,7,Halfback,tuesday
+20261110340,Warriors,502580,James Fisher-Harris,8,Prop,tuesday
+20261110340,Warriors,504123,Wayde Egan,9,Hooker,tuesday
+20261110340,Warriors,505423,Jackson Ford,10,Prop,tuesday
+20261110340,Warriors,100013674,Leka Halasima,11,Centre,tuesday
+20261110340,Warriors,100012134,Jacob Laban,12,2nd Row,tuesday
+20261110340,Warriors,503685,Erin Clark,13,Lock,tuesday
+20261110340,Warriors,509563,Sam Healey,14,Interchange,tuesday
+20261110340,Warriors,100013336,Demitric Vaimauga,15,Interchange,tuesday
+20261110340,Warriors,100013671,Tanner Stowers-Smith,16,Reserve,tuesday
+20261110340,Warriors,502522,Marata Niukore,17,Interchange,tuesday
+20261110340,Warriors,100008673,Morgan Gannon,18,2nd Row,tuesday
+20261110340,Warriors,100001619,Alofiana Khan-Pereira,20,Reserve,tuesday
+20261110340,Warriors,501267,Mitchell Barnett,23,Interchange,tuesday
+20261110110,Cowboys,504087,Scott Drinkwater,1,Fullback,final
+20261110110,Cowboys,506040,Braidon Burns,2,Winger,final
+20261110110,Cowboys,100008940,Jaxon Purdue,3,Centre,final
+20261110110,Cowboys,100004781,Tom Chester,4,Centre,final
+20261110110,Cowboys,508443,Murray Taulagi,5,Winger,final
+20261110110,Cowboys,505894,Jake Clifford,6,Five-Eighth,final
+20261110110,Cowboys,506424,Tom Dearden,7,Halfback,final
+20261110110,Cowboys,500405,Coen Hess,8,Prop,final
+20261110110,Cowboys,505460,Reed Mahoney,9,Hooker,final
+20261110110,Cowboys,500301,Jason Taumalolo,10,Prop,final
+20261110110,Cowboys,100001946,Heilum Luki,11,2nd Row,final
+20261110110,Cowboys,504065,Sam McIntyre,12,2nd Row,final
+20261110110,Cowboys,504374,Reuben Cotter,13,Lock,final
+20261110110,Cowboys,502756,Soni Luke,14,Reserve,final
+20261110110,Cowboys,504377,Thomas Mikaele,15,Interchange,final
+20261110110,Cowboys,506555,Kai O'Donnell,17,Interchange,final
+20261110110,Cowboys,100004869,Griffin Neame,18,Interchange,final
+20261110110,Cowboys,500600,Matthew Lodge,21,Interchange,final
+20261110110,Cowboys,100007686,Robert Derby,22,Reserve,final
+20261110110,Knights,504870,Kalyn Ponga,1,Fullback,final
+20261110110,Knights,100008071,Dominic Young,2,Winger,final
+20261110110,Knights,500043,Dane Gagai,3,Centre,final
+20261110110,Knights,506682,Bradman Best,4,Centre,final
+20261110110,Knights,504325,Greg Marzhew,5,Winger,final
+20261110110,Knights,100006482,Fletcher Sharpe,6,Five-Eighth,final
+20261110110,Knights,505626,Dylan Brown,7,Halfback,final
+20261110110,Knights,503523,Jacob Saifiti,8,Prop,final
+20261110110,Knights,504597,Phoenix Crossland,9,Hooker,final
+20261110110,Knights,507915,Trey Mooney,10,Prop,final
+20261110110,Knights,505582,Dylan Lucas,11,2nd Row,final
+20261110110,Knights,100008236,Jermaine McEwen,12,2nd Row,final
+20261110110,Knights,500622,Tyson Frizell,13,Interchange,final
+20261110110,Knights,509579,Sandon Smith,14,Interchange,final
+20261110110,Knights,504298,Mat Croker,15,Lock,final
+20261110110,Knights,509527,Thomas Cant,16,Interchange,final
+20261110110,Knights,504079,Pasami Saulo,17,Interchange,final
+20261110110,Knights,100008414,Fletcher Hunt,18,Reserve,final
+20261110110,Knights,100013721,Francis Manuleleua,19,Reserve,final
+20261110120,Bulldogs,502015,Connor Tracey,1,Fullback,final
+20261110120,Bulldogs,100004133,Jacob Kiraz,2,Winger,final
+20261110120,Bulldogs,504714,Bronson Xerri,3,Centre,final
+20261110120,Bulldogs,508062,Stephen Crichton,4,Centre,final
+20261110120,Bulldogs,502487,Marcelo Montoya,5,Winger,final
+20261110120,Bulldogs,509397,Matt Burton,6,Five-Eighth,final
+20261110120,Bulldogs,100007336,Lachlan Galvin,7,Halfback,final
+20261110120,Bulldogs,504397,Max King,8,Prop,final
+20261110120,Bulldogs,505864,Bailey Hayward,9,Hooker,final
+20261110120,Bulldogs,508408,Samuel Hughes,10,Prop,final
+20261110120,Bulldogs,500408,Viliame Kikau,11,2nd Row,final
+20261110120,Bulldogs,507878,Jacob Preston,12,2nd Row,final
+20261110120,Bulldogs,504301,Jaeman Salmon,13,Lock,final
+20261110120,Bulldogs,500601,Kurt Mann,14,Interchange,final
+20261110120,Bulldogs,505361,Sitili Tupouniua,15,Interchange,final
+20261110120,Bulldogs,100006687,Harry Hayes,16,Interchange,final
+20261110120,Bulldogs,504712,Josh Curran,17,Interchange,final
+20261110120,Bulldogs,501280,Jake Turpin,20,Reserve,final
+20261110120,Bulldogs,504372,Enari Tuala,21,Reserve,final
+20261110120,Dragons,500729,Clinton Gutherson,1,Fullback,final
+20261110120,Dragons,100003194,Christian Tuipulotu,2,Winger,final
+20261110120,Dragons,504101,Moses Suli,3,Centre,final
+20261110120,Dragons,500845,Valentine Holmes,4,Centre,final
+20261110120,Dragons,510696,Setu Tu,5,Winger,final
+20261110120,Dragons,504363,Kyle Flanagan,6,Five-Eighth,final
+20261110120,Dragons,100004700,Daniel Atkinson,7,Halfback,final
+20261110120,Dragons,504426,Emre Guler,8,Prop,final
+20261110120,Dragons,501600,Damien Cook,9,Hooker,final
+20261110120,Dragons,100011308,Toby Couchman,10,Prop,final
+20261110120,Dragons,500459,Luciano Leilua,11,2nd Row,final
+20261110120,Dragons,503528,Jaydn Su'A,12,2nd Row,final
+20261110120,Dragons,100006241,Hamish Stewart,13,Interchange,final
+20261110120,Dragons,501290,Hame Sele,14,Lock,final
+20261110120,Dragons,503533,Josh Kerr,15,Interchange,final
+20261110120,Dragons,503440,Blake Lawrie,16,Reserve,final
+20261110120,Dragons,100008396,Ryan Couchman,17,Interchange,final
+20261110120,Dragons,100012312,Lyhkan King-Togia,18,Reserve,final
+20261110120,Dragons,507925,Mathew Feagai,21,Interchange,final
+20261110130,Eels,100006093,Isaiah Iongi,1,Fullback,final
+20261110130,Eels,504411,Bailey Simonsson,2,Winger,final
+20261110130,Eels,507922,Will Penisini,3,Centre,final
+20261110130,Eels,500872,Brian Kelly,4,Centre,final
+20261110130,Eels,509762,Sean Russell,5,Winger,final
+20261110130,Eels,509524,Jonah Pezet,6,Five-Eighth,final
+20261110130,Eels,500485,Mitchell Moses,7,Halfback,final
+20261110130,Eels,507648,J'maine Hopgood,8,Prop,final
+20261110130,Eels,100003898,Ryley Smith,9,Hooker,final
+20261110130,Eels,500687,Junior Paulo,10,Prop,final
+20261110130,Eels,502363,Jack Williams,11,2nd Row,final
+20261110130,Eels,507965,Kitione Kautoga,12,2nd Row,final
+20261110130,Eels,500619,Jack De Belin,13,Lock,final
+20261110130,Eels,500083,Dylan Walker,14,Interchange,final
+20261110130,Eels,100006424,Sam Tuivaiti,15,Reserve,final
+20261110130,Eels,505631,Matt Doorey,16,Interchange,final
+20261110130,Eels,100006658,Tallyn Da Silva,17,Interchange,final
+20261110130,Eels,506628,Kelma Tuilagi,18,Reserve,final
+20261110130,Eels,100004407,Joash Papalii,19,Interchange,final
+20261110130,Storm,100006297,Sualauvi Faalogo,1,Fullback,final
+20261110130,Storm,100010997,Will Warbrick,2,Winger,final
+20261110130,Storm,100004865,Jack Howarth,3,Centre,final
+20261110130,Storm,100018554,Moses Leo,4,Centre,final
+20261110130,Storm,505537,Nick Meaney,5,Winger,final
+20261110130,Storm,501459,Cameron Munster,6,Five-Eighth,final
+20261110130,Storm,500826,Jahrome Hughes,7,Halfback,final
+20261110130,Storm,505628,Stefano Utoikamanu,8,Prop,final
+20261110130,Storm,505904,Harry Grant,9,Hooker,final
+20261110130,Storm,501247,Josh King,10,Prop,final
+20261110130,Storm,100008216,Joe Chan,11,2nd Row,final
+20261110130,Storm,100010528,Ativalu Lisati,12,2nd Row,final
+20261110130,Storm,100007566,Alec MacDonald,13,Lock,final
+20261110130,Storm,507680,Tyran Wishart,14,Interchange,final
+20261110130,Storm,100013815,Cooper Clarke,15,Interchange,final
+20261110130,Storm,500901,Tui Kamikamica,16,Interchange,final
+20261110130,Storm,509444,Davvy Moale,17,Interchange,final
+20261110130,Storm,100006928,Preston Conn,18,Replacement,final
+20261110130,Storm,100011324,Siulagi Tuimalatu-Brown,19,Reserve,final
+20261110140,Roosters,500663,James Tedesco,1,Fullback,final
+20261110140,Roosters,500002,Daniel Tupou,2,Winger,final
+20261110140,Roosters,509128,Billy Smith,3,Centre,final
+20261110140,Roosters,100018452,Mark Nawaqanitawase,5,Winger,final
+20261110140,Roosters,500024,Daly Cherry-Evans,6,Five-Eighth,final
+20261110140,Roosters,100004843,Sam Walker,7,Halfback,final
+20261110140,Roosters,100006390,Naufahu Whyte,8,Prop,final
+20261110140,Roosters,100007527,Benaiah Ioelu,9,Hooker,final
+20261110140,Roosters,501781,Lindsay Collins,10,Prop,final
+20261110140,Roosters,503240,Angus Crichton,11,2nd Row,final
+20261110140,Roosters,503639,Nat Butcher,12,2nd Row,final
+20261110140,Roosters,100006533,Blake Steep,13,Lock,final
+20261110140,Roosters,503327,Connor Watson,14,Interchange,final
+20261110140,Roosters,100004373,Siua Wong,15,Interchange,final
+20261110140,Roosters,504678,Egan Butcher,16,Interchange,final
+20261110140,Roosters,509404,Cody Ramsey,18,Reserve,final
+20261110140,Roosters,504006,Fetalaiga Pauga,19,Centre,final
+20261110140,Roosters,100008234,Salesi Foketi,20,Interchange,final
+20261110140,Roosters,100011333,Toby Rodwell,22,Reserve,final
+20261110140,Warriors,501559,Charnze Nicoll-Klokstad,1,Fullback,final
+20261110140,Warriors,500532,Dallin Watene-Zelezniak,2,Winger,final
+20261110140,Warriors,100006296,Ali Leiataua,3,Centre,final
+20261110140,Warriors,508026,Adam Pompey,4,Centre,final
+20261110140,Warriors,500005,Roger Tuivasa-Sheck,5,Winger,final
+20261110140,Warriors,506851,Chanel Harris-Tavita,6,Five-Eighth,final
+20261110140,Warriors,506460,Tanah Boyd,7,Halfback,final
+20261110140,Warriors,502580,James Fisher-Harris,8,Prop,final
+20261110140,Warriors,504123,Wayde Egan,9,Hooker,final
+20261110140,Warriors,505423,Jackson Ford,10,Prop,final
+20261110140,Warriors,500992,Kurt Capewell,11,2nd Row,final
+20261110140,Warriors,100012134,Jacob Laban,12,2nd Row,final
+20261110140,Warriors,503685,Erin Clark,13,Lock,final
+20261110140,Warriors,509563,Sam Healey,14,Interchange,final
+20261110140,Warriors,100013336,Demitric Vaimauga,15,Interchange,final
+20261110140,Warriors,100013674,Leka Halasima,16,Interchange,final
+20261110140,Warriors,100013671,Tanner Stowers-Smith,17,Interchange,final
+20261110140,Warriors,508254,Taine Tuaupiki,18,Reserve,final
+20261110140,Warriors,100008673,Morgan Gannon,20,Reserve,final
+20261110150,Broncos,510216,Reece Walsh,1,Fullback,final
+20261110150,Broncos,100006683,Josiah Karapani,2,Winger,final
+20261110150,Broncos,508009,Kotoni Staggs,3,Centre,final
+20261110150,Broncos,504371,Gehamat Shibasaki,4,Centre,final
+20261110150,Broncos,100007650,Deine Mariner,5,Winger,final
+20261110150,Broncos,100004534,Ezra Mam,6,Interchange,final
+20261110150,Broncos,500086,Adam Reynolds,7,Halfback,final
+20261110150,Broncos,500406,Corey Jensen,8,Prop,final
+20261110150,Broncos,506492,Cory Paix,9,Hooker,final
+20261110150,Broncos,504300,Payne Haas,10,Prop,final
+20261110150,Broncos,500170,Jack Gosiewski,11,2nd Row,final
+20261110150,Broncos,100001736,Jordan Riki,12,2nd Row,final
+20261110150,Broncos,506603,Patrick Carrigan,13,Lock,final
+20261110150,Broncos,500257,Ben Hunt,14,Five-Eighth,final
+20261110150,Broncos,100004833,Xavier Willison,15,Interchange,final
+20261110150,Broncos,504573,Ben Talty,16,Interchange,final
+20261110150,Broncos,508071,Aublix Tawha,17,Interchange,final
+20261110150,Broncos,507987,Grant Anderson,18,Reserve,final
+20261110150,Broncos,505987,Jaiyden Hunt,21,Reserve,final
+20261110150,Panthers,503340,Dylan Edwards,1,Fullback,final
+20261110150,Panthers,100004042,Paul Alamoti,2,Winger,final
+20261110150,Panthers,509467,Izack Tago,3,Reserve,final
+20261110150,Panthers,100011678,Casey McLean,4,Centre,final
+20261110150,Panthers,505410,Brian To'o,5,Winger,final
+20261110150,Panthers,100006848,Blaize Talagi,6,Five-Eighth,final
+20261110150,Panthers,504120,Nathan Cleary,7,Halfback,final
+20261110150,Panthers,501461,Moses Leota,8,Prop,final
+20261110150,Panthers,505414,Mitch Kenny,9,Hooker,final
+20261110150,Panthers,505555,Lindsay Smith,10,Prop,final
+20261110150,Panthers,500852,Scott Sorensen,11,Interchange,final
+20261110150,Panthers,501271,Luke Garner,12,2nd Row,final
+20261110150,Panthers,500534,Isaah Yeo,13,Lock,final
+20261110150,Panthers,502695,Jack Cogger,14,Interchange,final
+20261110150,Panthers,505976,Isaiah Papali'i,16,2nd Row,final
+20261110150,Panthers,504144,Kalani Going,17,Interchange,final
+20261110150,Panthers,100007927,Thomas Jenkins,18,Centre,final
+20261110150,Panthers,504830,Freddy Lussick,19,Reserve,final
+20261110150,Panthers,100008487,Billy Phillips,20,Interchange,final
+20261110160,Sharks,504279,William Kennedy,1,Fullback,final
+20261110160,Sharks,503922,Sione Katoa,2,Winger,final
+20261110160,Sharks,502072,Jesse Ramien,3,Centre,final
+20261110160,Sharks,508649,KL Iro,4,Centre,final
+20261110160,Sharks,509559,Samuel Stonestreet,5,Winger,final
+20261110160,Sharks,504321,Braydon Trindall,6,Five-Eighth,final
+20261110160,Sharks,502490,Nicholas Hynes,7,Halfback,final
+20261110160,Sharks,500449,Addin Fonua-Blake,8,Prop,final
+20261110160,Sharks,504274,Blayke Brailey,9,Hooker,final
+20261110160,Sharks,510238,Thomas Hazelton,10,Prop,final
+20261110160,Sharks,507062,Briton Nikora,11,2nd Row,final
+20261110160,Sharks,505413,Billy Burns,12,2nd Row,final
+20261110160,Sharks,100004272,Jesse Colquhoun,13,Lock,final
+20261110160,Sharks,504175,Siosifa Talakai,14,Interchange,final
+20261110160,Sharks,504326,Toby Rudolf,15,Interchange,final
+20261110160,Sharks,504460,Oregon Kaufusi,16,Interchange,final
+20261110160,Sharks,500213,Braden Uele,17,Interchange,final
+20261110160,Sharks,507815,Hohepa Puru,18,Reserve,final
+20261110160,Sharks,100003968,Chris Vea'ila,19,Reserve,final
+20261110160,Titans,100009209,Keano Kini,1,Fullback,final
+20261110160,Titans,100014118,Sialetili Faeamani,2,Winger,final
+20261110160,Titans,100008220,Jojo Fifita,3,Centre,final
+20261110160,Titans,507924,Max Feagai,4,Centre,final
+20261110160,Titans,505918,Phillip Sami,5,Winger,final
+20261110160,Titans,506259,AJ Brimson,6,Five-Eighth,final
+20261110160,Titans,505564,Lachlan Ilias,7,Halfback,final
+20261110160,Titans,506278,Moeaki Fotuaika,8,Prop,final
+20261110160,Titans,504462,Sam Verrills,9,Hooker,final
+20261110160,Titans,506513,Tino Fa'asuamaleaui,10,Prop,final
+20261110160,Titans,100009453,Arama Hau,11,2nd Row,final
+20261110160,Titans,506314,Beau Fermor,12,2nd Row,final
+20261110160,Titans,100001349,Chris Randall,13,Lock,final
+20261110160,Titans,505648,Kurtis Morrin,14,Interchange,final
+20261110160,Titans,510935,Tukimihia Simpkins,15,Interchange,final
+20261110160,Titans,100010109,Klese Haas,16,Interchange,final
+20261110160,Titans,100014512,Cooper Bai,17,Interchange,final
+20261110160,Titans,505633,Luke Sommerton,18,Reserve,final
+20261110160,Titans,100011050,Zane Harrison,19,Reserve,final
+20261110170,Raiders,507846,Kaeo Weekes,1,Fullback,final
+20261110170,Raiders,100013751,Savelio Tamale,2,Winger,final
+20261110170,Raiders,100000129,Simi Sasagi,3,Centre,final
+20261110170,Raiders,504148,Sebastian Kris,4,Centre,final
+20261110170,Raiders,510220,Xavier Savage,5,Winger,final
+20261110170,Raiders,100006524,Ethan Strange,6,Five-Eighth,final
+20261110170,Raiders,100003925,Ethan Sanders,7,Halfback,final
+20261110170,Raiders,500973,Josh Papalii,8,Prop,final
+20261110170,Raiders,504072,Tom Starling,9,Hooker,final
+20261110170,Raiders,500555,Joseph Tapine,10,Prop,final
+20261110170,Raiders,504074,Hudson Young,11,2nd Row,final
+20261110170,Raiders,100006323,Noah Martin,12,2nd Row,final
+20261110170,Raiders,506018,Corey Horsburgh,13,Lock,final
+20261110170,Raiders,502016,Jayden Brailey,14,Interchange,final
+20261110170,Raiders,505985,Zac Hosking,15,Interchange,final
+20261110170,Raiders,100004109,Ata Mariota,16,Interchange,final
+20261110170,Raiders,100006166,Morgan Smithies,17,Interchange,final
+20261110170,Raiders,507645,Daine Laurie,18,Reserve,final
+20261110170,Raiders,100012912,Jed Stuart,19,Reserve,final
+20261110170,Sea Eagles,501505,Tom Trbojevic,1,Fullback,final
+20261110170,Sea Eagles,507670,Jason Saab,2,Winger,final
+20261110170,Sea Eagles,509634,Tolutau Koula,3,Centre,final
+20261110170,Sea Eagles,503443,Reuben Garrick,4,Centre,final
+20261110170,Sea Eagles,100011191,Lehi Hopoate,5,Winger,final
+20261110170,Sea Eagles,500646,Luke Brooks,6,Five-Eighth,final
+20261110170,Sea Eagles,501175,Jamal Fogarty,7,Halfback,final
+20261110170,Sea Eagles,504251,Taniela Paseka,8,Prop,final
+20261110170,Sea Eagles,508629,Jake Simpkin,9,Hooker,final
+20261110170,Sea Eagles,501179,Siosiua Taukeiaho,10,Prop,final
+20261110170,Sea Eagles,508033,Haumole Olakau'atu,11,2nd Row,final
+20261110170,Sea Eagles,507850,Ben Trbojevic,12,2nd Row,final
+20261110170,Sea Eagles,500751,Jake Trbojevic,13,Lock,final
+20261110170,Sea Eagles,100011351,Joey Walsh,14,Reserve,final
+20261110170,Sea Eagles,506567,Kobe Hetherington,15,Interchange,final
+20261110170,Sea Eagles,506153,Ethan Bullemor,16,Interchange,final
+20261110170,Sea Eagles,500647,Nathan Brown,17,Interchange,final
+20261110170,Sea Eagles,100000346,Clayton Faulalo,18,Reserve,final
+20261110170,Sea Eagles,503341,Corey Waddell,20,Interchange,final
+20261110180,Dolphins,100001936,Hamiso Tabuai-Fidow,1,Fullback,final
+20261110180,Dolphins,502014,Jamayne Isaako,2,Winger,final
+20261110180,Dolphins,505643,Jake Averillo,3,Centre,final
+20261110180,Dolphins,508300,Herbie Farnworth,4,Centre,final
+20261110180,Dolphins,100004649,Selwyn Cobbo,5,Winger,final
+20261110180,Dolphins,500265,Kodi Nikorima,6,Five-Eighth,final
+20261110180,Dolphins,100006258,Isaiya Katoa,7,Halfback,final
+20261110180,Dolphins,506156,Tom Gilbert,8,Prop,final
+20261110180,Dolphins,504315,Thomas Flegler,10,Prop,final
+20261110180,Dolphins,507949,Connelly Lemuelu,11,2nd Row,final
+20261110180,Dolphins,100007811,Kulikefu Finefeuiaki,12,2nd Row,final
+20261110180,Dolphins,505736,Morgan Knowles,13,Lock,final
+20261110180,Dolphins,100002660,Bradley Schneider,14,Hooker,final
+20261110180,Dolphins,510366,Oryn Keeley,15,Interchange,final
+20261110180,Dolphins,500598,Felise Kaufusi,16,Interchange,final
+20261110180,Dolphins,508480,Trai Fuller,17,Interchange,final
+20261110180,Dolphins,100015074,Sebastian Su'a,18,Reserve,final
+20261110180,Dolphins,506618,Brent Woolf,19,Interchange,final
+20261110180,Dolphins,100009673,Lewis Symonds,20,Reserve,final
+20261110180,Rabbitohs,100009148,Jye Gray,1,Fullback,final
+20261110180,Rabbitohs,500108,Alex Johnston,2,Winger,final
+20261110180,Rabbitohs,502502,Latrell Mitchell,3,Centre,final
+20261110180,Rabbitohs,500339,Jack Wighton,4,Centre,final
+20261110180,Rabbitohs,504294,Campbell Graham,5,Winger,final
+20261110180,Rabbitohs,500611,Cody Walker,6,Five-Eighth,final
+20261110180,Rabbitohs,100006239,Ashton Ward,7,Halfback,final
+20261110180,Rabbitohs,503450,Tevita Tatola,8,Prop,final
+20261110180,Rabbitohs,500168,Bronson Garlick,9,Hooker,final
+20261110180,Rabbitohs,504174,Keaon Koloamatangi,10,Prop,final
+20261110180,Rabbitohs,506482,David Fifita,11,2nd Row,final
+20261110180,Rabbitohs,500441,Euan Aitken,12,2nd Row,final
+20261110180,Rabbitohs,504176,Cameron Murray,13,Lock,final
+20261110180,Rabbitohs,507833,Peter Mamouzelos,14,Interchange,final
+20261110180,Rabbitohs,509529,Tallis Duncan,15,Interchange,final
+20261110180,Rabbitohs,506446,Lachlan Hubner,16,Interchange,final
+20261110180,Rabbitohs,504265,Sean Keppie,17,Reserve,final
+20261110180,Rabbitohs,507928,Jayden Sullivan,18,Interchange,final
+20261110180,Rabbitohs,510488,Moala Graham-Taufa,19,Reserve,final
+20261110210,Broncos,510216,Reece Walsh,1,Fullback,final
+20261110210,Broncos,100006683,Josiah Karapani,2,Winger,final
+20261110210,Broncos,508009,Kotoni Staggs,3,Centre,final
+20261110210,Broncos,504371,Gehamat Shibasaki,4,Centre,final
+20261110210,Broncos,100007650,Deine Mariner,5,Winger,final
+20261110210,Broncos,100004534,Ezra Mam,6,Five-Eighth,final
+20261110210,Broncos,500086,Adam Reynolds,7,Halfback,final
+20261110210,Broncos,500406,Corey Jensen,8,Prop,final
+20261110210,Broncos,506492,Cory Paix,9,Hooker,final
+20261110210,Broncos,504300,Payne Haas,10,Prop,final
+20261110210,Broncos,500170,Jack Gosiewski,11,2nd Row,final
+20261110210,Broncos,100001736,Jordan Riki,12,2nd Row,final
+20261110210,Broncos,506603,Patrick Carrigan,13,Lock,final
+20261110210,Broncos,500257,Ben Hunt,14,Interchange,final
+20261110210,Broncos,100004833,Xavier Willison,15,Interchange,final
+20261110210,Broncos,504573,Ben Talty,16,Interchange,final
+20261110210,Broncos,508071,Aublix Tawha,17,Interchange,final
+20261110210,Broncos,507987,Grant Anderson,18,Reserve,final
+20261110210,Broncos,505987,Jaiyden Hunt,19,Reserve,final
+20261110210,Eels,100006093,Isaiah Iongi,1,Fullback,final
+20261110210,Eels,504411,Bailey Simonsson,2,Winger,final
+20261110210,Eels,509762,Sean Russell,4,Centre,final
+20261110210,Eels,501351,Josh Addo-Carr,5,Winger,final
+20261110210,Eels,509524,Jonah Pezet,6,Five-Eighth,final
+20261110210,Eels,500485,Mitchell Moses,7,Halfback,final
+20261110210,Eels,502363,Jack Williams,8,Prop,final
+20261110210,Eels,100003898,Ryley Smith,9,Hooker,final
+20261110210,Eels,500687,Junior Paulo,10,Prop,final
+20261110210,Eels,506628,Kelma Tuilagi,11,2nd Row,final
+20261110210,Eels,507965,Kitione Kautoga,12,2nd Row,final
+20261110210,Eels,500619,Jack De Belin,13,Lock,final
+20261110210,Eels,500083,Dylan Walker,14,Interchange,final
+20261110210,Eels,100006424,Sam Tuivaiti,15,Interchange,final
+20261110210,Eels,505631,Matt Doorey,16,Interchange,final
+20261110210,Eels,100006658,Tallyn Da Silva,17,Interchange,final
+20261110210,Eels,100006434,Charlie Guymer,18,Reserve,final
+20261110210,Eels,100004407,Joash Papalii,19,Reserve,final
+20261110210,Eels,509558,Jordan Samrani,20,Centre,final
+20261110220,Raiders,507846,Kaeo Weekes,1,Fullback,final
+20261110220,Raiders,100013751,Savelio Tamale,2,Winger,final
+20261110220,Raiders,100000129,Simi Sasagi,3,Centre,final
+20261110220,Raiders,504148,Sebastian Kris,4,Centre,final
+20261110220,Raiders,510220,Xavier Savage,5,Winger,final
+20261110220,Raiders,100006524,Ethan Strange,6,Five-Eighth,final
+20261110220,Raiders,100003925,Ethan Sanders,7,Halfback,final
+20261110220,Raiders,100006166,Morgan Smithies,8,Prop,final
+20261110220,Raiders,504072,Tom Starling,9,Hooker,final
+20261110220,Raiders,500555,Joseph Tapine,10,Prop,final
+20261110220,Raiders,504074,Hudson Young,11,2nd Row,final
+20261110220,Raiders,100006323,Noah Martin,12,2nd Row,final
+20261110220,Raiders,506018,Corey Horsburgh,13,Lock,final
+20261110220,Raiders,502016,Jayden Brailey,14,Interchange,final
+20261110220,Raiders,505985,Zac Hosking,15,Interchange,final
+20261110220,Raiders,100004109,Ata Mariota,16,Interchange,final
+20261110220,Raiders,509757,Matthew Timoko,17,Interchange,final
+20261110220,Raiders,507645,Daine Laurie,18,Reserve,final
+20261110220,Raiders,100006817,Joe Roddy,19,Reserve,final
+20261110220,Warriors,501559,Charnze Nicoll-Klokstad,1,Fullback,final
+20261110220,Warriors,500532,Dallin Watene-Zelezniak,2,Winger,final
+20261110220,Warriors,100006296,Ali Leiataua,3,Centre,final
+20261110220,Warriors,508026,Adam Pompey,4,Centre,final
+20261110220,Warriors,500005,Roger Tuivasa-Sheck,5,Winger,final
+20261110220,Warriors,506851,Chanel Harris-Tavita,6,Five-Eighth,final
+20261110220,Warriors,506460,Tanah Boyd,7,Halfback,final
+20261110220,Warriors,502580,James Fisher-Harris,8,Prop,final
+20261110220,Warriors,504123,Wayde Egan,9,Hooker,final
+20261110220,Warriors,505423,Jackson Ford,10,Prop,final
+20261110220,Warriors,100012134,Jacob Laban,12,2nd Row,final
+20261110220,Warriors,503685,Erin Clark,13,Lock,final
+20261110220,Warriors,509563,Sam Healey,14,Interchange,final
+20261110220,Warriors,100013336,Demitric Vaimauga,15,Interchange,final
+20261110220,Warriors,100013674,Leka Halasima,16,2nd Row,final
+20261110220,Warriors,100013671,Tanner Stowers-Smith,17,Interchange,final
+20261110220,Warriors,508254,Taine Tuaupiki,18,Interchange,final
+20261110220,Warriors,100008673,Morgan Gannon,20,Reserve,final
+20261110220,Warriors,100015584,Eddie Ieremia-Toeava,23,Reserve,final
+20261110230,Rabbitohs,100009148,Jye Gray,1,Fullback,final
+20261110230,Rabbitohs,500108,Alex Johnston,2,Winger,final
+20261110230,Rabbitohs,502502,Latrell Mitchell,3,Centre,final
+20261110230,Rabbitohs,500339,Jack Wighton,4,Centre,final
+20261110230,Rabbitohs,504294,Campbell Graham,5,Winger,final
+20261110230,Rabbitohs,500611,Cody Walker,6,Five-Eighth,final
+20261110230,Rabbitohs,507928,Jayden Sullivan,7,Halfback,final
+20261110230,Rabbitohs,503450,Tevita Tatola,8,Prop,final
+20261110230,Rabbitohs,500168,Bronson Garlick,9,Hooker,final
+20261110230,Rabbitohs,504174,Keaon Koloamatangi,10,Prop,final
+20261110230,Rabbitohs,506482,David Fifita,11,2nd Row,final
+20261110230,Rabbitohs,500441,Euan Aitken,12,2nd Row,final
+20261110230,Rabbitohs,504176,Cameron Murray,13,Lock,final
+20261110230,Rabbitohs,507833,Peter Mamouzelos,14,Interchange,final
+20261110230,Rabbitohs,509529,Tallis Duncan,15,Interchange,final
+20261110230,Rabbitohs,506446,Lachlan Hubner,16,Interchange,final
+20261110230,Rabbitohs,504265,Sean Keppie,17,Interchange,final
+20261110230,Rabbitohs,510485,Latrell Siegwalt,18,Reserve,final
+20261110230,Rabbitohs,510488,Moala Graham-Taufa,19,Reserve,final
+20261110230,Roosters,500663,James Tedesco,1,Fullback,final
+20261110230,Roosters,500002,Daniel Tupou,2,Winger,final
+20261110230,Roosters,100008243,Robert Toia,4,Centre,final
+20261110230,Roosters,100018452,Mark Nawaqanitawase,5,Winger,final
+20261110230,Roosters,500024,Daly Cherry-Evans,6,Five-Eighth,final
+20261110230,Roosters,100004843,Sam Walker,7,Halfback,final
+20261110230,Roosters,100006390,Naufahu Whyte,8,Prop,final
+20261110230,Roosters,100007527,Benaiah Ioelu,9,Hooker,final
+20261110230,Roosters,501781,Lindsay Collins,10,Prop,final
+20261110230,Roosters,503240,Angus Crichton,11,2nd Row,final
+20261110230,Roosters,100004373,Siua Wong,12,2nd Row,final
+20261110230,Roosters,504678,Egan Butcher,13,Lock,final
+20261110230,Roosters,503327,Connor Watson,14,Interchange,final
+20261110230,Roosters,100006533,Blake Steep,15,Interchange,final
+20261110230,Roosters,503639,Nat Butcher,16,Interchange,final
+20261110230,Roosters,100008234,Salesi Foketi,17,Interchange,final
+20261110230,Roosters,509404,Cody Ramsey,18,Reserve,final
+20261110230,Roosters,504006,Fetalaiga Pauga,19,Centre,final
+20261110230,Roosters,100004271,Tom Rodwell,21,Reserve,final
+20261110240,Cowboys,504087,Scott Drinkwater,1,Fullback,final
+20261110240,Cowboys,506040,Braidon Burns,2,Winger,final
+20261110240,Cowboys,100008940,Jaxon Purdue,3,Centre,final
+20261110240,Cowboys,100004781,Tom Chester,4,Centre,final
+20261110240,Cowboys,508443,Murray Taulagi,5,Winger,final
+20261110240,Cowboys,505894,Jake Clifford,6,Five-Eighth,final
+20261110240,Cowboys,506424,Tom Dearden,7,Halfback,final
+20261110240,Cowboys,500405,Coen Hess,8,Interchange,final
+20261110240,Cowboys,505460,Reed Mahoney,9,Hooker,final
+20261110240,Cowboys,500301,Jason Taumalolo,10,Prop,final
+20261110240,Cowboys,100001946,Heilum Luki,11,2nd Row,final
+20261110240,Cowboys,504065,Sam McIntyre,12,2nd Row,final
+20261110240,Cowboys,502756,Soni Luke,14,Interchange,final
+20261110240,Cowboys,506555,Kai O'Donnell,15,Lock,final
+20261110240,Cowboys,100004869,Griffin Neame,16,Prop,final
+20261110240,Cowboys,500600,Matthew Lodge,17,Interchange,final
+20261110240,Cowboys,100004077,Liam Sutton,18,Reserve,final
+20261110240,Cowboys,505612,Harrison Edwards,21,Interchange,final
+20261110240,Cowboys,100012039,Kaiden Lahrs,22,Reserve,final
+20261110240,Wests Tigers,100012669,Jahream Bula,1,Fullback,final
+20261110240,Wests Tigers,509455,Sunia Turuva,2,Winger,final
+20261110240,Wests Tigers,507807,Taylan May,3,Centre,final
+20261110240,Wests Tigers,100013780,Heamasi Makasini,4,Centre,final
+20261110240,Wests Tigers,100011335,Luke Laulilii,5,Winger,final
+20261110240,Wests Tigers,504121,Jarome Luai,6,Five-Eighth,final
+20261110240,Wests Tigers,505811,Adam Doueihi,7,Halfback,final
+20261110240,Wests Tigers,508065,Terrell May,8,Prop,final
+20261110240,Wests Tigers,500109,Apisai Koroisau,9,Hooker,final
+20261110240,Wests Tigers,100004194,Fonua Pole,10,Prop,final
+20261110240,Wests Tigers,510577,Samuela Fainu,11,2nd Row,final
+20261110240,Wests Tigers,100008107,Kai Pearce-Paul,12,2nd Row,final
+20261110240,Wests Tigers,502532,Alex Twal,13,Lock,final
+20261110240,Wests Tigers,505701,Jock Madden,14,Reserve,final
+20261110240,Wests Tigers,509297,Sione Fainu,15,Interchange,final
+20261110240,Wests Tigers,500136,Royce Hunt,16,Interchange,final
+20261110240,Wests Tigers,504609,Alex Seyfarth,17,Interchange,final
+20261110240,Wests Tigers,504376,Tristan Hope,18,Reserve,final
+20261110240,Wests Tigers,100013303,Jeral Skelton,19,Interchange,final
+20261110250,Dragons,500729,Clinton Gutherson,1,Fullback,final
+20261110250,Dragons,100003194,Christian Tuipulotu,2,Winger,final
+20261110250,Dragons,504101,Moses Suli,3,Centre,final
+20261110250,Dragons,500845,Valentine Holmes,4,Centre,final
+20261110250,Dragons,510696,Setu Tu,5,Winger,final
+20261110250,Dragons,504363,Kyle Flanagan,6,Five-Eighth,final
+20261110250,Dragons,100004700,Daniel Atkinson,7,Halfback,final
+20261110250,Dragons,504426,Emre Guler,8,Prop,final
+20261110250,Dragons,501600,Damien Cook,9,Hooker,final
+20261110250,Dragons,100011308,Toby Couchman,10,Prop,final
+20261110250,Dragons,500459,Luciano Leilua,11,2nd Row,final
+20261110250,Dragons,503528,Jaydn Su'A,12,2nd Row,final
+20261110250,Dragons,100006241,Hamish Stewart,13,Interchange,final
+20261110250,Dragons,501290,Hame Sele,14,Lock,final
+20261110250,Dragons,503533,Josh Kerr,15,Interchange,final
+20261110250,Dragons,503440,Blake Lawrie,16,Reserve,final
+20261110250,Dragons,100008396,Ryan Couchman,17,Interchange,final
+20261110250,Dragons,100012312,Lyhkan King-Togia,18,Reserve,final
+20261110250,Dragons,507925,Mathew Feagai,21,Interchange,final
+20261110250,Storm,100006297,Sualauvi Faalogo,1,Fullback,final
+20261110250,Storm,100010997,Will Warbrick,2,Winger,final
+20261110250,Storm,100004865,Jack Howarth,3,Centre,final
+20261110250,Storm,100018554,Moses Leo,4,Centre,final
+20261110250,Storm,505537,Nick Meaney,5,Winger,final
+20261110250,Storm,501459,Cameron Munster,6,Five-Eighth,final
+20261110250,Storm,500826,Jahrome Hughes,7,Halfback,final
+20261110250,Storm,505628,Stefano Utoikamanu,8,Prop,final
+20261110250,Storm,505904,Harry Grant,9,Hooker,final
+20261110250,Storm,501247,Josh King,10,Prop,final
+20261110250,Storm,100008216,Joe Chan,11,2nd Row,final
+20261110250,Storm,100010528,Ativalu Lisati,12,2nd Row,final
+20261110250,Storm,500901,Tui Kamikamica,13,Lock,final
+20261110250,Storm,507680,Tyran Wishart,14,Interchange,final
+20261110250,Storm,100013815,Cooper Clarke,15,Interchange,final
+20261110250,Storm,503336,Jack Hetherington,16,Interchange,final
+20261110250,Storm,509444,Davvy Moale,17,Reserve,final
+20261110250,Storm,100011324,Siulagi Tuimalatu-Brown,19,Reserve,final
+20261110250,Storm,100009124,Angus Hinchey,20,Interchange,final
+20261110260,Panthers,503340,Dylan Edwards,1,Fullback,final
+20261110260,Panthers,100007927,Thomas Jenkins,2,Winger,final
+20261110260,Panthers,100004042,Paul Alamoti,3,Centre,final
+20261110260,Panthers,100011678,Casey McLean,4,Centre,final
+20261110260,Panthers,505410,Brian To'o,5,Winger,final
+20261110260,Panthers,100006848,Blaize Talagi,6,Five-Eighth,final
+20261110260,Panthers,504120,Nathan Cleary,7,Halfback,final
+20261110260,Panthers,501461,Moses Leota,8,Prop,final
+20261110260,Panthers,505414,Mitch Kenny,9,Hooker,final
+20261110260,Panthers,505555,Lindsay Smith,10,Prop,final
+20261110260,Panthers,505976,Isaiah Papali'i,11,2nd Row,final
+20261110260,Panthers,501271,Luke Garner,12,2nd Row,final
+20261110260,Panthers,500534,Isaah Yeo,13,Lock,final
+20261110260,Panthers,502695,Jack Cogger,14,Interchange,final
+20261110260,Panthers,100008487,Billy Phillips,15,Interchange,final
+20261110260,Panthers,500852,Scott Sorensen,16,Interchange,final
+20261110260,Panthers,504144,Kalani Going,17,Interchange,final
+20261110260,Panthers,509467,Izack Tago,18,Reserve,final
+20261110260,Panthers,504830,Freddy Lussick,19,Reserve,final
+20261110260,Sharks,504279,William Kennedy,1,Fullback,final
+20261110260,Sharks,503922,Sione Katoa,2,Winger,final
+20261110260,Sharks,502072,Jesse Ramien,3,Centre,final
+20261110260,Sharks,508649,KL Iro,4,Centre,final
+20261110260,Sharks,509559,Samuel Stonestreet,5,Winger,final
+20261110260,Sharks,504321,Braydon Trindall,6,Five-Eighth,final
+20261110260,Sharks,502490,Nicholas Hynes,7,Halfback,final
+20261110260,Sharks,500449,Addin Fonua-Blake,8,Prop,final
+20261110260,Sharks,504274,Blayke Brailey,9,Hooker,final
+20261110260,Sharks,510238,Thomas Hazelton,10,Prop,final
+20261110260,Sharks,507062,Briton Nikora,11,2nd Row,final
+20261110260,Sharks,505413,Billy Burns,12,2nd Row,final
+20261110260,Sharks,100004272,Jesse Colquhoun,13,Lock,final
+20261110260,Sharks,504175,Siosifa Talakai,14,Interchange,final
+20261110260,Sharks,504326,Toby Rudolf,15,Interchange,final
+20261110260,Sharks,504460,Oregon Kaufusi,16,Interchange,final
+20261110260,Sharks,500213,Braden Uele,17,Reserve,final
+20261110260,Sharks,507815,Hohepa Puru,18,Interchange,final
+20261110260,Sharks,100003968,Chris Vea'ila,19,Reserve,final
+20261110270,Knights,504870,Kalyn Ponga,1,Fullback,final
+20261110270,Knights,100008071,Dominic Young,2,Winger,final
+20261110270,Knights,500043,Dane Gagai,3,Centre,final
+20261110270,Knights,506682,Bradman Best,4,Centre,final
+20261110270,Knights,504325,Greg Marzhew,5,Winger,final
+20261110270,Knights,509579,Sandon Smith,6,Five-Eighth,final
+20261110270,Knights,505626,Dylan Brown,7,Halfback,final
+20261110270,Knights,503523,Jacob Saifiti,8,Prop,final
+20261110270,Knights,504597,Phoenix Crossland,9,Hooker,final
+20261110270,Knights,507915,Trey Mooney,10,Prop,final
+20261110270,Knights,505582,Dylan Lucas,11,2nd Row,final
+20261110270,Knights,100008236,Jermaine McEwen,12,2nd Row,final
+20261110270,Knights,500622,Tyson Frizell,13,Interchange,final
+20261110270,Knights,509527,Thomas Cant,14,Reserve,final
+20261110270,Knights,504298,Mat Croker,15,Lock,final
+20261110270,Knights,504079,Pasami Saulo,16,Interchange,final
+20261110270,Knights,100013721,Francis Manuleleua,17,Reserve,final
+20261110270,Knights,100008414,Fletcher Hunt,18,Interchange,final
+20261110270,Knights,506220,Harrison Graham,19,Interchange,final
+20261110270,Sea Eagles,501505,Tom Trbojevic,1,Fullback,final
+20261110270,Sea Eagles,507670,Jason Saab,2,Winger,final
+20261110270,Sea Eagles,509634,Tolutau Koula,3,Centre,final
+20261110270,Sea Eagles,503443,Reuben Garrick,4,Centre,final
+20261110270,Sea Eagles,100011191,Lehi Hopoate,5,Winger,final
+20261110270,Sea Eagles,500646,Luke Brooks,6,Five-Eighth,final
+20261110270,Sea Eagles,501175,Jamal Fogarty,7,Halfback,final
+20261110270,Sea Eagles,504251,Taniela Paseka,8,Prop,final
+20261110270,Sea Eagles,508629,Jake Simpkin,9,Hooker,final
+20261110270,Sea Eagles,506567,Kobe Hetherington,10,Prop,final
+20261110270,Sea Eagles,508033,Haumole Olakau'atu,11,2nd Row,final
+20261110270,Sea Eagles,507850,Ben Trbojevic,12,2nd Row,final
+20261110270,Sea Eagles,500751,Jake Trbojevic,13,Lock,final
+20261110270,Sea Eagles,500647,Nathan Brown,15,Interchange,final
+20261110270,Sea Eagles,506153,Ethan Bullemor,16,Interchange,final
+20261110270,Sea Eagles,100006112,Paul Bryan,17,Interchange,final
+20261110270,Sea Eagles,504307,Brandon Wakeham,18,Interchange,final
+20261110270,Sea Eagles,100006630,Josh Feledy,19,Reserve,final
+20261110270,Sea Eagles,503341,Corey Waddell,20,Reserve,final
+20261110280,Dolphins,100001936,Hamiso Tabuai-Fidow,1,Fullback,final
+20261110280,Dolphins,502014,Jamayne Isaako,2,Winger,final
+20261110280,Dolphins,505643,Jake Averillo,3,Centre,final
+20261110280,Dolphins,508300,Herbie Farnworth,4,Centre,final
+20261110280,Dolphins,100004649,Selwyn Cobbo,5,Winger,final
+20261110280,Dolphins,500265,Kodi Nikorima,6,Five-Eighth,final
+20261110280,Dolphins,100006258,Isaiya Katoa,7,Halfback,final
+20261110280,Dolphins,506156,Tom Gilbert,8,Prop,final
+20261110280,Dolphins,100002660,Bradley Schneider,9,Interchange,final
+20261110280,Dolphins,504315,Thomas Flegler,10,Prop,final
+20261110280,Dolphins,507949,Connelly Lemuelu,11,2nd Row,final
+20261110280,Dolphins,100007811,Kulikefu Finefeuiaki,12,2nd Row,final
+20261110280,Dolphins,505736,Morgan Knowles,13,Lock,final
+20261110280,Dolphins,100002172,Max Plath,14,Hooker,final
+20261110280,Dolphins,510366,Oryn Keeley,15,Interchange,final
+20261110280,Dolphins,500598,Felise Kaufusi,16,Interchange,final
+20261110280,Dolphins,503964,Ray Stone,17,Interchange,final
+20261110280,Dolphins,508480,Trai Fuller,18,Reserve,final
+20261110280,Dolphins,100011973,Brian Pouniu,22,Reserve,final
+20261110280,Titans,100009209,Keano Kini,1,Fullback,final
+20261110280,Titans,100014118,Sialetili Faeamani,2,Winger,final
+20261110280,Titans,100008220,Jojo Fifita,3,Centre,final
+20261110280,Titans,507924,Max Feagai,4,Centre,final
+20261110280,Titans,505918,Phillip Sami,5,Winger,final
+20261110280,Titans,506259,AJ Brimson,6,Five-Eighth,final
+20261110280,Titans,505564,Lachlan Ilias,7,Halfback,final
+20261110280,Titans,506278,Moeaki Fotuaika,8,Prop,final
+20261110280,Titans,504462,Sam Verrills,9,Hooker,final
+20261110280,Titans,506513,Tino Fa'asuamaleaui,10,Prop,final
+20261110280,Titans,100009453,Arama Hau,11,2nd Row,final
+20261110280,Titans,506314,Beau Fermor,12,2nd Row,final
+20261110280,Titans,100001349,Chris Randall,13,Lock,final
+20261110280,Titans,505648,Kurtis Morrin,14,Interchange,final
+20261110280,Titans,510935,Tukimihia Simpkins,15,Reserve,final
+20261110280,Titans,100010109,Klese Haas,16,Interchange,final
+20261110280,Titans,100014512,Cooper Bai,17,Interchange,final
+20261110280,Titans,505633,Luke Sommerton,18,Interchange,final
+20261110280,Titans,505684,Jensen Taumoepeau,21,Reserve,final
+20261110310,Bulldogs,502015,Connor Tracey,1,Fullback,final
+20261110310,Bulldogs,100004133,Jacob Kiraz,2,Winger,final
+20261110310,Bulldogs,504372,Enari Tuala,3,Centre,final
+20261110310,Bulldogs,508062,Stephen Crichton,4,Centre,final
+20261110310,Bulldogs,502487,Marcelo Montoya,5,Winger,final
+20261110310,Bulldogs,509397,Matt Burton,6,Five-Eighth,final
+20261110310,Bulldogs,100007336,Lachlan Galvin,7,Halfback,final
+20261110310,Bulldogs,504397,Max King,8,Prop,final
+20261110310,Bulldogs,505864,Bailey Hayward,9,Hooker,final
+20261110310,Bulldogs,508408,Samuel Hughes,10,Prop,final
+20261110310,Bulldogs,500408,Viliame Kikau,11,2nd Row,final
+20261110310,Bulldogs,507878,Jacob Preston,12,2nd Row,final
+20261110310,Bulldogs,504301,Jaeman Salmon,13,Lock,final
+20261110310,Bulldogs,500601,Kurt Mann,14,Interchange,final
+20261110310,Bulldogs,505361,Sitili Tupouniua,15,Interchange,final
+20261110310,Bulldogs,100006687,Harry Hayes,16,Interchange,final
+20261110310,Bulldogs,504712,Josh Curran,17,Interchange,final
+20261110310,Bulldogs,504842,Sean O'Sullivan,19,Reserve,final
+20261110310,Bulldogs,501280,Jake Turpin,20,Reserve,final
+20261110310,Raiders,507846,Kaeo Weekes,1,Fullback,final
+20261110310,Raiders,100013751,Savelio Tamale,2,Winger,final
+20261110310,Raiders,100000129,Simi Sasagi,3,Centre,final
+20261110310,Raiders,504148,Sebastian Kris,4,Centre,final
+20261110310,Raiders,510220,Xavier Savage,5,Winger,final
+20261110310,Raiders,100006524,Ethan Strange,6,Five-Eighth,final
+20261110310,Raiders,100003925,Ethan Sanders,7,Halfback,final
+20261110310,Raiders,500973,Josh Papalii,8,Prop,final
+20261110310,Raiders,504072,Tom Starling,9,Hooker,final
+20261110310,Raiders,500555,Joseph Tapine,10,Prop,final
+20261110310,Raiders,504074,Hudson Young,11,2nd Row,final
+20261110310,Raiders,100006323,Noah Martin,12,2nd Row,final
+20261110310,Raiders,506018,Corey Horsburgh,13,Lock,final
+20261110310,Raiders,502016,Jayden Brailey,14,Interchange,final
+20261110310,Raiders,505985,Zac Hosking,15,Interchange,final
+20261110310,Raiders,100004109,Ata Mariota,16,Interchange,final
+20261110310,Raiders,100006166,Morgan Smithies,17,Interchange,final
+20261110310,Raiders,507645,Daine Laurie,18,Reserve,final
+20261110310,Raiders,100012912,Jed Stuart,22,Reserve,final
+20261110320,Panthers,503340,Dylan Edwards,1,Fullback,final
+20261110320,Panthers,100007927,Thomas Jenkins,2,Winger,final
+20261110320,Panthers,100004042,Paul Alamoti,3,Centre,final
+20261110320,Panthers,100011678,Casey McLean,4,Centre,final
+20261110320,Panthers,505410,Brian To'o,5,Winger,final
+20261110320,Panthers,100006848,Blaize Talagi,6,Five-Eighth,final
+20261110320,Panthers,504120,Nathan Cleary,7,Halfback,final
+20261110320,Panthers,501461,Moses Leota,8,Prop,final
+20261110320,Panthers,505414,Mitch Kenny,9,Hooker,final
+20261110320,Panthers,505555,Lindsay Smith,10,Prop,final
+20261110320,Panthers,505976,Isaiah Papali'i,11,2nd Row,final
+20261110320,Panthers,504125,Liam Martin,12,2nd Row,final
+20261110320,Panthers,500534,Isaah Yeo,13,Lock,final
+20261110320,Panthers,504830,Freddy Lussick,14,Interchange,final
+20261110320,Panthers,100008487,Billy Phillips,15,Interchange,final
+20261110320,Panthers,500852,Scott Sorensen,16,Interchange,final
+20261110320,Panthers,501271,Luke Garner,17,Interchange,final
+20261110320,Panthers,509467,Izack Tago,18,Reserve,final
+20261110320,Panthers,100003896,Jack Cole,21,Reserve,final
+20261110320,Roosters,500663,James Tedesco,1,Fullback,final
+20261110320,Roosters,500002,Daniel Tupou,2,Winger,final
+20261110320,Roosters,504006,Fetalaiga Pauga,3,Centre,final
+20261110320,Roosters,100008243,Robert Toia,4,Centre,final
+20261110320,Roosters,100018452,Mark Nawaqanitawase,5,Winger,final
+20261110320,Roosters,500024,Daly Cherry-Evans,6,Five-Eighth,final
+20261110320,Roosters,100004843,Sam Walker,7,Halfback,final
+20261110320,Roosters,100006390,Naufahu Whyte,8,Prop,final
+20261110320,Roosters,503944,Reece Robson,9,Hooker,final
+20261110320,Roosters,501781,Lindsay Collins,10,Prop,final
+20261110320,Roosters,503240,Angus Crichton,11,2nd Row,final
+20261110320,Roosters,100004373,Siua Wong,12,2nd Row,final
+20261110320,Roosters,504678,Egan Butcher,13,Lock,final
+20261110320,Roosters,503327,Connor Watson,14,Interchange,final
+20261110320,Roosters,100006533,Blake Steep,15,Interchange,final
+20261110320,Roosters,503639,Nat Butcher,16,Interchange,final
+20261110320,Roosters,100008234,Salesi Foketi,17,Interchange,final
+20261110320,Roosters,509404,Cody Ramsey,18,Reserve,final
+20261110320,Roosters,100011333,Toby Rodwell,20,Reserve,final
+20261110330,Broncos,510216,Reece Walsh,1,Fullback,final
+20261110330,Broncos,100006683,Josiah Karapani,2,Winger,final
+20261110330,Broncos,508009,Kotoni Staggs,3,Centre,final
+20261110330,Broncos,100007650,Deine Mariner,4,Centre,final
+20261110330,Broncos,507987,Grant Anderson,5,Winger,final
+20261110330,Broncos,100004534,Ezra Mam,6,Five-Eighth,final
+20261110330,Broncos,500406,Corey Jensen,8,Prop,final
+20261110330,Broncos,506492,Cory Paix,9,Hooker,final
+20261110330,Broncos,504300,Payne Haas,10,Prop,final
+20261110330,Broncos,100004833,Xavier Willison,11,2nd Row,final
+20261110330,Broncos,100001736,Jordan Riki,12,2nd Row,final
+20261110330,Broncos,506603,Patrick Carrigan,13,Lock,final
+20261110330,Broncos,500257,Ben Hunt,14,Halfback,final
+20261110330,Broncos,504573,Ben Talty,15,Interchange,final
+20261110330,Broncos,508071,Aublix Tawha,16,Reserve,final
+20261110330,Broncos,504371,Gehamat Shibasaki,17,Reserve,final
+20261110330,Broncos,510228,Brendan Piakura,18,Interchange,final
+20261110330,Broncos,505987,Jaiyden Hunt,19,Reserve,final
+20261110330,Broncos,100009156,Blake Mozer,20,Reserve,final
+20261110330,Storm,100006297,Sualauvi Faalogo,1,Fullback,final
+20261110330,Storm,100010997,Will Warbrick,2,Winger,final
+20261110330,Storm,100004865,Jack Howarth,3,Centre,final
+20261110330,Storm,100018554,Moses Leo,4,Centre,final
+20261110330,Storm,505537,Nick Meaney,5,Winger,final
+20261110330,Storm,501459,Cameron Munster,6,Five-Eighth,final
+20261110330,Storm,500826,Jahrome Hughes,7,Halfback,final
+20261110330,Storm,505628,Stefano Utoikamanu,8,Prop,final
+20261110330,Storm,505904,Harry Grant,9,Hooker,final
+20261110330,Storm,501247,Josh King,10,Prop,final
+20261110330,Storm,100008216,Joe Chan,11,2nd Row,final
+20261110330,Storm,500901,Tui Kamikamica,13,Lock,final
+20261110330,Storm,507680,Tyran Wishart,14,Interchange,final
+20261110330,Storm,100001560,Trent Loiero,15,Interchange,final
+20261110330,Storm,509444,Davvy Moale,16,Reserve,final
+20261110330,Storm,100013815,Cooper Clarke,17,Interchange,final
+20261110330,Storm,100007566,Alec MacDonald,18,2nd Row,final
+20261110330,Storm,100011324,Siulagi Tuimalatu-Brown,19,Interchange,final
+20261110330,Storm,503336,Jack Hetherington,20,Reserve,final
+20261110340,Knights,100008414,Fletcher Hunt,1,Fullback,final
+20261110340,Knights,100008071,Dominic Young,2,Winger,final
+20261110340,Knights,500043,Dane Gagai,3,Centre,final
+20261110340,Knights,506682,Bradman Best,4,Centre,final
+20261110340,Knights,504325,Greg Marzhew,5,Winger,final
+20261110340,Knights,509579,Sandon Smith,7,Halfback,final
+20261110340,Knights,503523,Jacob Saifiti,8,Prop,final
+20261110340,Knights,504597,Phoenix Crossland,9,Hooker,final
+20261110340,Knights,507915,Trey Mooney,10,Prop,final
+20261110340,Knights,505582,Dylan Lucas,11,2nd Row,final
+20261110340,Knights,100008236,Jermaine McEwen,12,2nd Row,final
+20261110340,Knights,500622,Tyson Frizell,13,Interchange,final
+20261110340,Knights,509527,Thomas Cant,14,Interchange,final
+20261110340,Knights,504298,Mat Croker,15,Lock,final
+20261110340,Knights,504079,Pasami Saulo,16,Interchange,final
+20261110340,Knights,100013721,Francis Manuleleua,17,Interchange,final
+20261110340,Knights,508479,Tyson Gamble,18,Five-Eighth,final
+20261110340,Knights,506220,Harrison Graham,19,Reserve,final
+20261110340,Knights,100011256,Cody Hopwood,21,Reserve,final
+20261110340,Warriors,508254,Taine Tuaupiki,1,Fullback,final
+20261110340,Warriors,500532,Dallin Watene-Zelezniak,2,Winger,final
+20261110340,Warriors,100006296,Ali Leiataua,3,Centre,final
+20261110340,Warriors,500005,Roger Tuivasa-Sheck,5,Winger,final
+20261110340,Warriors,100006264,Luke Hanson,6,Five-Eighth,final
+20261110340,Warriors,506460,Tanah Boyd,7,Halfback,final
+20261110340,Warriors,502580,James Fisher-Harris,8,Prop,final
+20261110340,Warriors,504123,Wayde Egan,9,Hooker,final
+20261110340,Warriors,505423,Jackson Ford,10,Prop,final
+20261110340,Warriors,100013674,Leka Halasima,11,Centre,final
+20261110340,Warriors,100012134,Jacob Laban,12,2nd Row,final
+20261110340,Warriors,503685,Erin Clark,13,Lock,final
+20261110340,Warriors,509563,Sam Healey,14,Interchange,final
+20261110340,Warriors,100013336,Demitric Vaimauga,15,Interchange,final
+20261110340,Warriors,100013671,Tanner Stowers-Smith,16,Reserve,final
+20261110340,Warriors,502522,Marata Niukore,17,Interchange,final
+20261110340,Warriors,100008673,Morgan Gannon,18,2nd Row,final
+20261110340,Warriors,100001619,Alofiana Khan-Pereira,20,Reserve,final
+20261110340,Warriors,501267,Mitchell Barnett,23,Interchange,final
+20261110350,Dolphins,100001936,Hamiso Tabuai-Fidow,1,Fullback,final
+20261110350,Dolphins,502014,Jamayne Isaako,2,Winger,final
+20261110350,Dolphins,505643,Jake Averillo,3,Centre,final
+20261110350,Dolphins,508300,Herbie Farnworth,4,Centre,final
+20261110350,Dolphins,100004649,Selwyn Cobbo,5,Winger,final
+20261110350,Dolphins,500265,Kodi Nikorima,6,Five-Eighth,final
+20261110350,Dolphins,100006258,Isaiya Katoa,7,Halfback,final
+20261110350,Dolphins,506156,Tom Gilbert,8,Prop,final
+20261110350,Dolphins,100002172,Max Plath,9,Hooker,final
+20261110350,Dolphins,507949,Connelly Lemuelu,11,2nd Row,final
+20261110350,Dolphins,100007811,Kulikefu Finefeuiaki,12,2nd Row,final
+20261110350,Dolphins,505736,Morgan Knowles,13,Lock,final
+20261110350,Dolphins,100002660,Bradley Schneider,14,Interchange,final
+20261110350,Dolphins,510366,Oryn Keeley,15,Interchange,final
+20261110350,Dolphins,500598,Felise Kaufusi,16,Prop,final
+20261110350,Dolphins,503964,Ray Stone,17,Interchange,final
+20261110350,Dolphins,508480,Trai Fuller,18,Reserve,final
+20261110350,Dolphins,100015074,Sebastian Su'a,19,Reserve,final
+20261110350,Dolphins,100011973,Brian Pouniu,22,Reserve,final
+20261110350,Sharks,504279,William Kennedy,1,Fullback,final
+20261110350,Sharks,503922,Sione Katoa,2,Winger,final
+20261110350,Sharks,502072,Jesse Ramien,3,Centre,final
+20261110350,Sharks,508649,KL Iro,4,Centre,final
+20261110350,Sharks,509559,Samuel Stonestreet,5,Winger,final
+20261110350,Sharks,504321,Braydon Trindall,6,Five-Eighth,final
+20261110350,Sharks,502490,Nicholas Hynes,7,Halfback,final
+20261110350,Sharks,500449,Addin Fonua-Blake,8,Prop,final
+20261110350,Sharks,504274,Blayke Brailey,9,Hooker,final
+20261110350,Sharks,510238,Thomas Hazelton,10,Prop,final
+20261110350,Sharks,507062,Briton Nikora,11,2nd Row,final
+20261110350,Sharks,505413,Billy Burns,12,2nd Row,final
+20261110350,Sharks,100004272,Jesse Colquhoun,13,Lock,final
+20261110350,Sharks,504175,Siosifa Talakai,14,Interchange,final
+20261110350,Sharks,504326,Toby Rudolf,15,Interchange,final
+20261110350,Sharks,504460,Oregon Kaufusi,16,Interchange,final
+20261110350,Sharks,500213,Braden Uele,17,Reserve,final
+20261110350,Sharks,504666,Mawene Hiroti,21,Reserve,final
+20261110350,Sharks,507615,Teig Wilton,22,Interchange,final
+20261110360,Rabbitohs,100009148,Jye Gray,1,Fullback,final
+20261110360,Rabbitohs,500108,Alex Johnston,2,Winger,final
+20261110360,Rabbitohs,502502,Latrell Mitchell,3,Centre,final
+20261110360,Rabbitohs,500339,Jack Wighton,4,Centre,final
+20261110360,Rabbitohs,500611,Cody Walker,6,Five-Eighth,final
+20261110360,Rabbitohs,100006585,Jamie Humphreys,7,Halfback,final
+20261110360,Rabbitohs,503450,Tevita Tatola,8,Prop,final
+20261110360,Rabbitohs,500168,Bronson Garlick,9,Hooker,final
+20261110360,Rabbitohs,504174,Keaon Koloamatangi,10,Prop,final
+20261110360,Rabbitohs,506482,David Fifita,11,2nd Row,final
+20261110360,Rabbitohs,509529,Tallis Duncan,12,2nd Row,final
+20261110360,Rabbitohs,504176,Cameron Murray,13,Lock,final
+20261110360,Rabbitohs,507833,Peter Mamouzelos,14,Interchange,final
+20261110360,Rabbitohs,504265,Sean Keppie,16,Interchange,final
+20261110360,Rabbitohs,507928,Jayden Sullivan,17,Interchange,final
+20261110360,Rabbitohs,510488,Moala Graham-Taufa,19,Winger,final
+20261110360,Rabbitohs,100006510,Thomas Fletcher,20,Interchange,final
+20261110360,Rabbitohs,510485,Latrell Siegwalt,21,Reserve,final
+20261110360,Rabbitohs,100009139,Liam Le Blanc,22,Reserve,final
+20261110360,Wests Tigers,100012669,Jahream Bula,1,Fullback,final
+20261110360,Wests Tigers,509455,Sunia Turuva,2,Centre,final
+20261110360,Wests Tigers,100013303,Jeral Skelton,3,Winger,final
+20261110360,Wests Tigers,100013780,Heamasi Makasini,4,Centre,final
+20261110360,Wests Tigers,100011335,Luke Laulilii,5,Winger,final
+20261110360,Wests Tigers,504121,Jarome Luai,6,Five-Eighth,final
+20261110360,Wests Tigers,505811,Adam Doueihi,7,Halfback,final
+20261110360,Wests Tigers,508065,Terrell May,8,Prop,final
+20261110360,Wests Tigers,500109,Apisai Koroisau,9,Hooker,final
+20261110360,Wests Tigers,100004194,Fonua Pole,10,Prop,final
+20261110360,Wests Tigers,510577,Samuela Fainu,11,2nd Row,final
+20261110360,Wests Tigers,100008107,Kai Pearce-Paul,12,2nd Row,final
+20261110360,Wests Tigers,502532,Alex Twal,13,Lock,final
+20261110360,Wests Tigers,505701,Jock Madden,14,Reserve,final
+20261110360,Wests Tigers,509297,Sione Fainu,15,Interchange,final
+20261110360,Wests Tigers,500136,Royce Hunt,16,Interchange,final
+20261110360,Wests Tigers,504609,Alex Seyfarth,17,Interchange,final
+20261110360,Wests Tigers,504376,Tristan Hope,18,Interchange,final
+20261110360,Wests Tigers,504007,Patrick Herbert,19,Reserve,final
+20261110370,Dragons,500729,Clinton Gutherson,1,Fullback,final
+20261110370,Dragons,100003194,Christian Tuipulotu,2,Winger,final
+20261110370,Dragons,504101,Moses Suli,3,Centre,final
+20261110370,Dragons,500845,Valentine Holmes,4,Centre,final
+20261110370,Dragons,510696,Setu Tu,5,Winger,final
+20261110370,Dragons,504363,Kyle Flanagan,6,Five-Eighth,final
+20261110370,Dragons,100004700,Daniel Atkinson,7,Halfback,final
+20261110370,Dragons,504426,Emre Guler,8,Prop,final
+20261110370,Dragons,501600,Damien Cook,9,Hooker,final
+20261110370,Dragons,100011308,Toby Couchman,10,Prop,final
+20261110370,Dragons,500459,Luciano Leilua,11,2nd Row,final
+20261110370,Dragons,503528,Jaydn Su'A,12,2nd Row,final
+20261110370,Dragons,100006241,Hamish Stewart,13,Interchange,final
+20261110370,Dragons,503449,Jacob Liddle,14,Interchange,final
+20261110370,Dragons,503533,Josh Kerr,15,Interchange,final
+20261110370,Dragons,503440,Blake Lawrie,16,Lock,final
+20261110370,Dragons,100008396,Ryan Couchman,17,Interchange,final
+20261110370,Dragons,507925,Mathew Feagai,19,Reserve,final
+20261110370,Dragons,100012312,Lyhkan King-Togia,20,Reserve,final
+20261110370,Eels,100006093,Isaiah Iongi,1,Fullback,final
+20261110370,Eels,504411,Bailey Simonsson,2,Winger,final
+20261110370,Eels,509558,Jordan Samrani,3,Centre,final
+20261110370,Eels,509762,Sean Russell,4,Centre,final
+20261110370,Eels,501351,Josh Addo-Carr,5,Winger,final
+20261110370,Eels,509524,Jonah Pezet,6,Five-Eighth,final
+20261110370,Eels,500485,Mitchell Moses,7,Halfback,final
+20261110370,Eels,507648,J'maine Hopgood,8,Interchange,final
+20261110370,Eels,100003898,Ryley Smith,9,Hooker,final
+20261110370,Eels,500687,Junior Paulo,10,Prop,final
+20261110370,Eels,506628,Kelma Tuilagi,11,2nd Row,final
+20261110370,Eels,507965,Kitione Kautoga,12,2nd Row,final
+20261110370,Eels,502363,Jack Williams,13,Prop,final
+20261110370,Eels,500083,Dylan Walker,14,Lock,final
+20261110370,Eels,100006424,Sam Tuivaiti,15,Interchange,final
+20261110370,Eels,505631,Matt Doorey,16,Interchange,final
+20261110370,Eels,100006658,Tallyn Da Silva,17,Interchange,final
+20261110370,Eels,100004407,Joash Papalii,19,Reserve,final
+20261110370,Eels,100006434,Charlie Guymer,20,Replacement,final
+20261110380,Cowboys,504087,Scott Drinkwater,1,Fullback,final
+20261110380,Cowboys,506040,Braidon Burns,2,Winger,final
+20261110380,Cowboys,100008940,Jaxon Purdue,3,Centre,final
+20261110380,Cowboys,100004781,Tom Chester,4,Centre,final
+20261110380,Cowboys,508443,Murray Taulagi,5,Winger,final
+20261110380,Cowboys,505894,Jake Clifford,6,Five-Eighth,final
+20261110380,Cowboys,506424,Tom Dearden,7,Halfback,final
+20261110380,Cowboys,500405,Coen Hess,8,Interchange,final
+20261110380,Cowboys,505460,Reed Mahoney,9,Hooker,final
+20261110380,Cowboys,500301,Jason Taumalolo,10,Prop,final
+20261110380,Cowboys,100001946,Heilum Luki,11,2nd Row,final
+20261110380,Cowboys,504065,Sam McIntyre,12,2nd Row,final
+20261110380,Cowboys,504374,Reuben Cotter,13,Lock,final
+20261110380,Cowboys,502756,Soni Luke,14,Interchange,final
+20261110380,Cowboys,506555,Kai O'Donnell,15,Reserve,final
+20261110380,Cowboys,100004869,Griffin Neame,16,Prop,final
+20261110380,Cowboys,510612,Zac Laybutt,18,Reserve,final
+20261110380,Cowboys,100012039,Kaiden Lahrs,20,Interchange,final
+20261110380,Cowboys,500600,Matthew Lodge,21,Interchange,final
+20261110380,Titans,100009209,Keano Kini,1,Fullback,final
+20261110380,Titans,100014118,Sialetili Faeamani,2,Winger,final
+20261110380,Titans,100008220,Jojo Fifita,3,Centre,final
+20261110380,Titans,507924,Max Feagai,4,Centre,final
+20261110380,Titans,505918,Phillip Sami,5,Winger,final
+20261110380,Titans,506259,AJ Brimson,6,Five-Eighth,final
+20261110380,Titans,505564,Lachlan Ilias,7,Replacement,final
+20261110380,Titans,506278,Moeaki Fotuaika,8,Prop,final
+20261110380,Titans,504462,Sam Verrills,9,Hooker,final
+20261110380,Titans,506513,Tino Fa'asuamaleaui,10,Prop,final
+20261110380,Titans,100009453,Arama Hau,11,2nd Row,final
+20261110380,Titans,506314,Beau Fermor,12,2nd Row,final
+20261110380,Titans,100001349,Chris Randall,13,Lock,final
+20261110380,Titans,505648,Kurtis Morrin,14,Interchange,final
+20261110380,Titans,510935,Tukimihia Simpkins,15,Interchange,final
+20261110380,Titans,100010109,Klese Haas,16,Interchange,final
+20261110380,Titans,100014512,Cooper Bai,17,Interchange,final
+20261110380,Titans,100001622,Jayden Campbell,19,Halfback,final
+20261110380,Titans,100010891,Josh Patston,22,Reserve,final
