@@ -88,8 +88,8 @@ export function profitCurve(bets: SeasonBet[] = SEASON_BETS) {
 /**
  * A value underdog: paper trading backs the team the Model tips to lose, because the price pays more
  * than its chance (chance x price - 1 is at least 2%). The tip doesn't change: it's still the
- * Model's favourite. Out of sample, these bets were where most of the head-to-head profit came from
- * (about +20% ROI 2023-25, +26% in 2026, at the opening price; small samples).
+ * Model's favourite. Out of sample, at the opening price with a 2% edge, these bets made about half the
+ * head-to-head profit: +31% ROI 2023-25, +29% in 2026, with wide intervals (docs/IMPROVEMENTS.md item 48).
  */
 export function valueUnderdog(e: Edge) {
   if (!e.bet) return null;
