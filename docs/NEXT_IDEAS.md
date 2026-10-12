@@ -85,6 +85,27 @@ These close the gap between the backtest and what `predict.py` will actually do 
 - **Late-change probability** (item 30): expected availability for each named player, weighted
   into the line-up ratings.
 
+### News agent: flag news that should move a prediction ⬜
+
+An agent that reads r/nrl and nrl.com (team lists, injury and casualty ward, match previews,
+late-mail) during the week, picks out news that could matter, and checks it by rerunning the model.
+
+- **Steps:** scrape the sources; have the agent pull out structured facts (who is out, in, moved
+  position or doubtful, and the source); map each fact to a line-up change; rerun `predict.py` with
+  the changed line-up; flag the game if the win probability or margin moves past a threshold set in
+  advance (e.g. 3 percentage points or 2 points of margin).
+- **Why it might help:** the model only knows what's in the team list it's given. Late withdrawals,
+  "named but in doubt" players and 1-hour changes reach Reddit and late-mail before the data does.
+  It is a way to get at the late-change gap (item 30) and the star blind spot (idea 2) as they happen.
+- **Limits:** news that isn't a line-up change (coach sacked, off-field issues, a player "carrying
+  a knock") has no feature to enter through, so the agent can only report it, not change a
+  prediction. Reddit rumours are unreliable, so keep each fact's source and only rerun on confirmed
+  or official news unless it is clearly marked.
+- **Testing:** no archive of past news yet, so it can't be backtested (the news-archive builder,
+  PLAN.md §7.10, would fix that). Meanwhile, log every flag in 2027 paper
+  trading, with the prediction before and after, and check whether the rerun predictions beat the
+  originals and the closing price on the flagged games.
+
 ## Low priority or skip
 
 - **Combination continuity, fatigue (item 18), roster turnover (item 29):** these likely overlap
