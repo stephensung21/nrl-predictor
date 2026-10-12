@@ -1,6 +1,6 @@
 # NRL Predictor: Next Ideas
 
-A review of the architecture and every experiment so far (IMPROVEMENTS.md items 1–47), written
+A review of the architecture and every experiment so far (IMPROVEMENTS.md items 1–47; item 48, upsets, came after), written
 12 October 2026. It records what is still worth trying and what isn't.
 
 ## Where the ceiling is
