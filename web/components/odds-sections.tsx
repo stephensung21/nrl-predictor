@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check, X } from "lucide-react";
-import { SERIES } from "@/lib/odds";
+import { SERIES, valueUnderdog } from "@/lib/odds";
 import { team, type TeamName } from "@/lib/teams";
 import type { Edge, OddsGame } from "@/lib/types";
 import { LocalTime } from "./local-time";
@@ -266,6 +266,7 @@ function EdgeSide({ e, side }: { e: Edge; side: "home" | "away" }) {
 }
 
 export function EdgeRow({ e }: { e: Edge }) {
+  const dog = valueUnderdog(e);
   return (
     <li className="py-4">
       <Link href={`/match/${e.matchId}`} className="group flex items-center gap-2 text-[14px]">
@@ -295,7 +296,16 @@ export function EdgeRow({ e }: { e: Edge }) {
       )}
       {e.priceAt != null && (
         <p className="mt-2 text-[13px] text-ink-2">
-          {e.bet ? (
+          {dog ? (
+            <>
+              <span className="mr-1.5 rounded-sm border border-line px-1.5 py-[3px] align-[1px] text-[10px] leading-none font-semibold tracking-[0.06em] text-ink-3 uppercase">
+                Value underdog
+              </span>
+              Tip <span className="font-semibold text-ink">{dog.tip.team}</span> ({pct(dog.tip.prob)}%), but back{" "}
+              <span className="font-semibold text-ink">{dog.team}</span> at {odds(dog.price)}: the Model gives them {pct(dog.prob)}%, a
+              fair price of {odds(dog.fair)}, so {signedPct(dog.edge)} edge.
+            </>
+          ) : e.bet ? (
             <>
               Paper bet: <span className="font-semibold text-ink">{e.bet.team}</span> at{" "}
               {odds((e.bet.side === "home" ? e.homeOdds : e.awayOdds)!)}, {signedPct(e.bet.edge)} edge.

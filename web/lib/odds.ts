@@ -2,7 +2,7 @@
 // favourite and Elo did across the 2026 test season. Real data, no sampling.
 
 import { SEASON_BETS, SEASON_GAMES } from "./sample-odds";
-import type { SeasonBet, SeasonGame } from "./types";
+import type { Edge, SeasonBet, SeasonGame } from "./types";
 
 /** Fixed series colours for this page, validated all-pairs on the ground (dataviz validator). */
 export const SERIES = {
@@ -83,4 +83,33 @@ export function profitCurve(bets: SeasonBet[] = SEASON_BETS) {
     staked: bets.length * STAKE,
     profit: Math.round(total * 100) / 100,
   };
+}
+
+/**
+ * A value underdog: paper trading backs the team the Model tips to lose, because the price pays more
+ * than its chance (chance x price - 1 is at least 2%). The tip doesn't change: it's still the
+ * Model's favourite. Out of sample, these bets were where most of the head-to-head profit came from
+ * (about +20% ROI 2023-25, +26% in 2026, at the opening price; small samples).
+ */
+export function valueUnderdog(e: Edge) {
+  if (!e.bet) return null;
+  const tipHome = e.homeProb >= 0.5;
+  if ((e.bet.side === "home") === tipHome) return null;
+  return {
+    tip: { team: tipHome ? e.home : e.away, prob: tipHome ? e.homeProb : 1 - e.homeProb },
+    team: e.bet.team,
+    prob: e.bet.side === "home" ? e.homeProb : 1 - e.homeProb,
+    price: (e.bet.side === "home" ? e.homeOdds : e.awayOdds)!,
+    fair: e.bet.side === "home" ? e.fairHome : e.fairAway,
+    edge: e.bet.edge,
+  };
+}
+
+/** The season's bets on a team the same Model rated under 50%: its value underdogs. */
+export function underdogBets(bets: SeasonBet[] = SEASON_BETS, games: SeasonGame[] = SEASON_GAMES) {
+  const homeProb = new Map(games.map((g) => [g.matchId, g.model]));
+  return bets.filter((b) => {
+    const p = homeProb.get(b.matchId);
+    return p != null && (b.side === "home" ? p : 1 - p) < 0.5;
+  });
 }

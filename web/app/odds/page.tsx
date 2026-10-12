@@ -5,7 +5,7 @@ import { LocalTime } from "@/components/local-time";
 import { BIG_GAP, EdgeRow, gapOf, OddsGameRow, TrackKey } from "@/components/odds-sections";
 import { SampleNote } from "@/components/sample-note";
 import { Calibration, ProfitChart, TipsVsMarketChart } from "@/components/season-charts";
-import { calibration, profitCurve, SERIES, tipsCorrect, tipsVsMarket } from "@/lib/odds";
+import { calibration, profitCurve, SERIES, tipsCorrect, tipsVsMarket, underdogBets, valueUnderdog } from "@/lib/odds";
 import { oddsSource, type OddsSource } from "@/lib/source";
 import type { Edge } from "@/lib/types";
 
@@ -143,6 +143,7 @@ function ComingGames({ edges }: { edges: Edge[] }) {
   const rounds = [...new Set(edges.map((e) => e.round))];
   const latest = edges.map((e) => e.priceAt).filter((t): t is string => t != null).sort().at(-1);
   const bets = edges.filter((e) => e.bet).length;
+  const dogs = edges.filter((e) => valueUnderdog(e)).length;
   return (
     <section aria-labelledby="coming" className="pt-4">
       <h2 id="coming" className="font-display text-[24px] leading-none font-bold uppercase">
@@ -162,7 +163,7 @@ function ComingGames({ edges }: { edges: Edge[] }) {
           ? "Betr hasn’t priced these games yet."
           : bets === 0
             ? "No paper bets: the Model doesn’t rate either side 2% better than Betr’s price in any game."
-            : `Paper trading would back ${bets} of ${edges.length} games.`}{" "}
+            : `Paper trading would back ${bets} of ${edges.length} games${dogs ? `, ${dogs} of them a value underdog` : ""}.`}{" "}
         <span className="font-normal text-ink-2">Paper bets are tracked, not placed.</span>
       </p>
       <ul className="mt-1 divide-y divide-line-soft md:grid md:grid-cols-2 md:gap-x-10 md:divide-y-0 md:[&>li]:border-b md:[&>li]:border-line-soft">
@@ -181,6 +182,7 @@ function SeasonTab({ src }: { src: OddsSource }) {
   }
   const vs = tipsVsMarket(src.games);
   const profit = profitCurve(src.bets);
+  const dogs = profitCurve(underdogBets(src.bets, src.games));
   const cal = { model: calibration("model", src.games), market: calibration("market", src.games) };
   // Label the x-axis at the start of every sixth round, and the finals.
   const starts = vs
@@ -259,13 +261,23 @@ function SeasonTab({ src }: { src: OddsSource }) {
           $10 on the Model&rsquo;s team whenever it rated them at least 2% better value than the opening price.
         </p>
         <p className="mt-3 font-display text-[40px] leading-none font-bold text-ink">
-          {profit.profit >= 0 ? "+" : "−"}${Number.isInteger(profit.profit) ? Math.abs(profit.profit) : Math.abs(profit.profit).toFixed(2)}
+          {money(profit.profit)}
         </p>
         <p className="mt-1 text-[13px] text-ink-2">
           from {profit.bets} bets (${profit.staked} staked), {profit.won} won.
         </p>
+        {dogs.bets > 0 && (
+          <p className="mt-1 text-[13px] text-ink-2">
+            Value underdogs, the teams it backed but tipped to lose: {money(dogs.profit)} from {dogs.bets} bets, {dogs.won} won.
+          </p>
+        )}
         <ProfitChart data={profit.points} series={[{ key: "profit", label: "Running profit", colour: SERIES.model.colour }]} />
       </section>
     </section>
   );
+}
+
+/** "+$57.30", "−$4": a running profit. */
+function money(x: number) {
+  return `${x >= 0 ? "+" : "−"}$${Number.isInteger(x) ? Math.abs(x) : Math.abs(x).toFixed(2)}`;
 }
