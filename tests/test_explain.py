@@ -7,6 +7,7 @@ Tests for what drove each prediction (src/explain.py) and the match briefs (pipe
 - (slow) a replayed Tuesday run records the same drivers and briefs twice.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -100,6 +101,38 @@ def test_a_brief_says_which_side_each_driver_favours():
     # The BlueBet adjustment is read as part of the opening price, so the market has one part, not two.
     assert "parts" not in d["drivers"][1] and len(d["drivers"][0]["parts"]) == 2
     assert s["market"]["model_minus_market_home_pct_points"] == -10 and s["market"]["market_favourite"] == "Broncos"
+
+
+def test_a_brief_names_the_star_players_out():
+    stars = pd.DataFrame([
+        {"match_id": 1, "variant": "with_odds", "group": "stars", "feature": "diff_s2_stars_out_spine", "value": -1,
+         "margin_pts": -1.2, "win_logodds": -0.1, "players": '[{"team": "Storm", "name": "Jahrome Hughes"}]'},
+        {"match_id": 1, "variant": "with_odds", "group": "stars", "feature": "diff_s2_stars_out_other", "value": 0,
+         "margin_pts": 0.3, "win_logodds": 0.02,
+         "players": '[{"team": "Storm", "name": "Eli Katoa"}, {"team": "Broncos", "name": "Payne Haas"}]'}])
+    b = brief.build(PRED, {"p_open": 0.4, "open_line": 3.5, "elo_prob": 0.55},
+                    drivers=pd.concat([DRIVERS.assign(players=None), stars], ignore_index=True))
+    d = {x["driver"]: x for x in b["sections"]["drivers"]["drivers"]}
+    assert d["Star absences"]["players_out"] == {"Storm": ["Jahrome Hughes", "Eli Katoa"], "Broncos": ["Payne Haas"]}
+    assert "players_out" not in d["Line-up strength"]
+
+
+@pytest.mark.slow
+def test_the_star_players_out_are_the_ones_the_model_counted():
+    bundle = predict.load_bundle(2026)
+    fixtures, lists = predict.replay_round(2026, 10)
+    out, rows, _, _ = predict.predict_fixtures(fixtures, lists, bundle, keep_weather=True)
+    d = explain.explain(bundle, rows, predict.variant_of(out), out.set_index("match_id")["home_win_prob"])
+    for mid, r in rows.iterrows():
+        for feature, spine in explain.STAR_FEATURES.items():
+            named = [p for p in r["stars_out"] if p["spine"] == spine]
+            home = sum(p["team"] == r["home_team"] for p in named)
+            assert home - (len(named) - home) == r[feature]  # the input is home minus away
+            cell = d[(d["match_id"] == mid) & (d["feature"] == feature)]["players"]
+            if feature in bundle["models"][(predict.variant_of(out)[mid], "margin")]["linear_features"]:
+                shown = json.loads(cell.iloc[0]) if cell.notna().any() else []
+                assert sorted(p["name"] for p in shown) == sorted(p["player_name"] for p in named)
+    assert d.loc[~d["feature"].isin(explain.STAR_FEATURES), "players"].isna().all()
 
 
 def test_sections_without_data_are_left_out():

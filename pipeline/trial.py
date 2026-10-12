@@ -1,35 +1,40 @@
 """
-A trial of the website and tipping comp before 2027: 2026's Rounds 1-3 played again over about nine
-days, in a separate Supabase project, so friends can try everything that otherwise waits for the
+A trial of the website and tipping comp before 2027: 2026's Rounds 1 and 2 played again over two real
+weeks, in a separate Supabase project, so friends can try everything that otherwise waits for the
 first predicted round (tipping, lockout, auto-tips, the margin game, the ladder, what drove each
-prediction, the price history, the value underdog flag).
+prediction with the star players out, the price history, the value underdog flag).
 
 The site works on the real clock (lockout, hidden tips and the auto-tip lock all compare kickoff
-with the database's now()), so the games are moved into the coming days, in their real order:
+with the database's now()), so the games are moved into the coming weeks, each on its real weekday
+and Sydney kickoff time:
 
-- Round r opens (its predictions, team lists and margin game appear) at 9am Sydney on day 3(r-1) of
-  the trial, and its eight games kick off over the next two days at noon, 3pm, 6pm and 9pm Sydney.
+- Round r opens (its predictions, Tuesday's team lists and margin game appear) on the trial's Tuesday
+  r-1 weeks in, at 07:15 UTC, when the predict job runs (5:15pm Sydney, 6:15pm in daylight saving).
+- Its games kick off that week, Wednesday to the next Tuesday, on their real weekdays at their real
+  Sydney times. A game that would overlap another moves back a day: Round 1's Las Vegas games were
+  played the Sunday before the rest of the round, so in the trial they fall on its Sunday, and the
+  3:30pm one, which would clash with the 4:05pm game, moves to the Saturday.
 - A result appears at the first scheduled refresh after full time, as round.ts's gradedAt expects
   (05:00 or 23:00 UTC, at least two hours after kickoff).
 - Prices: each game's opening price from the odds sheet an hour before its round opens, and its
   closing price 30 minutes before kickoff (the sheet has nothing in between).
 
-`setup` predicts the three rounds once, as the predict job would have (the 2026 models, every input as
-it stood before each round), with each game's archived Tuesday list where there is one and its final
-17 otherwise; it records the predictions, what drove them, the team lists, the margin games and the
-grades in data/pipeline/trial/. `publish` writes everything visible at the moment it runs, so running
-it hourly (.github/workflows/trial.yml) plays the trial out. Nothing is ever deleted: what's visible
-only grows.
+`setup` predicts the rounds once, as the predict job would have (the 2026 models, every input as it
+stood before each round), with each game's archived Tuesday list where there is one and its final 17
+otherwise; it records the predictions, what drove them (with the missing stars' names), the team
+lists, the margin games and the grades in data/pipeline/trial/. `publish` writes everything visible at
+the moment it runs, so running it hourly (.github/workflows/trial.yml) plays the trial out. Nothing is
+ever deleted: what's visible only grows.
 
 The trial database is TRIAL_DB_URL (its session pooler string), never SUPABASE_DB_URL, and publish
-refuses a database holding any 2026 game after Round 3 (the real one has the whole season).
+refuses a database holding any 2026 game after Round 2 (the real one has the whole season).
 
 Usage:
-    python pipeline/trial.py setup --start 2026-10-15      # day 0: Round 1 opens at 9am that day
-    python pipeline/trial.py reschedule --start 2026-10-20 # move it, without predicting again
+    python pipeline/trial.py setup --start 2026-10-20      # a Tuesday: Round 1 opens that evening
+    python pipeline/trial.py reschedule --start 2026-10-27 # move it, without predicting again
     python pipeline/trial.py publish --history             # first time: also 2021-2025 and Elo since 2009
     python pipeline/trial.py publish                       # hourly
-    python pipeline/trial.py publish --at "2026-10-17 20:00" --dry-run
+    python pipeline/trial.py publish --at "2026-10-23 20:00" --dry-run
     python pipeline/trial.py invite                        # a join code for the first tipper
     python pipeline/trial.py admin "sbeve"                 # make a joined tipper the trial's admin
 """
@@ -50,10 +55,10 @@ from draw import draw_featured
 from ingest import load_odds
 
 SEASON = 2026
-ROUNDS = [1, 2, 3]
+ROUNDS = [1, 2]
 SYDNEY = "Australia/Sydney"
-GAME_TIMES = ["12:00", "15:00", "18:00", "21:00"]  # Sydney, four games a day
-OPENS_AT = "09:00"
+OPENS_AT_UTC = "07:15"  # each round's Tuesday, when the predict job runs (.github/workflows/predict.yml)
+GAP = pd.Timedelta(hours=2)  # games closer than this overlap
 RESULT_HOURS_UTC = [5, 23]  # the refresh runs round.ts's gradedAt waits for
 TRIAL = ROOT / "data" / "pipeline" / "trial"
 BOOKMAKER = "betr_au"  # the site's live prices are Betr's; the trial stands the sheet's in for them
@@ -71,21 +76,35 @@ def results_at(kickoff):
             return t
 
 
+def tuesday(start):
+    """The trial's first day, which must be a Tuesday (the predict job's day)."""
+    day = pd.Timestamp(start).normalize()
+    if day.dayofweek != 1:
+        raise SystemExit(f"--start {day.date()} is a {day.day_name()}: the trial starts on a Tuesday")
+    return day
+
+
 def timetable(games, start):
     """When each game's round opens, kicks off and gets its result, from the trial's first day
-    (`start`, a date in Sydney). `games`: match_id, round, start_time_utc (the real kickoff, for order)."""
-    day0 = pd.Timestamp(start).normalize()
+    (`start`, a Tuesday in Sydney). `games`: match_id, round, start_time_utc (the real kickoff)."""
+    day0 = tuesday(start)
     rows = []
     for i, rnd in enumerate(sorted(games["round"].unique())):
-        g = games[games["round"] == rnd].sort_values(["start_time_utc", "match_id"])
-        opens = (day0 + pd.Timedelta(days=3 * i) + pd.Timedelta(OPENS_AT + ":00")).tz_localize(SYDNEY)
-        for j, mid in enumerate(g["match_id"]):
-            day, slot = divmod(j, len(GAME_TIMES))
-            local = day0 + pd.Timedelta(days=3 * i + 1 + day) + pd.Timedelta(GAME_TIMES[slot] + ":00")
+        week = day0 + pd.Timedelta(weeks=i)
+        opens = (week + pd.Timedelta(OPENS_AT_UTC + ":00")).tz_localize("UTC")
+        g = games[games["round"] == rnd].sort_values(["start_time_utc", "match_id"], ascending=False)
+        placed = []
+        for r in g.itertuples():  # latest first, so an earlier game that would overlap is the one moved
+            real = pd.Timestamp(r.start_time_utc).tz_convert(SYDNEY)
+            ahead = (real.dayofweek - 1) % 7 or 7  # days after the round's Tuesday: Wednesday 1 ... Tuesday 7
+            local = week + pd.Timedelta(days=ahead) + pd.Timedelta(hours=real.hour, minutes=real.minute)
+            while any(abs(local - p) < GAP for p in placed):
+                local -= pd.Timedelta(days=1)
+            placed.append(local)
             kickoff = local.tz_localize(SYDNEY).tz_convert("UTC")
-            rows.append({"match_id": int(mid), "round": int(rnd), "opens_at": opens.tz_convert("UTC"),
+            rows.append({"match_id": int(r.match_id), "round": int(rnd), "opens_at": opens,
                          "kickoff": kickoff, "results_at": results_at(kickoff)})
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows).sort_values(["round", "kickoff"]).reset_index(drop=True)
 
 
 # ---------------------------------------------------------------- setup: predict once
@@ -296,7 +315,7 @@ def with_history(tables, old):
 
 
 def check_trial_db(cur):
-    """Refuse the real database: it has 2026 games after Round 3."""
+    """Refuse the real database: it has 2026 games after the trial's last round."""
     cur.execute("select count(*) from matches where season = %s and round > %s", (SEASON, max(ROUNDS)))
     if cur.fetchone()[0]:
         raise SystemExit(f"this database has {SEASON} games after Round {max(ROUNDS)}: it isn't the trial's. "
@@ -339,9 +358,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     s = sub.add_parser("setup", help="predict the trial's rounds once")
-    s.add_argument("--start", required=True, help="the trial's first day (Sydney), when Round 1 opens at 9am")
+    s.add_argument("--start", required=True, help="the trial's first day (a Tuesday, Sydney), when Round 1 opens")
     r = sub.add_parser("reschedule", help="move the trial to a new first day")
-    r.add_argument("--start", required=True)
+    r.add_argument("--start", required=True, help="a Tuesday")
     p = sub.add_parser("publish", help="write everything visible now to TRIAL_DB_URL")
     p.add_argument("--history", action="store_true", help="also 2021-2025 and Elo since 2009 (first publish)")
     p.add_argument("--at", help="publish as of this time (Sydney if no zone), for checking")

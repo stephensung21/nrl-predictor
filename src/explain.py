@@ -22,6 +22,7 @@ Usage (a check on a past round):
 """
 
 import argparse
+import json
 
 import numpy as np
 import pandas as pd
@@ -65,7 +66,9 @@ FEATURE_LABELS = {
     "neutral": "neutral venue", "is_final": "finals game", "origin_period": "Origin period",
     "wet_conditions": "wet conditions",
 }
-COLS = ["match_id", "variant", "group", "feature", "value", "margin_pts", "win_logodds"]
+COLS = ["match_id", "variant", "group", "feature", "value", "margin_pts", "win_logodds", "players"]
+# The star-absence inputs and which missing stars each counts (predict.py's stars_out).
+STAR_FEATURES = {"diff_s2_stars_out_spine": True, "diff_s2_stars_out_other": False}
 
 
 def group_of(feature):
@@ -138,7 +141,23 @@ def explain(bundle, rows, variants, final_prob=None):
         out.append(pd.concat(parts, ignore_index=True).assign(variant=variant))
     drivers = pd.concat(out, ignore_index=True)
     drivers["group"] = drivers["feature"].map(group_of)
+    drivers["players"] = star_players(drivers, rows)
     return drivers[COLS]
+
+
+def star_players(drivers, rows):
+    """The missing stars behind each star-absence row, as JSON ([{"team", "name"}], home side first),
+    from the rows' stars_out (predict.predict_fixtures); None for every other row, or with no names."""
+    if "stars_out" not in rows.columns:
+        return None
+    def names(mid, feature):
+        if feature not in STAR_FEATURES:
+            return None
+        home = rows.at[mid, "home_team"]
+        out = sorted((p for p in rows.at[mid, "stars_out"] if p["spine"] == STAR_FEATURES[feature]),
+                     key=lambda p: (p["team"] != home, p["player_name"]))
+        return json.dumps([{"team": p["team"], "name": p["player_name"]} for p in out]) if out else None
+    return [names(m, f) for m, f in zip(drivers["match_id"], drivers["feature"])]
 
 
 def by_group(drivers):

@@ -232,7 +232,10 @@ def driver_rows(drivers, predicted):
     return pd.DataFrame({
         "run_id": d["run_id"].astype(str), "match_id": d["match_id"].astype("int64"), "variant": d["variant"],
         "driver_group": d["group"], "feature": d["feature"], "value": d["value"], "margin_pts": d["margin_pts"],
-        "win_logodds": d["win_logodds"]})
+        "win_logodds": d["win_logodds"],
+        # the missing stars behind a star-absence row (explain.star_players); none before names were recorded
+        "players": [Jsonb(json.loads(p)) if isinstance(p, str) else None
+                    for p in (d["players"] if "players" in d.columns else [None] * len(d))]})
 
 
 def brief_rows(briefs, predicted):

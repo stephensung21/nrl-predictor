@@ -1,25 +1,28 @@
 # The website trial
 
-2026's Rounds 1–3 played again over nine days on a separate copy of the site, so friends can try
-tipping, lockout, auto-tips, the margin game, the ladder, what drove each prediction, the price
-history and the value underdog flag before 2027. The real site, database and comp are untouched.
+2026's Rounds 1 and 2 played again over two real weeks on a separate copy of the site, so friends can try
+tipping, lockout, auto-tips, the margin game, the ladder, what drove each prediction (with the star
+players out), the price history and the value underdog flag before 2027. The real site, database and
+comp are untouched.
 
-How it works: `pipeline/trial.py` (its docstring has the details). Each round opens at 9am Sydney with
-the real predictions, its eight games kick off over the next two days at noon, 3pm, 6pm and 9pm, and
-results appear at the next scheduled refresh after full time (10am or 4pm Sydney), as they will
-in-season. Round 2 opens three days after Round 1, Round 3 three days after that.
+How it works: `pipeline/trial.py` (its docstring has the details). Each round opens on a Tuesday at
+07:15 UTC (6:15pm Sydney in daylight saving), when the real predict job runs, with the real predictions
+and Tuesday's team lists. Its games are played that week on their real weekdays at their real Sydney
+kickoff times, and each result appears at the next scheduled refresh after full time (10am or 4pm
+Sydney in daylight saving), as it will in-season. Round 1's Las Vegas games were played the Sunday
+before the rest of the round; in the trial they're on its Sunday, except the 3:30pm one, which moves
+to the Saturday so it doesn't clash with the 4:05pm game.
 
-| Day | What happens |
+| When (from a Tuesday start, e.g. 20 October) | What happens |
 |---|---|
-| 0, 9am | Round 1 open: predictions, team lists, margin game, opening prices |
-| 1–2 | Round 1's games; results the same afternoon or next morning |
-| 3, 9am | Round 2 open |
-| 4–5 | Round 2's games |
-| 6, 9am | Round 3 open |
-| 7–8 | Round 3's games; the last results on day 9 at 10am |
+| Tue 20 Oct, 6:15pm | Round 1 open: predictions, what drove them, Tuesday's team lists, margin game, opening prices |
+| Thu 22 – Sun 25 Oct | Round 1's games (Thu 8pm, Fri 6pm and 8pm, Sat 3:30pm, 5:30pm and 7:35pm, Sun 1:15pm and 4:05pm); final team lists an hour before each |
+| Tue 27 Oct, 6:15pm | Round 2 open |
+| Thu 29 Oct – Sun 1 Nov | Round 2's games; the last result on Mon 2 Nov at 10am |
 
-Not in the trial: Claude's previews and recaps (no API credit yet), live scores and email reminders
-(not built), and Betr's prices between opening and closing (2026 only has the sheet's two).
+Not in the trial: Claude's previews and recaps (no API credit yet), email reminders (not built), the
+"updated since Tuesday" reasons (not built, and each trial game is predicted once), and Betr's prices
+between opening and closing (2026 only has the sheet's two).
 
 ## Setting it up (steps only you can do)
 
@@ -40,13 +43,14 @@ Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minu
    - In the SQL editor: `alter role analyst login password '<another password>';` then the
      **transaction pooler** string (port 6543) with user `analyst.<trial ref>`: that's the trial site's
      `SITE_DATABASE_URL`.
-4. **Load the history and start** (from your computer): pick the first day, then
+4. **Load the history and start** (from your computer): the records are set up for Tuesday 20 October.
+   For a different start, pick a Tuesday and run `reschedule` first:
    ```
-   .venv/Scripts/python pipeline/trial.py reschedule --start 2026-10-16
+   .venv/Scripts/python pipeline/trial.py reschedule --start 2026-10-27   # only if not 20 October
    .venv/Scripts/python pipeline/trial.py publish --history
    ```
    `reschedule` only moves the timetable (no models run); commit `data/pipeline/trial/` afterwards so
-   the hourly job uses the same dates. Before the first day, publish writes only the history.
+   the hourly job uses the same dates. Before Round 1 opens, publish writes only the history.
 5. **Google sign-in.** Trial project → Authentication → Sign In / Providers → Google: paste the
    *same* client id and secret as the real project, then in Google Cloud (APIs & Services →
    Credentials → the OAuth client) add the trial project's callback URL
