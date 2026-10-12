@@ -6,7 +6,7 @@ import type { Sql } from "./db";
 import type { GradedGame } from "./model-record";
 import type {
   Drivers, Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsHistory, OddsRound,
-  Prediction, RoundBet, RoundData, SeasonBet, SeasonGame, Weather,
+  Prediction, RoundBet, RoundData, SeasonBet, SeasonGame, StarOut, Weather,
 } from "./types";
 import type { TeamName } from "./teams";
 import { paperBet } from "./odds";
@@ -169,12 +169,15 @@ export async function matchDetail(sql: Sql, matchId: string): Promise<MatchDetai
  * predicted before the drivers were recorded, 2026 included). */
 export async function matchDrivers(sql: Sql, matchId: string): Promise<Drivers | null> {
   const rows = await sql`
-    select variant, driver_group, margin_pts from record_drivers
+    select variant, driver_group, margin_pts, players from record_drivers
     where match_id = ${matchId} and driver_group <> 'calibration' order by driver_group`;
   if (!rows.length) return null;
   return {
     variant: rows[0].variant,
-    groups: rows.map((r) => ({ group: r.driver_group as string, points: Number(r.margin_pts) })),
+    groups: rows.map((r) => ({
+      group: r.driver_group as string, points: Number(r.margin_pts),
+      ...(r.players?.length ? { players: r.players as StarOut[] } : {}),
+    })),
   };
 }
 

@@ -157,6 +157,17 @@ export function DriversSection({ game, drivers }: { game: Game; drivers: Drivers
           )}
           <div className="absolute inset-y-[-3px] left-1/2 w-[2px] -translate-x-1/2 rounded-full bg-ink-3" />
         </div>
+        {r.players && (
+          <p className="mt-1.5 text-[13px] leading-snug text-ink-3">
+            Out:{" "}
+            {r.players.map((t, i) => (
+              <span key={t.team}>
+                {i > 0 && "; "}
+                {t.names.join(", ")} ({team(t.team).code})
+              </span>
+            ))}
+          </p>
+        )}
       </li>
     );
   };

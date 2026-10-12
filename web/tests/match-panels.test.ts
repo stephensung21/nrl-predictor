@@ -26,6 +26,21 @@ describe("what drove the prediction", () => {
     expect(v.total).toBeCloseTo(-2.49, 12);
   });
 
+  it("names the star players out, home side first, even when both sides' cancel out", () => {
+    const v = driverView({
+      variant: "with_odds",
+      groups: [{ group: "stars", points: 0.01, players: [
+        { team: "Storm", name: "Harry Grant" }, { team: "Broncos", name: "Reece Walsh" }, { team: "Storm", name: "Eli Katoa" },
+      ] }],
+    }, "Broncos", "Storm");
+    expect(v.rows).toHaveLength(1);
+    expect(v.rows[0]).toMatchObject({ label: "Star players out", favours: null });
+    expect(v.rows[0].players).toEqual([
+      { team: "Broncos", names: ["Reece Walsh"] }, { team: "Storm", names: ["Harry Grant", "Eli Katoa"] },
+    ]);
+    expect(v.trimmed).toBe(false);
+  });
+
   it("adds up to every sample game's predicted margin", () => {
     const preds = SAMPLE_ROUNDS.flatMap((r) => r.data.predictions);
     expect(Object.keys(SAMPLE_DRIVERS).length).toBe(preds.length);
