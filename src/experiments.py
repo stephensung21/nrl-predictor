@@ -46,10 +46,14 @@ Usage:
                                                   LightGBM's eight extra features dropped, or kept alone)
     python src/experiments.py --only underdog -> reports/experiments/experiments_underdog.md (tipping the
                                                   underdog when signals disagree, against betting it at value)
+    python src/experiments.py --only poisson  ->  reports/experiments/experiments_poisson.md (whether scores fit
+                                                  a Poisson; Poisson player and team ratings; a Poisson score
+                                                  distribution instead of the Normal)
 """
 
 import argparse
 import warnings
+from collections import defaultdict
 
 import lightgbm as lgb
 import optuna
@@ -57,10 +61,10 @@ import optuna
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from scipy.optimize import minimize
-from scipy.stats import norm, t as student_t
+from scipy.optimize import minimize, minimize_scalar
+from scipy.stats import binom, norm, poisson, t as student_t
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import HuberRegressor, LogisticRegression, QuantileRegressor, Ridge
+from sklearn.linear_model import HuberRegressor, LogisticRegression, PoissonRegressor, QuantileRegressor, Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import SplineTransformer, StandardScaler
 
@@ -68,7 +72,7 @@ import config
 import models
 import weather
 from elo import run_elo, tune as tune_elo
-from features import SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
+from features import NOT_NAMED, SEASON_SHRINK, SIX_AGAIN_START, logit, team_ratings
 from ingest import PROCESSED, join_odds_to_matches, load_odds
 from config import (ALPHA_GRID, BACKTEST_SEASONS, C_GRID, FIRST_SEASON, LGB_COMPACT_EXTRA, LGB_SEEDS,
                     EXPERIMENTS, LINEAR_FEATURES, REPORTS, TARGETS, VARIANT_LABEL, VARIANTS)
@@ -2150,13 +2154,347 @@ def underdog_experiments():
     print("wrote reports/experiments/experiments_underdog.md")
 
 
+# ---------------------------------------------------------------- 49. Poisson ratings and score model
+
+POISSON_TEAM_HALF_LIFE, POISSON_PLAYER_HALF_LIFE = 730, 90  # as the team margin rating and RAPM
+POISSON_GRIDS = {"team": (1e-3, 1e-2), "tries": (0.1, 0.3, 1.0, 3.0), "points": (0.3, 1.0, 3.0, 10.0)}
+POISSON_SELECT = [2021, 2022]  # penalties chosen on these seasons only, before any backtest season
+CONV_RATE, PEN_GOALS, FIELD_GOALS = 0.749, 0.41, 0.06  # per try / per team-game, 2020-2026 scraped data
+SCORE_N, MAX_TRIES = 160, 25
+
+
+def poisson_fit(X, y, w, alpha):
+    return PoissonRegressor(alpha=alpha, max_iter=300, tol=1e-6).fit(X, y, sample_weight=w / w.mean())
+
+
+def team_poisson(odds, alpha):
+    """Multiplicative (Maher) team model on points since 2009, refitted weekly on earlier games:
+    log E[points] = mu + home + attack(team) - defence(opp). Expected home and away points per odds game."""
+    g = odds.dropna(subset=["home_score", "away_score"]).sort_values("odds_id").reset_index(drop=True)
+    teams = sorted(set(g["home_team"]) | set(g["away_team"]))
+    ix = {t: i for i, t in enumerate(teams)}
+    n, T = len(g), len(teams)
+    h, a = g["home_team"].map(ix).to_numpy(), g["away_team"].map(ix).to_numpy()
+    home = (~g["neutral"].astype(bool)).to_numpy().astype(float)
+    rows = np.arange(2 * n)  # row i < n: the home team's points; row n + i: the away team's
+    X = sparse.csr_matrix((np.r_[np.ones(4 * n), home, np.zeros(n)],
+                           (np.r_[rows, rows, rows], np.r_[np.r_[h, a], T + np.r_[a, h], np.full(2 * n, 2 * T)])),
+                          shape=(2 * n, 2 * T + 1))
+    y = np.r_[g["home_score"], g["away_score"]].astype(float)
+    week = g["date"].dt.to_period("W").to_numpy()
+    lam = np.full((n, 2), np.nan)
+    for wk in pd.unique(week):
+        idx = np.flatnonzero(week == wk)
+        start = g.loc[idx[0], "date"]
+        train = (g["date"] < start).to_numpy()
+        if train.sum() < 50 or start.year < 2019:  # only needed from the six-again restart
+            continue
+        w = 0.5 ** ((start - g.loc[train, "date"]).dt.days.to_numpy() / POISSON_TEAM_HALF_LIFE)
+        m = poisson_fit(X[np.r_[train, train]], y[np.r_[train, train]], np.r_[w, w], alpha)
+        lam[idx] = m.predict(X[np.r_[idx, idx + n]]).reshape(2, -1).T
+    return pd.DataFrame({"odds_id": g["odds_id"], "home": lam[:, 0], "away": lam[:, 1]})
+
+
+def player_poisson(matches, players, target, alpha):
+    """Poisson player ratings, refitted before each round on earlier games (as RAPM):
+    log E[y] = mu + home + sum(share * attack, own players) + sum(share * defence, opposing players),
+    y = a team's tries (a true count) or points (quasi-Poisson). share = minutes / 80 in past games and the
+    typical share for the named role in the predicted game. Expected home and away y per match."""
+    games = matches.sort_values("start_time_utc").reset_index(drop=True)
+    n = len(games)
+    grow = pd.Series(games.index, index=games["match_id"])
+    home_team = dict(zip(games["match_id"], games["home_team"]))
+    pids = pd.Index(players["player_id"].unique())
+    P = len(pids)
+    share = players["minutesPlayed"].fillna(0).clip(upper=80) / 80
+    src = players[share > 0]
+    r, c, s = grow.loc[src["match_id"]].to_numpy(), pids.get_indexer(src["player_id"]), share[src.index].to_numpy()
+    is_home = src["team"].to_numpy() == src["match_id"].map(home_team).to_numpy()
+    own, opp = 2 * r + np.where(is_home, 0, 1), 2 * r + np.where(is_home, 1, 0)  # row 2g home, 2g + 1 away
+    X = sparse.csr_matrix((np.r_[s, s, np.tile([1.0, 0.0], n)],
+                           (np.r_[own, opp, np.arange(2 * n)], np.r_[c, P + c, np.full(2 * n, 2 * P)])),
+                          shape=(2 * n, 2 * P + 1))
+    y = np.empty(2 * n)
+    if target == "points":
+        y[0::2], y[1::2] = games["home_score"], games["away_score"]
+    else:
+        t = players.groupby(["match_id", "team"])[target].sum()
+        y[0::2] = t.reindex(list(zip(games["match_id"], games["home_team"]))).to_numpy()
+        y[1::2] = t.reindex(list(zip(games["match_id"], games["away_team"]))).to_numpy()
+    named = players[~players["position"].isin(NOT_NAMED)]
+    starter = (named["position"] != "Interchange").to_numpy()
+    named_share, named_game = share[named.index].to_numpy(), grow.loc[named["match_id"]].to_numpy()
+    lineups = defaultdict(list)
+    for key, j, st in zip(zip(named["match_id"], named["team"]), pids.get_indexer(named["player_id"]), starter):
+        lineups[key].append((j, st))
+    kickoff = games["start_time_utc"]
+    out, block, fit = np.full((n, 2), np.nan), None, None
+    for g in games.itertuples():
+        if (g.season, g.round) != block:
+            block = (g.season, g.round)
+            train = (kickoff < g.start_time_utc).to_numpy()
+            if train.sum() >= 150:
+                w = 0.5 ** ((g.start_time_utc - kickoff[train]).dt.days.to_numpy() / POISSON_PLAYER_HALF_LIFE)
+                keep = w > 0.005
+                gi = np.flatnonzero(train)[keep]
+                rows = np.r_[2 * gi, 2 * gi + 1]
+                m = poisson_fit(X[rows], y[rows], np.r_[w[keep], w[keep]], alpha)
+                in_train = train[named_game]
+                role = (named_share[in_train & starter].mean(), named_share[in_train & ~starter].mean())
+                fit = (m.coef_, m.intercept_, role)
+        if fit is None:
+            continue
+        coef, b0, role = fit
+
+        def strength(team, part):
+            return sum((role[0] if st else role[1]) * coef[part * P + j] for j, st in lineups.get((g.match_id, team), []))
+
+        out[g.Index] = [np.exp(b0 + coef[2 * P] + strength(g.home_team, 0) + strength(g.away_team, 1)),
+                        np.exp(b0 + strength(g.away_team, 0) + strength(g.home_team, 1))]
+    return pd.DataFrame({"match_id": games["match_id"], "home": out[:, 0], "away": out[:, 1]})
+
+
+def poisson_deviance(y, mu):
+    y = np.asarray(y, float)
+    return 2 * np.mean(np.where(y > 0, y * np.log(np.where(y > 0, y, 1) / mu), 0) - (y - mu))
+
+
+def score_basis():
+    """Points pmf given k tries (k < MAX_TRIES): conversions ~ Binomial(k, CONV_RATE), plus penalty goals and
+    one-point field goals ~ Poisson per team-game. A team's points pmf is then Poisson(k; lambda) @ basis."""
+    basis = np.zeros((MAX_TRIES, SCORE_N))
+    for k in range(MAX_TRIES):
+        c = np.arange(k + 1)
+        np.add.at(basis[k], 4 * k + 2 * c, binom.pmf(c, k, CONV_RATE))
+        for pts, rate, most in ((2, PEN_GOALS, 6), (1, FIELD_GOALS, 3)):
+            out = np.zeros(SCORE_N)
+            for j, w in enumerate(poisson.pmf(np.arange(most), rate)):
+                out[pts * j:] += w * basis[k][:SCORE_N - pts * j]
+            basis[k] = out
+    return basis
+
+
+def margin_pmf(margin, total, tau, basis):
+    """Home-minus-away margin pmf from Poisson tries with means set by the predicted margin and total. tau > 0
+    adds a shared game effect (home tries x e^z, away x e^-z, z ~ N(0, tau)): the two sides' tries are
+    negatively correlated. Index i is margin i - (SCORE_N - 1)."""
+    per_try = 4 + 2 * CONV_RATE
+    other = 2 * PEN_GOALS + FIELD_GOALS
+    lam_h = max((total + margin) / 2 - other, 1) / per_try
+    lam_a = max((total - margin) / 2 - other, 1) / per_try
+    x, w = np.polynomial.hermite_e.hermegauss(15)
+    pmf = np.zeros(2 * SCORE_N - 1)
+    for xi, wi in zip(x, w / w.sum()):
+        home = poisson.pmf(np.arange(MAX_TRIES), lam_h * np.exp(tau * xi)) @ basis
+        away = poisson.pmf(np.arange(MAX_TRIES), lam_a * np.exp(-tau * xi)) @ basis
+        pmf += wi * np.convolve(home, away[::-1])
+    return pmf
+
+
+def poisson_experiments():
+    """Item 49. Do NRL scores fit a Poisson? Poisson player and team ratings as features (added, or replacing
+    RAPM / the team margin rating) in the full pipeline backtest; and a Poisson score distribution instead of
+    the Normal for the win and line-cover probabilities."""
+    warnings.filterwarnings("ignore")
+    import builtins
+    report = ["# Poisson ratings and score model (2023–2025 backtest)", ""]
+
+    # --- 1. Distribution checks on every scraped game since the six-again restart.
+    matches = pd.read_csv(PROCESSED / "matches.csv")
+    matches["start_time_utc"] = pd.to_datetime(matches["start_time_utc"], utc=True)
+    matches = matches[(matches["start_time_utc"] >= SIX_AGAIN_START) & matches["home_score"].notna()].copy()
+    players = pd.read_csv(PROCESSED / "player_match_stats.csv")
+    players = players[players["match_id"].isin(matches["match_id"])].copy()
+
+    def side(s):
+        return matches[["match_id", "season", f"{s}_team", f"{s}_score"]].set_axis(
+            ["match_id", "season", "team", "score"], axis=1).assign(home=float(s == "home"))
+
+    long = pd.concat([side("home"), side("away")]).merge(
+        players.groupby(["match_id", "team"])["tries"].sum().reset_index(), on=["match_id", "team"])
+    long = long.merge(long[["match_id", "team"]].rename(columns={"team": "opp"}), on="match_id")
+    long = long[long["team"] != long["opp"]].reset_index(drop=True)
+    X = pd.concat([pd.get_dummies("a_" + long["team"] + long["season"].astype(str)),
+                   pd.get_dummies("d_" + long["opp"] + long["season"].astype(str))], axis=1).astype(float)
+    X["home"] = long["home"]
+    checks, resid = {}, {}
+    for col in ("score", "tries"):
+        y = long[col].to_numpy(float)
+        mu = PoissonRegressor(alpha=1e-4, max_iter=1000).fit(X, y).predict(X)
+        resid[col] = (y - mu) / np.sqrt(mu)
+        checks[col] = {"mean": y.mean(), "variance": y.var(), "variance / mean": y.var() / y.mean(),
+                       "Pearson dispersion after team strength": ((y - mu) ** 2 / mu).sum() / (len(y) - X.shape[1])}
+    wide = long.assign(r=resid["tries"]).pivot_table(index="match_id", columns="home", values=["tries", "r"])
+    corr_raw = np.corrcoef(wide[("tries", 1.0)], wide[("tries", 0.0)])[0, 1]
+    corr_adj = np.corrcoef(wide[("r", 1.0)], wide[("r", 0.0)])[0, 1]
+    q = players[players["minutesPlayed"] >= 20].assign(e=lambda d: d["minutesPlayed"] / 80)
+    q = q[q.groupby("player_id")["tries"].transform("size") >= 30]
+    by = q.groupby("player_id")
+    mu_p = (by["tries"].transform("sum") / by["e"].transform("sum") * q["e"]).to_numpy()
+    k = q["tries"].to_numpy()
+    player_fit = pd.DataFrame(
+        {"observed": [float((k == i).sum()) for i in range(3)] + [float((k >= 3).sum())],
+         "Poisson expected": [poisson.pmf(i, mu_p).sum() for i in range(3)] + [poisson.sf(2, mu_p).sum()]},
+        index=pd.Index(["0", "1", "2", "3+"], name="tries in a game"))
+    report += ["## Do the scores fit a Poisson?", "",
+               f"Per team and game, {len(long) // 2} games since the six-again restart. Dispersion after team strength: "
+               "a Poisson model with each team's attack and defence per season and home advantage (1 = Poisson).", "",
+               md_table(pd.DataFrame(checks).rename_axis("per team-game")), "",
+               f"Home and away tries are negatively correlated: {corr_raw:+.3f}, and {corr_adj:+.3f} after team "
+               "strength (an independent double-Poisson assumes 0).", "",
+               f"Players with 30+ games of 20+ minutes ({q['player_id'].nunique()} players), tries per game against "
+               "Poisson at the player's own rate × minutes / 80:", "", md_table(player_fit, "{:.0f}"), ""]
+    print(md_table(pd.DataFrame(checks)))
+    print(f"home/away tries correlation {corr_raw:+.3f}, after team strength {corr_adj:+.3f}")
+
+    # --- 2. Poisson ratings; penalties chosen on 2021-22 deviance.
+    df = load()
+    odds = load_odds()
+    to_match = join_odds_to_matches(matches[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
+    sel = df[df["season"].isin(POISSON_SELECT)]
+    tries = players.groupby(["match_id", "team"])["tries"].sum()
+    sel_y = {"tries": (tries.reindex(list(zip(sel["match_id"], sel["home_team"]))).to_numpy(),
+                       tries.reindex(list(zip(sel["match_id"], sel["away_team"]))).to_numpy()),
+             "points": (sel["home_score"].to_numpy(), sel["away_score"].to_numpy())}
+    chosen, grid_rows = {}, []
+    for kind, grid in POISSON_GRIDS.items():
+        built = {}
+        for alpha in grid:
+            if kind == "team":
+                x = to_match[["match_id", "odds_id"]].merge(team_poisson(odds, alpha), on="odds_id").drop(columns="odds_id")
+            else:
+                x = player_poisson(matches, players, kind, alpha)
+            built[alpha] = x.set_index("match_id")
+            yh, ya = sel_y["points" if kind == "team" else kind]
+            p = built[alpha].loc[sel["match_id"]]
+            dev = (poisson_deviance(yh, p["home"]) + poisson_deviance(ya, p["away"])) / 2
+            grid_rows.append({"model": kind, "penalty": alpha, "deviance 2021-22": dev})
+            print(f"  {kind} penalty {alpha}: deviance {dev:.4f}")
+        best = min((r for r in grid_rows if r["model"] == kind), key=lambda r: r["deviance 2021-22"])
+        chosen[kind] = built[best["penalty"]]
+    for kind, name in (("tries", "ptries"), ("points", "ppoints"), ("team", "tpois")):
+        x = chosen[kind]
+        df = df.join(pd.DataFrame({f"diff_{name}": np.log(x["home"] / x["away"]),
+                                   f"{name}_total": x["home"] + x["away"]}), on="match_id")
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    corr = test[["diff_ptries", "diff_ppoints", "diff_tpois", "diff_rapm_total", "team_margin", "elo_logit",
+                 "margin"]].corr()
+
+    def sets(add=(), drop=(), total=()):
+        return {"home_win": [f for f in LINEAR_FEATURES["home_win"] if f not in drop] + list(add),
+                "margin": [f for f in LINEAR_FEATURES["margin"] if f not in drop] + list(add),
+                "total": LINEAR_FEATURES["total"] + list(total)}
+
+    rapm = ["diff_rapm_total", "diff_rapm_defence"]
+    variants = {
+        "49 Poisson tries player rating added": dict(LINEAR_FEATURES=sets(["diff_ptries"], total=["ptries_total"])),
+        "49 Poisson tries rating replaces RAPM": dict(LINEAR_FEATURES=sets(["diff_ptries"], rapm)),
+        "49 quasi-Poisson points player rating added": dict(
+            LINEAR_FEATURES=sets(["diff_ppoints"], total=["ppoints_total"])),
+        "49 quasi-Poisson points rating replaces RAPM": dict(LINEAR_FEATURES=sets(["diff_ppoints"], rapm)),
+        "49 Poisson team rating added": dict(LINEAR_FEATURES=sets(["diff_tpois"], total=["tpois_total"])),
+        # team_margin is only in the win set, so this swaps it there and adds the Poisson rating to margin
+        "49 Poisson team rating replaces team margin": dict(LINEAR_FEATURES=sets(["diff_tpois"], ["team_margin"])),
+        "49 Poisson tries rating, LightGBM only": dict(
+            LGB_COMPACT_EXTRA=LGB_COMPACT_EXTRA + ["diff_ptries", "ptries_total"]),
+    }
+    bt = pd.read_csv(REPORTS / "backtest_predictions.csv").set_index("match_id")
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        base = pipeline_backtest(df)
+        preds = {name: pipeline_backtest(df, **v) for name, v in variants.items()}
+    finally:
+        builtins.print = quiet
+    assert np.allclose(base.to_numpy(), bt.loc[base.index, base.columns].to_numpy())
+    print("  harness reproduces reports/backtest_predictions.csv")
+    for name, p in preds.items():
+        compare_pipelines(name, test, p, base, models=("ensemble",))
+    res = pd.DataFrame(RESULTS)
+    report += ["## Poisson ratings as features", "",
+               "- Player ratings: Poisson regression of each team's tries (or quasi-Poisson on points) on its players' "
+               "attack and the opposing players' defence, weighted by minutes, refitted before each round with a "
+               "90-day half-life (as RAPM).",
+               "- Team rating: multiplicative (Maher) attack/defence model on points since 2009, refitted weekly with "
+               "a two-year half-life (as the team margin rating).",
+               "- Features: log(expected home / expected away), and expected home + away for the totals model. "
+               "Penalties chosen on 2021–22 Poisson deviance:", "",
+               md_table(pd.DataFrame(grid_rows).set_index("model")), "",
+               "Correlations on the backtest games:", "", md_table(corr.iloc[:3].rename_axis("feature"), "{:.2f}"), "",
+               "Full pipeline backtest, main ensembles. `diff` is new minus current (negative = better), with a paired "
+               "bootstrap 95% interval.", "", md_table(res.set_index("experiment")), ""]
+
+    # --- 3. Poisson score distribution against the Normal, on the with-odds ensemble's margin and total.
+    basis = score_basis()
+    d = test.loc[base.index]
+    mu, tot = base["with_odds|ensemble|margin"].to_numpy(), base["with_odds|ensemble|total"].to_numpy()
+    y_win = d["home_win"].to_numpy()
+    line = -d["open_line"].to_numpy()  # the home side covers if margin > -open_line
+    ok = ~np.isnan(line) & (d["margin"].to_numpy() != line)
+    y_cov = (d["margin"].to_numpy() > line).astype(float)
+    m_axis = np.arange(-(SCORE_N - 1), SCORE_N)
+
+    def losses(y, p):
+        p = np.clip(p, 1e-6, 1 - 1e-6)
+        return -(y * np.log(p) + (1 - y) * np.log(1 - p))
+
+    # The Normal's spread is fitted on these games, which favours it; tau is the Poisson's only parameter.
+    s_win = minimize_scalar(lambda s: losses(y_win, norm.cdf(mu / s)).mean(), bounds=(8, 30), method="bounded").x
+    s_cov = minimize_scalar(lambda s: losses(y_cov[ok], norm.sf(line[ok], mu[ok], s)).mean(),
+                            bounds=(8, 30), method="bounded").x
+    normal = {"win": norm.cdf(mu / s_win), "cover": norm.sf(line, mu, s_cov)}
+    shape_rows, pois = [], {}
+    for tau in (0.0, 0.1, 0.15, 0.2, 0.25, 0.3):
+        pmfs = np.array([margin_pmf(m, t, tau, basis) for m, t in zip(mu, tot)])
+        win = pmfs[:, m_axis > 0].sum(axis=1) / (1 - pmfs[:, m_axis == 0].sum(axis=1))
+        cover = np.array([p[m_axis > L].sum() / (1 - p[m_axis == L].sum()) if not np.isnan(L) else np.nan
+                          for p, L in zip(pmfs, line)])
+        pois[tau] = {"win": win, "cover": cover, "pmf": pmfs.mean(axis=0)}
+        shape_rows.append({"model": f"Poisson tries, tau {tau}", "win log loss": losses(y_win, win).mean(),
+                           "cover log loss": losses(y_cov[ok], cover[ok]).mean()})
+    shape_rows.append({"model": f"Normal (sigma {s_win:.1f} win, {s_cov:.1f} cover; fitted on these games)",
+                       "win log loss": losses(y_win, normal["win"]).mean(),
+                       "cover log loss": losses(y_cov[ok], normal["cover"][ok]).mean()})
+    shape = pd.DataFrame(shape_rows).set_index("model")
+    vs = []
+    for target, y, mask in (("win", y_win, np.ones(len(y_win), bool)), ("cover", y_cov, ok)):
+        tau = min(pois, key=lambda t: losses(y[mask], pois[t][target][mask]).mean())
+        diff = losses(y[mask], pois[tau][target][mask]) - losses(y[mask], normal[target][mask])
+        boot = diff[np.random.default_rng(0).integers(0, len(diff), (N_BOOT, len(diff)))].mean(axis=1)
+        vs.append({"probability": target, "best tau": tau, "games": float(mask.sum()), "diff": diff.mean(),
+                   "ci_low": np.percentile(boot, 2.5), "ci_high": np.percentile(boot, 97.5)})
+    pmf = pois[vs[1]["best tau"]]["pmf"]
+    am, centre = np.abs(d["margin"].to_numpy()), mu.mean()
+
+    def normal_at(k):
+        return sum(norm.cdf(j + .5, centre, s_win) - norm.cdf(j - .5, centre, s_win) for j in (k, -k))
+
+    keys = pd.DataFrame({"observed": [np.mean(am == k) for k in range(1, 9)],
+                         "Poisson": [pmf[np.abs(m_axis) == k].sum() for k in range(1, 9)],
+                         "Normal": [normal_at(k) for k in range(1, 9)]},
+                        index=pd.Index(range(1, 9), name="|margin|"))
+    report += ["## Poisson score distribution instead of the Normal", "",
+               "The with-odds ensemble's backtest margin and total are turned into expected tries per team, and each "
+               f"team's points built from Poisson tries, {CONV_RATE:.0%} conversions, Poisson penalty goals "
+               f"({PEN_GOALS} a game) and field goals ({FIELD_GOALS}). tau adds a shared game effect for the negative "
+               "correlation between the sides. Win = P(margin > 0) without draws; cover = P(home beats the opening "
+               "line), pushes excluded.", "", md_table(shape), "",
+               "Best Poisson against the Normal (paired bootstrap; negative = Poisson better):", "",
+               md_table(pd.DataFrame(vs).set_index("probability")), "",
+               "How often the final margin lands on each value:", "", md_table(keys, "{:.3f}"), ""]
+    print(md_table(shape))
+    print(md_table(pd.DataFrame(vs).set_index("probability")))
+    print(md_table(keys, "{:.3f}"))
+    (EXPERIMENTS / "experiments_poisson.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_poisson.md")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
                                            "calibration", "weekly2", "blend", "shin",
                                            "disagreement", "pre_kickoff", "weather", "correlation",
-                                           "correlation_leads", "lgb_extras", "underdog"],
+                                           "correlation_leads", "lgb_extras", "underdog", "poisson"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -2175,4 +2513,5 @@ if __name__ == "__main__":
      "weather": weather_experiments, "correlation": correlation_audit,
      "correlation_leads": lambda: context2_experiments(CORRELATION_GROUPS, "46", "experiments_correlation_leads.md",
                                                        "Correlation audit leads"),
-     "lgb_extras": lgb_extras_experiments, "underdog": underdog_experiments}.get(args.only, main)()
+     "lgb_extras": lgb_extras_experiments, "underdog": underdog_experiments,
+     "poisson": poisson_experiments}.get(args.only, main)()

@@ -208,6 +208,8 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | Origin spine stars out on top of S2 (correlation audit lead) | ±0.0005, no effect (item 46) |
 | LightGBM without its eight extra features | backtest win −0.0027 (clear), but 2026 +0.0009 / +0.0002: didn't hold (item 47) |
 | Tipping the underdog when Elo, the opening price, the no-odds model or the margin disagree (rule or meta-model) | +0.0027 (worse), 64.3% vs 65.8% tips; the flips were right 23% of the time (item 48) |
+| Poisson player ratings (tries or points) and a multiplicative team rating, added or replacing RAPM / the team rating | win −0.0007 to +0.005, nothing clear; same information as RAPM (correlation 0.92) (item 49) |
+| Poisson score distribution instead of the Normal for win and line-cover probabilities | win ±0.000; line cover −0.0017, not clear (item 49) |
 
 ---
 
@@ -698,6 +700,37 @@ A meta-model given all of them (logistic regression, each season predicted from 
 - The usual caveats: the backtest used the final named 17, which can come out after the opening price (item 40), and it informed many decisions.
 
 **Adopted on the website only** (`value-underdog` branch, `docs/PLAN_WEB.md`): `/odds` labels a paper bet on the team the model tips to lose as a value underdog, with the tip unchanged, and the Season tab gives those bets their own record. The model and pipeline don't change. Paper trading over 2027 is the real test.
+
+### 49. Poisson ratings and a Poisson score model ❌
+
+Every rating in the pipeline (RAPM, the team margin and total ratings) is a Gaussian ridge regression on margins or totals; none used a Poisson model. `python src/experiments.py --only poisson` → `reports/experiments/experiments_poisson.md`. Penalties chosen on 2021–22 only, then the full pipeline backtest.
+
+**Does the data fit a Poisson?** Tries do; points don't.
+- **Points** per team (mean 22.7, variance 147) are 6.5 times overdispersed (5.1 after team strength), because they come in lumps of 4, 2 and 1.
+- **Tries** per team (mean 3.97, variance 4.57): after a team attack/defence model per season the Pearson dispersion is **0.91**, close to Poisson.
+- **Players:** tries per game for players with 30+ games, given their own rate and minutes, match Poisson almost exactly (0 / 1 / 2 / 3+ tries: 32,241 / 6,890 / 1,279 / 231 observed against 32,264 / 6,867 / 1,264 / 246 expected).
+- **But the two teams aren't independent:** home and away tries are negatively correlated (−0.31, −0.21 after team strength), presumably because one side's possession is the other's defence. The textbook independent double-Poisson (Maher / Dixon–Coles) assumes otherwise.
+
+**Poisson ratings as features** (full pipeline backtest, main ensembles, change against current; no comparison was statistically clear):
+
+| Variant | Win log loss (with odds / no odds) | Margin MAE | Total MAE |
+|---|---|---|---|
+| Player Poisson rating on tries, added (+ expected tries to totals) | +0.0000 / +0.0004 | +0.01 / −0.01 | −0.00 / −0.03 |
+| Player Poisson rating on tries, replacing RAPM total and defence | +0.0039 / +0.0044 | +0.05 / +0.05 | +0.00 / −0.00 |
+| Player quasi-Poisson rating on points, added | +0.0004 / +0.0009 | +0.02 / +0.01 | −0.01 / −0.04 |
+| Player quasi-Poisson rating on points, replacing RAPM | +0.0037 / +0.0050 | +0.08 / +0.08 | +0.00 / −0.01 |
+| Team multiplicative (Maher) rating, added | +0.0002 / −0.0007 | +0.02 / −0.02 | +0.03 / +0.03 |
+| Team multiplicative rating, replacing the team margin rating | +0.0002 / −0.0005 | +0.01 / −0.02 | −0.00 / −0.00 |
+| Player Poisson rating on tries, LightGBM only | −0.0001 / −0.0003 | +0.00 / −0.01 | −0.01 / −0.01 |
+
+The Poisson player rating is the same information as RAPM (correlation 0.92 on the backtest games) and is slightly weaker alone (correlation with margin 0.33 against 0.35). The team Poisson rating correlates 0.99 with the team margin rating. A multiplicative model and an additive one barely differ when scores are this high.
+
+**Poisson score distribution instead of the Normal.** The win probability and line-cover probability come from a Normal around the predicted margin. Instead, the with-odds ensemble's margin and total were turned into expected tries per team, and the full score distribution was built from Poisson tries, 75% conversions, penalty goals and field goals (optionally with a shared game-level effect for the negative correlation):
+- **Win probability: no change** (+0.0000, interval −0.0010 to +0.0010). For P(margin > 0) the shape doesn't matter.
+- **Margin shape:** it gets the clustering on 2, 4, 6 and 8 right (|margin| = 2: 9.7% observed, 8.0% Poisson, 4.9% Normal; |margin| = 3: 0.2% observed, 0.9% Poisson, 4.8% Normal). It misses one-point margins badly (5.1% observed, 1.0% Poisson): golden-point and late field goals in close games, which a count model doesn't know about.
+- **Line cover against the opening line** (631 games): log loss −0.0017 against the Normal (interval −0.0039 to +0.0004), hit rate 53.9%. A near miss, even though the Normal's spread was fitted on these games and the Poisson's wasn't. Too small to adopt, and the line had no edge anyway (items 7, 14).
+
+**Not adopted.** Tries are close to Poisson, but RAPM and the team rating already pull the same information from margins, and the scoring rule only matters for line markets. If line betting is ever revisited, the discrete score model (with a field-goal term for one-point margins) is the one to use.
 
 ---
 
