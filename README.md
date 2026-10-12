@@ -117,7 +117,7 @@ tests/          Python tests and shared fixtures
 - [docs/MODELLING_PLAN.md](docs/MODELLING_PLAN.md): targets, validation and models
 - [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md): every change tried, adopted or rejected, with its backtest result
 - [docs/PLAN_WEB.md](docs/PLAN_WEB.md): the weekly automation and the website, and what's built
-- [docs/TRIAL.md](docs/TRIAL.md): the website trial, 2026's Rounds 1–3 replayed on a separate copy of the site
+- [docs/TRIAL.md](docs/TRIAL.md): the website trial, 2026's Rounds 1 and 2 replayed over two real weeks on a separate copy of the site
 - [docs/DESIGN_BRIEF.md](docs/DESIGN_BRIEF.md) and [DESIGN.md](DESIGN.md): the website's design
 
 ## Limitations

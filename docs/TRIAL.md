@@ -26,12 +26,15 @@ between opening and closing (2026 only has the sheet's two).
 
 ## Setting it up (steps only you can do)
 
-Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minutes.
+Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minutes. Everything the
+trial needs is on `main`, so start any time; finish by the Monday before Round 1 opens (Monday 19
+October for the 20 October start) so friends have the invite before the round's predictions appear.
 
 1. **Supabase project.** supabase.com → *New project* in the same organisation (the free plan allows
    two): name `nrl-predictor-trial`, region Sydney, a new database password (letters, digits and
    `! - _ . ~` only). Note its **ref** (in the dashboard's address).
-2. **Migrations.** In a separate PowerShell window at the repo root:
+2. **Migrations** (all of them, including `20261019000000_star_names.sql`, which the star players' names
+   need). In a separate PowerShell window at the repo root:
    ```
    npx supabase link --project-ref <trial ref>
    npx supabase db push
@@ -64,12 +67,33 @@ Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minu
 
    Then in the trial Supabase project: Authentication → URL Configuration → Site URL
    `https://nrl-predictor-trial.vercel.app`, and the same with `/**` in the redirect URLs.
+   Open the address: you should see the trial banner and, before Round 1 opens, "No round to tip".
 7. **The first tipper (you).** `.venv/Scripts/python pipeline/trial.py invite` prints a code; open
    `https://nrl-predictor-trial.vercel.app/join/<code>`, sign in with Google and pick a name. Then
    `.venv/Scripts/python pipeline/trial.py admin "<that name>"`, and invite friends from the trial's
-   `/tipping/admin` page.
+   `/tipping/admin` page. While the Google OAuth app is in "Testing", only Gmail addresses added as
+   test users (Google Cloud → OAuth consent screen → Audience) can sign in: add each friend there first,
+   or publish the app.
 8. **The hourly job** runs from `main` once the secret is in (`.github/workflows/trial.yml`, at :35
    past each hour). Run it once by hand from the Actions tab to check it's green.
+9. **Check Round 1 opened** (Tuesday after 7:35pm Sydney, the first hourly run after 6:15pm): the
+   home page and `/tipping` show Round 1, and a match page shows "What drove this" with any star
+   players out named under it.
+
+## What to ask testers to try
+
+- Join with the invite link and sign in with Google; pick a name, a favourite team and an auto-tip.
+- Tip Round 1 before Thursday's game, change a tip, and enter a margin for the margin game.
+- Leave a game untipped on purpose and check the auto-tip filled it at kickoff.
+- Check you can't see anyone else's tips before a game starts, and can after.
+- After each result (10am or 4pm the next day), check the round's scores and `/tipping/ladder`.
+- Open a few match pages: what drove the prediction (and the star players out), team lists, the
+  price before kickoff, Elo, head to head; and the value underdog flag on the round page.
+- Tell us anything confusing or broken, on phone and computer.
+
+
+Write down what testers report: after the trial, it goes into PLAN_WEB.md (step 12b) as what to fix
+before 2027.
 
 ## After the trial
 
