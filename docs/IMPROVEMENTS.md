@@ -207,6 +207,7 @@ Tested (experiment 5): averaging in logit space, stacking learned on earlier sea
 | RAPM-based stars out, re-tested on top of S2 (correlation audit lead) | win −0.001, margin −0.03 to −0.05: too small to adopt (item 46) |
 | Origin spine stars out on top of S2 (correlation audit lead) | ±0.0005, no effect (item 46) |
 | LightGBM without its eight extra features | backtest win −0.0027 (clear), but 2026 +0.0009 / +0.0002: didn't hold (item 47) |
+| Tipping the underdog when Elo, the opening price, the no-odds model or the margin disagree (rule or meta-model) | +0.0027 (worse), 64.3% vs 65.8% tips; the flips were right 23% of the time (item 48) |
 
 ---
 
@@ -666,6 +667,37 @@ LightGBM's compact set is every linear-model feature plus eight extras (`LGB_COM
 - **`is_final` is dead weight**, unused by the trees.
 
 **Adopted (12 October 2026):** `diff_rapm_attack` and `is_final` dropped from `LGB_COMPACT_EXTRA`, as a simplification with a reason behind it rather than a tuned gain: it points the right way on the backtest and on 2026. Pooled backtest: with-odds ensemble win 0.6220 → **0.6209**, margin 13.49 → 13.48, accuracy 64.3% → 65.3%; no-odds ensemble 0.6266 → 0.6255; totals unchanged. **Still to do:** refreeze the 2027 models (`python src/train.py --freeze --force`) before Round 1. `models/2027/` was frozen on 10 October with the old set; each bundle carries its own feature list, so until the refreeze the live pipeline keeps predicting with the old set. Version `2027.1` can stay, since nothing has been predicted with it. The 2026 final test (`reports/final_2026.md`) stays as it was run, with the old set.
+
+### 48. Upsets: tip the underdog ❌; bet it at value 🔶 (website label)
+
+The question: when Elo, the opening price, the no-odds model or the predicted margin backs the other team, especially in a near coin-flip, should the tip go to the underdog? `python src/experiments.py --only underdog` → `reports/experiments/experiments_underdog.md`, on the saved out-of-sample predictions, 2023–2026 (844 games, no refitting).
+
+**Tipping the underdog: no.** The main model is calibrated, so a flip takes the side that wins less often unless the model is wrong in a pattern that can be spotted. It isn't. When a signal disagrees, the model's favourite wins *more* often than the model said:
+
+| Signal against the tip | Games | Model's chance | Favourite won |
+|---|---|---|---|
+| Elo | 81 | 55% | 65% |
+| Opening price | 74 | 54% | 61% |
+| No-odds model | 46 | 53% | 63% |
+| Predicted margin | 46 | 52% | 57% |
+| Two or more of Elo, opening, no-odds | 51 | 53% | 59% |
+
+A meta-model given all of them (logistic regression, each season predicted from the others) was worse: log loss +0.0027 (95% interval −0.0026 to +0.0080), tips 64.3% against 65.8%, and its 22 flips were right 23% of the time. Same story as stacking and recalibration (items 12, 23, 39). Disagreement is mostly the model being ahead of the market on team news (item 41). **Not adopted.**
+
+**Betting the underdog at value: yes, worth tracking.** A tip and a bet are different questions: a bet pays when chance × price − 1 is positive, so a team the model expects to lose can still be value. Head-to-head bets at the opening price with at least a 2% edge (as `betting.py` and paper trading), split by side:
+
+| | Bets | Model's chance | Mean price | Won | ROI (95% interval) |
+|---|---|---|---|---|---|
+| 2023–25, on the tip | 260 | 69% | 1.63 | 70% | +12% (+2% to +21%) |
+| 2023–25, value underdog | 118 | 39% | 3.17 | 44% | **+31%** (+2% to +58%) |
+| 2026, on the tip | 55 | 63% | 1.80 | 69% | +25% (+2% to +48%) |
+| 2026, value underdog | 52 | 36% | 3.57 | 38% | **+29%** (−16% to +78%) |
+
+- About a third of the bets and about half the profit are value underdogs (36 of 67 units in 2023–25, 15 of 29 in 2026). The intervals are wide on prices over 3, and 2026's includes a loss.
+- Near coin-flips aren't special: what matters is the gap between the model and the price, not how close the game is, and the predicted margin adds nothing (it's the same chance in points).
+- The usual caveats: the backtest used the final named 17, which can come out after the opening price (item 40), and it informed many decisions.
+
+**Adopted on the website only** (`value-underdog` branch, `docs/PLAN_WEB.md`): `/odds` labels a paper bet on the team the model tips to lose as a value underdog, with the tip unchanged, and the Season tab gives those bets their own record. The model and pipeline don't change. Paper trading over 2027 is the real test.
 
 ---
 

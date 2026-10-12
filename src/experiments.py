@@ -44,6 +44,8 @@ Usage:
                                                   models' backtest errors; needs features.py --experimental)
     python src/experiments.py --only lgb_extras -> reports/experiments/experiments_lgb_extras.md (each of
                                                   LightGBM's eight extra features dropped, or kept alone)
+    python src/experiments.py --only underdog -> reports/experiments/experiments_underdog.md (tipping the
+                                                  underdog when signals disagree, against betting it at value)
 """
 
 import argparse
@@ -2055,13 +2057,106 @@ def main():
     print("wrote reports/experiments/experiments.md")
 
 
+# ---------------------------------------------------------------- 48. upsets: tip or bet the underdog
+
+def underdog_experiments():
+    """Item 48: should the tip go to the underdog when Elo, the opening price, the no-odds model or the
+    predicted margin disagree with the main model? And is the underdog worth betting when its price is
+    value although the model still expects it to lose? Saved out-of-sample predictions only (no refitting)."""
+    warnings.filterwarnings("ignore")
+    final = REPORTS / "predictions_2026.csv"
+    d = pd.concat([pd.read_csv(REPORTS / "backtest_predictions.csv")]
+                  + ([pd.read_csv(final)] if final.exists() else [])).set_index("match_id")
+    d = d[d["home_win"].notna() & (d["margin"] != 0)]  # draws out, as everywhere
+    mm = config.MAIN_MODEL
+    p = d[f"with_odds|{mm}|home_win"]
+    fav_home = p >= 0.5
+    fav = lambda x: x.where(fav_home, 1 - x)  # a home-side chance turned into the tipped team's
+    f = pd.DataFrame({"season": d["season"], "fav_p": fav(p), "won": fav(d["home_win"]), "elo": fav(d["elo_prob"]),
+                      "opening": fav(d["p_open"]), "no_odds": fav(d[f"no_odds|{mm}|home_win"]),
+                      "margin": d[f"with_odds|{mm}|margin"].where(fav_home, -d[f"with_odds|{mm}|margin"])}).dropna()
+    report = ["# Upsets: tip the underdog, or bet it? (item 48)", "",
+              f"The main with-odds model ({mm}) on every out-of-sample game {f['season'].min()}-{f['season'].max()} "
+              f"({len(f)} games with an opening price, draws out): each season predicted by models built on earlier "
+              "seasons only. The favourite is the model's tip.", ""]
+
+    # 1. When a signal backs the other team, does the model's favourite win less often than it said?
+    against = {"Elo backs the other team": f["elo"] < 0.5,
+               "opening price backs the other team": f["opening"] < 0.5,
+               "no-odds model backs the other team": f["no_odds"] < 0.5,
+               "predicted margin backs the other team": f["margin"] < 0}
+    against["two or more of Elo, opening, no-odds"] = sum(
+        against[k].astype(int) for k in list(against)[:3]) >= 2
+    against["all games"] = f["won"].notna()
+    signals = pd.DataFrame({k: {"games": int(m.sum()), "model's chance": f.loc[m, "fav_p"].mean(),
+                                "favourite won": f.loc[m, "won"].mean()} for k, m in against.items()}).T
+    report += ["## When signals disagree with the tip", "",
+               "If the model were overconfident in these games, the favourite would win less often than the "
+               "model's chance.", "", md_table(signals.rename_axis("signal")), ""]
+
+    # 2. A meta-model given every signal, fitted leave-one-season-out (generous: it also learns from later seasons).
+    lo = lambda x: logit(x.clip(1e-6, 1 - 1e-6).to_numpy())
+    X = np.column_stack([lo(f["fav_p"]), lo(f["elo"]), lo(f["opening"]), lo(f["no_odds"]), f["margin"] / 10])
+    y = f["won"].to_numpy()
+    meta = np.zeros(len(f))
+    for s in f["season"].unique():
+        test = (f["season"] == s).to_numpy()
+        meta[test] = LogisticRegression(C=1.0).fit(X[~test], y[~test]).predict_proba(X[test])[:, 1]
+    flips = meta < 0.5
+    ll = lambda q: -(y * np.log(q) + (1 - y) * np.log(1 - q))
+    diff = (ll(meta) - ll(f["fav_p"].to_numpy()))[np.random.default_rng(0).integers(0, len(f), (N_BOOT, len(f)))].mean(axis=1)
+    meta_table = pd.DataFrame({
+        "log loss": [models.score(y, f["fav_p"], "clf"), models.score(y, meta, "clf")],
+        "tips right": [y.mean(), np.mean((meta >= 0.5) == y)],
+        "tips flipped": [0, int(flips.sum())],
+        "flips right": [np.nan, (y[flips] == 0).mean() if flips.any() else np.nan]},
+        index=pd.Index(["main model", "meta-model"], name="tip"))
+    report += ["## A model that flips the tip", "",
+               "Logistic regression of 'the favourite won' on the log-odds of the model, Elo, the opening price "
+               "and the no-odds model, and the predicted margin; each season predicted from the others. It "
+               "flips the tip where it gives the favourite under 50%.", "", md_table(meta_table), "",
+               f"Meta-model minus main model, log loss: {diff.mean():+.4f} (95% interval "
+               f"{np.percentile(diff, 2.5):+.4f} to {np.percentile(diff, 97.5):+.4f}).", ""]
+
+    # 3. Value bets at the opening price (2% minimum edge, as betting.py and paper trading): on the tip or the underdog.
+    odds = load_odds()
+    g = d.join(pd.read_csv(PROCESSED / "matches.csv").set_index("match_id")[["start_time_utc"]])
+    ids = join_odds_to_matches(g.rename_axis("match_id").reset_index()[
+        ["match_id", "start_time_utc", "home_team", "away_team"]], odds)
+    g = g.join(ids.set_index("match_id")["odds_id"]).join(
+        odds.set_index("odds_id")[["home_odds_open", "away_odds_open"]], on="odds_id")
+    bets = pd.concat([
+        pd.DataFrame({"season": g["season"], "prob": p, "odds": g["home_odds_open"], "won": g["home_win"]}),
+        pd.DataFrame({"season": g["season"], "prob": 1 - p, "odds": g["away_odds_open"], "won": 1 - g["home_win"]})])
+    bets = bets[bets["odds"].notna() & (bets["prob"] * bets["odds"] - 1 > 0.02)]
+    bets["profit"] = np.where(bets["won"] == 1, bets["odds"] - 1, -1.0)
+    rows = {}
+    for period, b in [("2023-2025", bets[bets["season"] <= 2025]), ("2026", bets[bets["season"] == 2026])]:
+        for name, x in [("on the tip", b[b["prob"] >= 0.5]), ("value underdog (tipped to lose)", b[b["prob"] < 0.5])]:
+            if not len(x):
+                continue
+            pr = x["profit"].to_numpy()
+            bt = pr[np.random.default_rng(0).integers(0, len(pr), (N_BOOT, len(pr)))].mean(axis=1)
+            rows[f"{period}: {name}"] = {"bets": len(x), "model's chance": x["prob"].mean(),
+                                         "mean price": x["odds"].mean(), "won": x["won"].mean(), "ROI": pr.mean(),
+                                         "ROI ci_low": np.percentile(bt, 2.5), "ROI ci_high": np.percentile(bt, 97.5)}
+    value = pd.DataFrame(rows).T.rename_axis("bet on")
+    print(md_table(signals.rename_axis("signal"))); print(md_table(meta_table)); print(md_table(value))
+    report += ["## Betting the underdog at value", "",
+               "Flat 1-unit head-to-head bets at the opening price wherever the model's chance × price − 1 is over "
+               "2% (as betting.py and paper trading), split by whether the bet is on the model's tip or on the team "
+               "it tips to lose.", "", md_table(value), ""]
+    (EXPERIMENTS / "experiments_underdog.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_underdog.md")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
                                            "calibration", "weekly2", "blend", "shin",
                                            "disagreement", "pre_kickoff", "weather", "correlation",
-                                           "correlation_leads", "lgb_extras"],
+                                           "correlation_leads", "lgb_extras", "underdog"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -2080,4 +2175,4 @@ if __name__ == "__main__":
      "weather": weather_experiments, "correlation": correlation_audit,
      "correlation_leads": lambda: context2_experiments(CORRELATION_GROUPS, "46", "experiments_correlation_leads.md",
                                                        "Correlation audit leads"),
-     "lgb_extras": lgb_extras_experiments}.get(args.only, main)()
+     "lgb_extras": lgb_extras_experiments, "underdog": underdog_experiments}.get(args.only, main)()
