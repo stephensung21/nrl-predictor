@@ -70,6 +70,10 @@ const SEED = `
     ('wed', 3, 'with_odds', 'market', 'open_line', 4.5, -1.5, -0.1),
     ('wed', 3, 'with_odds', 'lineup', 'diff_rapm_total', -0.2, -2.3, -0.2),
     ('wed', 3, 'with_odds', 'calibration', '(calibration)', null, 0, 0.05);
+  insert into prediction_drivers (run_id, match_id, variant, driver_group, feature, value, margin_pts, win_logodds, players) values
+    ('wed', 3, 'with_odds', 'stars', 'diff_s2_stars_out_spine', -1, -1.1, -0.1, '[{"team": "Broncos", "name": "Reece Walsh"}]'),
+    ('wed', 3, 'with_odds', 'stars', 'diff_s2_stars_out_other', 1, 1.1, 0.1,
+     '[{"team": "Storm", "name": "Eli Katoa"}, {"team": "Storm", "name": "Harry Grant"}]');
 `;
 
 let db: PGlite;
@@ -223,7 +227,12 @@ describe("the site's data layer", () => {
     const d = (await matchDrivers(sql, "3"))!;
     expect(d.variant).toBe("with_odds");
     // The Wednesday refresh is the prediction of record, not Tuesday's; its two market inputs are summed.
-    expect(d.groups.map((g) => [g.group, g.points])).toEqual([["baseline", 2.8], ["lineup", -2.3], ["market", -6.5]]);
+    expect(d.groups.map((g) => [g.group, g.points])).toEqual([["baseline", 2.8], ["lineup", -2.3], ["market", -6.5], ["stars", 0]]);
+    // The stars behind both star-absence inputs, spine first; no other group names anyone.
+    expect(d.groups.find((g) => g.group === "stars")!.players).toEqual([
+      { team: "Broncos", name: "Reece Walsh" }, { team: "Storm", name: "Eli Katoa" }, { team: "Storm", name: "Harry Grant" },
+    ]);
+    expect(d.groups.filter((g) => g.players).length).toBe(1);
     expect(d.groups.reduce((s, g) => s + g.points, 0)).toBeCloseTo(-6, 12); // the recorded margin
     expect(await matchDrivers(sql, "1")).toBeNull(); // predicted before drivers were recorded
   });

@@ -160,8 +160,11 @@ export type MatchDetail = {
  * average edge) they add up to the prediction's margin. The win model's calibration row is left out. */
 export type Drivers = {
   variant: "with_odds" | "no_odds";
-  groups: { group: string; points: number }[];
+  groups: { group: string; points: number; players?: StarOut[] }[];
 };
+
+/** A missing star the star-absence driver counts (src/explain.py star_players). */
+export type StarOut = { team: TeamName; name: string };
 
 /** The bookies' head-to-head price for a game up to kickoff, oldest first. */
 export type OddsHistory = {
