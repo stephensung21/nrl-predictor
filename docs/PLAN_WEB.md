@@ -41,7 +41,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 
 | Step | Status | Where / notes |
 |---|---|---|
-| Pre-season model freeze | ✅ | `python src/train.py --freeze` → `models/2027/` (version `2027.1`, trained on 2021–2026). **Needs refreezing before Round 1:** item 47 (12 October 2026) dropped two LightGBM inputs, and the frozen models still use the old set. Rerun again if more 2026 data arrives. |
+| Pre-season model freeze | 🔶 | `python src/train.py --freeze` → `models/2027/` (version `2027.1`, trained on 2021–2026). **Needs refreezing before Round 1:** item 47 (12 October 2026) dropped two LightGBM inputs, and the frozen models still use the old set. Rerun again if more 2026 data arrives. |
 | Predict a round from current team lists | ✅ | `python src/predict.py --round N` (live) |
 | Validation before publishing | ✅ | `predict.validate`: missing inputs, probabilities, 17 named per team, duplicate teams; margin/probability disagreement is a warning |
 | Replay a past round as a test | ✅ | `predict.py --replay --season 2026 --round N`; reproduces the backtest exactly; slow test in `tests/test_predict.py` |
@@ -119,7 +119,7 @@ Each one is a single function that returns the real implementation once the back
 - **Live states the sample can't show:** live scores during games (§3.2 "Later") and the "Updated: Hughes out" refresh badge driven by real team-list changes (milestone 9).
 - **Odds history** on match pages (a chart of the market since opening, §3.3). It needs `odds_snapshots`.
 - **The r/nrl match thread link** on each match page (§3.6).
-- **What drove the prediction** on match pages (§7.1). Claude's match previews are shown (`web-live-extras` branch); none are written until `summaries.py` runs on a live round.
+- **What drove the prediction** on match pages (§7.1): a "What drove this" bar list on `/match/[id]`, in margin points, each bar naming the side it favours, read from the `record_drivers` view (live, filled from the first 2027 prediction; the pipeline side is built). Needs a read in `web/lib/data.ts`, a sample for the sample pages (generated from a replayed 2026 round with `explain.py`), and the design pass like the other panels. Claude's match previews are shown (`web-live-extras` branch); none are written until `summaries.py` runs on a live round with API credit.
 - **Post-mortems** of badly missed games on match pages (§7.2).
 - **Tip reminders** before each round's first game (email, §3.5 extras).
 - **Notifications and push** (§5 "Later").
@@ -247,7 +247,8 @@ Lessons from doing them:
 - Step 4c: the odds sheet's 403 on GitHub.
 - Step 11b: the Reddit API, once there's an app.
 - Step 13 when the 2027 draw is out, and step 14 in February.
-- §7.1 on the site: the "What drove this" panel on match pages, from `record_drivers`.
+- §7.1 on the site: the "What drove this" panel on match pages, from `record_drivers` (web branch; see "Still to add to the website").
+- Refreeze the 2027 models with item 47's LightGBM inputs (`python src/train.py --freeze --force`, version `2027.1` kept), on a backend branch: `models/2027/` still has `diff_rapm_attack` and `is_final`. Then replay a few 2026 rounds with them as a check. Repeat at step 13 if more 2026 data arrives.
 
 **Open questions**
 
@@ -255,7 +256,7 @@ Lessons from doing them:
 
 **The 2027 season**
 
-- **Step 13. The yearly routine** (note 5): the final 2026 data, the Perth Bears added, then freeze `2027.1`.
+- **Step 13. The yearly routine** (note 5): the final 2026 data, the Perth Bears added, then freeze `2027.1` (with item 47's LightGBM inputs; if the refreeze above is done first, refreeze again only if the data changed).
 - **Step 14. Dry run on the February trials** with friends tipping (milestone 11), then **launch for Round 1** (milestone 12).
 
 
