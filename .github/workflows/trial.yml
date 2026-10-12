@@ -1,4 +1,4 @@
-# The website trial (pipeline/trial.py): every hour, publish whatever of 2026's Rounds 1-3 should be
+# The website trial (pipeline/trial.py): every hour, publish whatever of 2026's Rounds 1-2 should be
 # visible by now to the trial's own Supabase project. Rounds open at 9am Sydney (22:00 UTC), final team
 # lists come an hour before kickoff and closing prices 30 minutes before, so :35 past the hour lands
 # them before the game starts, with room for GitHub's late starts.

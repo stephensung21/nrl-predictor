@@ -665,12 +665,13 @@ def team_total_ratings(odds, half_life=None, penalty=None):
     return pd.DataFrame({"odds_id": g["odds_id"], "team_total": pred})
 
 
-def star_features(matches, p, origin_by_player=None, return_sets=False, current=None):
+def star_features(matches, p, origin_by_player=None, return_sets=False, current=None, names=False):
     """Stats-based stars: per NRL team and match, how many stars are named, and how many of the team's
     usual players (named in USUAL_MIN of its last USUAL_WINDOW games) who are stars are missing.
     Ratings and thresholds come from games before the round; each round's games are added afterwards.
     With origin_by_player, also the Origin-based star absences (S1, S2; see above). With return_sets, also
-    returns {round start: (stats-based stars, Origin stars)} for checking who counts as a star."""
+    returns {round start: (stats-based stars, Origin stars)} for checking who counts as a star. With
+    names, also the player ids behind the S2 counts (s2_stars_out_spine_ids, s2_stars_out_other_ids)."""
     origin_by_player = origin_by_player or {}
     origin_window = pd.Timedelta(days=ORIGIN_REP_DAYS)
     snapshots = {}
@@ -711,6 +712,9 @@ def star_features(matches, p, origin_by_player=None, return_sets=False, current=
                        "origin_stars_out_other": len((missing - spine) & origin_stars),
                        "s2_stars_out_spine": len(spine & (origin_stars | stars)),
                        "s2_stars_out_other": len((missing - spine) & (origin_stars | stars))}
+                if names:
+                    row["s2_stars_out_spine_ids"] = tuple(sorted(spine & (origin_stars | stars)))
+                    row["s2_stars_out_other_ids"] = tuple(sorted((missing - spine) & (origin_stars | stars)))
                 out.append(row)
         for g in block.itertuples():  # only now does the round join the history
             for team in (g.home_team, g.away_team):
@@ -726,6 +730,26 @@ def star_features(matches, p, origin_by_player=None, return_sets=False, current=
                     v[3] = g.start_time_utc
     result = pd.DataFrame(out).set_index(["match_id", "team"])
     return (result, snapshots) if return_sets else result
+
+
+def stars_out(matches, players, origin, pre_kickoff=None):
+    """Who the S2 star-absence features count, for the match page's "Star players out": one row per
+    missing star (match_id, team, player_id, player_name, spine), from the same inputs and rule as
+    player_team_features, so the names always agree with the counts the models saw."""
+    matches = matches.assign(start_time_utc=pd.to_datetime(matches["start_time_utc"], utc=True))
+    p = players.merge(matches[["match_id", "start_time_utc"]], on="match_id", how="left")
+    p["pos_group"] = p["position"].map(POS_GROUP).fillna("bench")
+    current = None
+    if pre_kickoff is not None:
+        current = named_from_list(pre_kickoff)[["match_id", "team", "player_id"]]
+        current = current[current["match_id"].isin(set(matches["match_id"]))]
+    s = star_features(matches, p, origin_squads(origin), current=current, names=True)
+    rows = [{"match_id": mid, "team": team, "player_id": pid, "spine": kind == "spine"}
+            for (mid, team), r in s.iterrows() for kind in ("spine", "other")
+            for pid in r[f"s2_stars_out_{kind}_ids"]]
+    out = pd.DataFrame(rows, columns=["match_id", "team", "player_id", "spine"])
+    latest = p.sort_values("start_time_utc").drop_duplicates("player_id", keep="last")
+    return out.merge(latest[["player_id", "player_name"]], on="player_id", how="left")
 
 
 def key_position_absences(matches, p):

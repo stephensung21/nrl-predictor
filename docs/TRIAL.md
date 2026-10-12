@@ -1,34 +1,40 @@
 # The website trial
 
-2026's Rounds 1–3 played again over nine days on a separate copy of the site, so friends can try
-tipping, lockout, auto-tips, the margin game, the ladder, what drove each prediction, the price
-history and the value underdog flag before 2027. The real site, database and comp are untouched.
+2026's Rounds 1 and 2 played again over two real weeks on a separate copy of the site, so friends can try
+tipping, lockout, auto-tips, the margin game, the ladder, what drove each prediction (with the star
+players out), the price history and the value underdog flag before 2027. The real site, database and
+comp are untouched.
 
-How it works: `pipeline/trial.py` (its docstring has the details). Each round opens at 9am Sydney with
-the real predictions, its eight games kick off over the next two days at noon, 3pm, 6pm and 9pm, and
-results appear at the next scheduled refresh after full time (10am or 4pm Sydney), as they will
-in-season. Round 2 opens three days after Round 1, Round 3 three days after that.
+How it works: `pipeline/trial.py` (its docstring has the details). Each round opens on a Tuesday at
+07:15 UTC (6:15pm Sydney in daylight saving), when the real predict job runs, with the real predictions
+and Tuesday's team lists. Its games are played that week on their real weekdays at their real Sydney
+kickoff times, and each result appears at the next scheduled refresh after full time (10am or 4pm
+Sydney in daylight saving), as it will in-season. Round 1's Las Vegas games were played the Sunday
+before the rest of the round; in the trial they're on its Sunday, except the 3:30pm one, which moves
+to the Saturday so it doesn't clash with the 4:05pm game.
 
-| Day | What happens |
+| When (from a Tuesday start, e.g. 20 October) | What happens |
 |---|---|
-| 0, 9am | Round 1 open: predictions, team lists, margin game, opening prices |
-| 1–2 | Round 1's games; results the same afternoon or next morning |
-| 3, 9am | Round 2 open |
-| 4–5 | Round 2's games |
-| 6, 9am | Round 3 open |
-| 7–8 | Round 3's games; the last results on day 9 at 10am |
+| Tue 20 Oct, 6:15pm | Round 1 open: predictions, what drove them, Tuesday's team lists, margin game, opening prices |
+| Thu 22 – Sun 25 Oct | Round 1's games (Thu 8pm, Fri 6pm and 8pm, Sat 3:30pm, 5:30pm and 7:35pm, Sun 1:15pm and 4:05pm); final team lists an hour before each |
+| Tue 27 Oct, 6:15pm | Round 2 open |
+| Thu 29 Oct – Sun 1 Nov | Round 2's games; the last result on Mon 2 Nov at 10am |
 
-Not in the trial: Claude's previews and recaps (no API credit yet), live scores and email reminders
-(not built), and Betr's prices between opening and closing (2026 only has the sheet's two).
+Not in the trial: Claude's previews and recaps (no API credit yet), email reminders (not built), the
+"updated since Tuesday" reasons (not built, and each trial game is predicted once), and Betr's prices
+between opening and closing (2026 only has the sheet's two).
 
 ## Setting it up (steps only you can do)
 
-Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minutes.
+Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minutes. Everything the
+trial needs is on `main`, so start any time; finish by the Monday before Round 1 opens (Monday 19
+October for the 20 October start) so friends have the invite before the round's predictions appear.
 
 1. **Supabase project.** supabase.com → *New project* in the same organisation (the free plan allows
    two): name `nrl-predictor-trial`, region Sydney, a new database password (letters, digits and
    `! - _ . ~` only). Note its **ref** (in the dashboard's address).
-2. **Migrations.** In a separate PowerShell window at the repo root:
+2. **Migrations** (all of them, including `20261019000000_star_names.sql`, which the star players' names
+   need). In a separate PowerShell window at the repo root:
    ```
    npx supabase link --project-ref <trial ref>
    npx supabase db push
@@ -40,13 +46,14 @@ Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minu
    - In the SQL editor: `alter role analyst login password '<another password>';` then the
      **transaction pooler** string (port 6543) with user `analyst.<trial ref>`: that's the trial site's
      `SITE_DATABASE_URL`.
-4. **Load the history and start** (from your computer): pick the first day, then
+4. **Load the history and start** (from your computer): the records are set up for Tuesday 20 October.
+   For a different start, pick a Tuesday and run `reschedule` first:
    ```
-   .venv/Scripts/python pipeline/trial.py reschedule --start 2026-10-16
+   .venv/Scripts/python pipeline/trial.py reschedule --start 2026-10-27   # only if not 20 October
    .venv/Scripts/python pipeline/trial.py publish --history
    ```
    `reschedule` only moves the timetable (no models run); commit `data/pipeline/trial/` afterwards so
-   the hourly job uses the same dates. Before the first day, publish writes only the history.
+   the hourly job uses the same dates. Before Round 1 opens, publish writes only the history.
 5. **Google sign-in.** Trial project → Authentication → Sign In / Providers → Google: paste the
    *same* client id and secret as the real project, then in Google Cloud (APIs & Services →
    Credentials → the OAuth client) add the trial project's callback URL
@@ -60,12 +67,33 @@ Like the real project's set-up (PLAN_WEB.md), with `-trial` names. About 30 minu
 
    Then in the trial Supabase project: Authentication → URL Configuration → Site URL
    `https://nrl-predictor-trial.vercel.app`, and the same with `/**` in the redirect URLs.
+   Open the address: you should see the trial banner and, before Round 1 opens, "No round to tip".
 7. **The first tipper (you).** `.venv/Scripts/python pipeline/trial.py invite` prints a code; open
    `https://nrl-predictor-trial.vercel.app/join/<code>`, sign in with Google and pick a name. Then
    `.venv/Scripts/python pipeline/trial.py admin "<that name>"`, and invite friends from the trial's
-   `/tipping/admin` page.
+   `/tipping/admin` page. While the Google OAuth app is in "Testing", only Gmail addresses added as
+   test users (Google Cloud → OAuth consent screen → Audience) can sign in: add each friend there first,
+   or publish the app.
 8. **The hourly job** runs from `main` once the secret is in (`.github/workflows/trial.yml`, at :35
    past each hour). Run it once by hand from the Actions tab to check it's green.
+9. **Check Round 1 opened** (Tuesday after 7:35pm Sydney, the first hourly run after 6:15pm): the
+   home page and `/tipping` show Round 1, and a match page shows "What drove this" with any star
+   players out named under it.
+
+## What to ask testers to try
+
+- Join with the invite link and sign in with Google; pick a name, a favourite team and an auto-tip.
+- Tip Round 1 before Thursday's game, change a tip, and enter a margin for the margin game.
+- Leave a game untipped on purpose and check the auto-tip filled it at kickoff.
+- Check you can't see anyone else's tips before a game starts, and can after.
+- After each result (10am or 4pm the next day), check the round's scores and `/tipping/ladder`.
+- Open a few match pages: what drove the prediction (and the star players out), team lists, the
+  price before kickoff, Elo, head to head; and the value underdog flag on the round page.
+- Tell us anything confusing or broken, on phone and computer.
+
+
+Write down what testers report: after the trial, it goes into PLAN_WEB.md (step 12b) as what to fix
+before 2027.
 
 ## After the trial
 

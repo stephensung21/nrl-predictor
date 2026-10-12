@@ -11,6 +11,8 @@ calculation (differences, percentages, which side a driver favours), so the text
 To add a data source: write a section function, add it to SECTIONS and bump BRIEF_VERSION.
 """
 
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -21,7 +23,7 @@ from features import NOT_NAMED
 from ingest import PROCESSED, load_odds
 import predict
 
-BRIEF_VERSION = "1"
+BRIEF_VERSION = "2"  # 2: the star-absence driver names its players
 SYDNEY = "Australia/Sydney"
 TOP_DRIVERS = 3  # features listed under each driver group
 
@@ -79,11 +81,23 @@ def drivers_section(ctx):
         feats = feats.groupby("label", as_index=False)["margin_pts"].sum()             .sort_values("margin_pts", key=abs, ascending=False).head(TOP_DRIVERS)
         parts = [{"input": f.label, "points": abs(r1(f.margin_pts)), "favours": favours(f.margin_pts, g)}
                  for f in feats.itertuples() if abs(f.margin_pts) >= 0.05]
+        stars = star_names(d[d["group"] == grp.group])
         out.append({"driver": grp.label, "points": abs(r1(grp.margin_pts)), "favours": favours(grp.margin_pts, g),
-                    **({"parts": parts} if len(parts) > 1 else {})})
+                    **({"parts": parts} if len(parts) > 1 else {}), **({"players_out": stars} if stars else {})})
     return {"unit": "points of predicted margin",
             "home_side_average_edge_pts": r1(base),
             "drivers": out}
+
+
+def star_names(rows):
+    """The missing stars behind a group's star-absence rows (explain.star_players), by team."""
+    if "players" not in rows.columns:
+        return {}
+    out = {}
+    for cell in rows["players"].dropna():
+        for p in json.loads(cell):
+            out.setdefault(p["team"], []).append(p["name"])
+    return out
 
 
 def market_section(ctx):

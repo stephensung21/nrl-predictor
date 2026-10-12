@@ -37,7 +37,7 @@ import pandas as pd
 
 import config
 from elo import load_params
-from features import PRE_KICKOFF_FILE, build_features, load_inputs, named_from_list
+from features import PRE_KICKOFF_FILE, build_features, load_inputs, named_from_list, stars_out
 from ingest import add_scraped_results, join_odds_to_matches
 from models import predict_models
 from reports import md_table
@@ -272,6 +272,10 @@ def predict_fixtures(fixtures, lists, bundle, keep_weather, neutral=(), live_odd
     feats = build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds),
                            reserve=reserve, pre_kickoff=lists[lists["match_id"].isin(ready["match_id"])])
     rows = feats[feats["match_id"].isin(ready["match_id"])].set_index("match_id").loc[ready["match_id"]]
+    # Who the star-absence inputs count, for "Star players out" (explain.star_players); not a model input.
+    stars = stars_out(matches, players, origin, pre_kickoff=lists[lists["match_id"].isin(ready["match_id"])])
+    rows = rows.assign(stars_out=[stars[stars["match_id"] == mid][["team", "player_name", "spine"]]
+                                  .to_dict("records") for mid in rows.index])
 
     has_odds = rows["open_logit"].notna()
     preds = predict_models(bundle, rows, variants=["no_odds"])
