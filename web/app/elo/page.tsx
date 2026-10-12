@@ -62,7 +62,7 @@ export default async function EloPage({ searchParams }: Props) {
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-line text-[12px] font-semibold text-ink-3">
-                <th scope="col" className="w-9 py-2 font-semibold">
+                <th scope="col" className="w-12 py-2 pl-3 font-semibold">
                   <span className="sr-only">Rank</span>
                 </th>
                 <th scope="col" className="py-2 font-semibold">
@@ -74,7 +74,7 @@ export default async function EloPage({ searchParams }: Props) {
                 <th scope="col" className="w-14 py-2 text-right font-semibold">
                   {current ? "Week" : "Season"}
                 </th>
-                <th scope="col" className="w-14 py-2 text-right font-semibold">
+                <th scope="col" className="w-[4.25rem] py-2 pr-3 text-right font-semibold">
                   Start
                 </th>
               </tr>
@@ -88,7 +88,7 @@ export default async function EloPage({ searchParams }: Props) {
                 const bye = current && r.bye;
                 return (
                   <tr key={r.team} className={`border-b border-line-soft ${picked ? "bg-raised" : ""}`}>
-                    <td className="py-2 font-score text-[16px] font-semibold text-ink-3">{r.rank}</td>
+                    <td className="py-2 pl-3 font-score text-[16px] font-semibold text-ink-3">{r.rank}</td>
                     <td className="py-2">
                       <Link
                         href={`/elo?season=${season}&team=${encodeURIComponent(r.team)}#team`}
@@ -117,7 +117,7 @@ export default async function EloPage({ searchParams }: Props) {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 text-right font-score text-[14px] text-ink-3">{Math.round(r.start)}</td>
+                    <td className="py-2 pr-3 text-right font-score text-[14px] text-ink-3">{Math.round(r.start)}</td>
                   </tr>
                 );
               })}
