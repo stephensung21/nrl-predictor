@@ -96,12 +96,9 @@ export function AppNav() {
     <>
       <header className="sticky top-0 z-40 border-b border-line-soft bg-ground/92 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-[34rem] items-center justify-between px-4 md:max-w-5xl">
-          <Link href="/" className="flex items-baseline gap-2.5" aria-label="rugbyleague-tipper, home">
+          <Link href="/" className="flex items-baseline" aria-label="rugbyleague-tipper, home">
             <span className="font-display text-[23px] leading-none font-bold tracking-[0.01em] text-ink">
               rugbyleague<span className="text-lime-fg">-</span>tipper
-            </span>
-            <span className="rounded-sm border border-line px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-[0.06em] text-ink-3 uppercase">
-              personal project
             </span>
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
