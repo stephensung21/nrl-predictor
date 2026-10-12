@@ -39,7 +39,7 @@ import psycopg
 import requests
 from psycopg.types.json import Jsonb
 
-from common import ROOT, Records, load_matches
+from common import ROOT, Records, load_matches, results_and_odds
 import config
 import fetch_odds
 import grade as gradelib
@@ -155,8 +155,7 @@ def team_list_rows(season, match_ids):
 
 
 def elo_rows(odds, published, seasons=None):
-    """Each team's rating before and after every game in the odds sheet (src/elo.py, its tuned
-    settings), for the given seasons (all when None). nrl.com's round where the scraper has the game,
+    """Each team's rating before and after every game in `odds` (src/elo.py, its tuned settings), for the given seasons (all when None). nrl.com's round where the scraper has the game,
     otherwise the week of the season; the match id where the game is among those `published`."""
     e = odds.join(run_elo(odds, **load_params(odds), after=True))
     e = e[e["home_score"].notna() & e["away_score"].notna()]
@@ -284,7 +283,7 @@ def graded_rows(graded):
 
 def live_tables(season, records):
     """Every table's rows for the season's live records, in the order they must be written."""
-    odds = load_odds()
+    odds = results_and_odds(records)  # the sheet's rows plus this season's results it doesn't have yet
     matches = match_rows([season], records.fixtures(), odds)
     runs = records.runs()
     preds = records.predictions()

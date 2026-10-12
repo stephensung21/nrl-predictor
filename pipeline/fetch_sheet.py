@@ -1,7 +1,9 @@
 """
 Download aussportsbetting.com's NRL results-and-odds sheet (PLAN_WEB.md step 4, note 4): the source of
-the closing prices grading uses and the history for retraining. Run at the start of the live results
-job; a failed download is a warning and the copy already in the checkout is used.
+the closing prices grading uses and the history for retraining. Run by hand once a year, after the
+grand final, as part of the yearly routine (note 5), then commit it. The weekly jobs don't download it
+(decided October 2026): the site refuses GitHub's runners with a 403, and nothing weekly needs it, since
+Elo takes the season's results from the scrape and grading uses Betr's live prices until then.
 
 The new file replaces data/nrl_betting_odds.xlsx only if it passes the checks: it parses with
 ingest.load_odds (which stops on an unknown team name), it has at least as many games as the current
@@ -9,8 +11,7 @@ copy, and its newest game is no older. Prices whose implied probabilities add to
 sheet had some bad line and total prices) are counted and reported, not changed.
 
 The site's terms: "These data sets are intended for personal use only. Do not make the data available
-elsewhere." So the workflow never commits the downloaded sheet; it lives only in the run's checkout.
-Please link to https://www.aussportsbetting.com/data/ when referring the data to others.
+elsewhere." The sheet is kept in the repo by choice (PLAN_WEB.md, open questions). Please link to https://www.aussportsbetting.com/data/ when referring the data to others.
 
 Usage:
     python pipeline/fetch_sheet.py

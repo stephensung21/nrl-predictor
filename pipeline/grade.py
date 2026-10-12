@@ -26,24 +26,37 @@ def prediction_of_record(predictions):
     return before.sort_values(["match_id", "created_at"]).groupby("match_id").tail(1).reset_index(drop=True)
 
 
-def market_and_elo(matches, odds=None):
-    """Opening and closing prices and the pre-match Elo probability for each match, from the odds sheet
-    (the same Elo the model's features use: every result in the sheet back to 2009)."""
+def market_and_elo(matches, odds=None, live=None):
+    """Opening and closing prices and the pre-match Elo probability for each match (the same Elo the
+    model's features use: every result back to 2009). Prices come from the odds sheet; a game the sheet
+    has no prices for takes Betr's live ones (`live`, fetch_odds.market_for_fixtures: the first snapshot
+    and the last before kickoff), marked in `market_source`. The sheet is downloaded once a year, so in
+    season the live prices are the market; regrade after the download to score against the sheet's."""
     odds = load_odds() if odds is None else odds
     odds = odds.join(run_elo(odds, **load_params(odds)))
     joined = join_odds_to_matches(matches[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
-    return joined[["match_id", "odds_id"]].merge(odds[["odds_id"] + MARKET_COLS], on="odds_id", how="left")
+    out = joined[["match_id", "odds_id"]].merge(odds[["odds_id"] + MARKET_COLS], on="odds_id", how="left")
+    out["market_source"] = np.where(out["p_open"].notna() | out["p_close"].notna(), "sheet", None)
+    if live is not None and len(live):
+        fill = (out["market_source"].isna() & out["match_id"].isin(live.index)).to_numpy()
+        ids = out.loc[fill, "match_id"]
+        for col in live.columns:
+            out.loc[fill, col] = live.loc[ids, col].to_numpy()
+        out.loc[fill, "close_ok"] = out.loc[fill, "p_close"].notna()
+        out.loc[fill, "market_source"] = "Betr live"
+    return out
 
 
-def grade(record, matches=None, odds=None):
-    """One graded row per finished game that has a prediction of record."""
+def grade(record, matches=None, odds=None, live=None):
+    """One graded row per finished game that has a prediction of record. `live`: Betr's prices for
+    games the odds sheet doesn't price (market_and_elo)."""
     matches = load_matches() if matches is None else matches
     done = matches[matches["home_score"].notna() & matches["away_score"].notna()]
     g = record.drop(columns=["season", "round", "home_score", "away_score", "home_team", "away_team"],
                     errors="ignore").merge(
         done[["match_id", "season", "round", "round_title", "home_team", "away_team", "home_score", "away_score"]],
         on="match_id")
-    g = g.merge(market_and_elo(g, odds), on="match_id", how="left")
+    g = g.merge(market_and_elo(g, odds, live), on="match_id", how="left")
     g["margin_actual"] = g["home_score"] - g["away_score"]
     g["total_actual"] = g["home_score"] + g["away_score"]
     g["tip"] = np.where(g["home_win_prob"] >= 0.5, g["home_team"], g["away_team"])
@@ -90,11 +103,19 @@ def by_round(g):
     return pd.DataFrame(rows)
 
 
+def market_note(g):
+    """Says which games' market prices are Betr's live ones rather than the odds sheet's."""
+    n = int((g.get("market_source") == "Betr live").sum()) if "market_source" in g else 0
+    return (f" The market's prices for {n} of the {len(g)} games are Betr's from The Odds API (opening: the "
+            "first price fetched; closing: the last fetched before kickoff, which can be a few hours early), "
+            "until the odds sheet is downloaded after the grand final.") if n else ""
+
+
 def season_report(g, season, mode):
     lines = [f"# {season} season record" + (" (replay)" if mode == "replay" else ""), "",
              f"{len(g)} games graded, each on its prediction of record (the latest made before kickoff). "
              "Tips count a draw for both teams; accuracy and log loss treat a draw as a home loss, as the "
-             "backtest does. Market closing is scored on games with reliable closing odds only.", "",
+             "backtest does. Market closing is scored on games with reliable closing odds only." + market_note(g), "",
              "## Season so far", "", md_table(metrics(g)), "",
              "## By round", "", md_table(by_round(g).set_index("round")), ""]
     return "\n".join(lines)

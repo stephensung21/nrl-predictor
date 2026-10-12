@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 import config  # noqa: E402,F401  (the model code, imported here once for every pipeline module)
-from ingest import PROCESSED  # noqa: E402
+from ingest import PROCESSED, add_scraped_results, load_odds  # noqa: E402
 
 RECORDS = ROOT / "data" / "pipeline"
 FIXTURE_COLS = ["match_id", "season", "round", "round_title", "is_final", "start_time_utc", "venue", "venue_city",
@@ -32,6 +32,15 @@ DRIVER_COLS = ["run_id", "match_id", "variant", "group", "feature", "value", "ma
 
 def load_matches():
     return pd.read_csv(PROCESSED / "matches.csv", low_memory=False)
+
+
+def results_and_odds(records=None):
+    """The odds sheet plus the finished games it doesn't have yet (ingest.add_scraped_results), for Elo
+    and the team rating: the sheet is downloaded only once a year. Neutral venues for the added games
+    come from the fixtures the predict job saw (the draw's rule)."""
+    fx = records.fixtures() if records is not None else pd.DataFrame()
+    neutral = set(fx.loc[fx["neutral"].fillna(False).astype(bool), "match_id"]) if len(fx) else set()
+    return add_scraped_results(load_odds(), load_matches(), neutral)
 
 
 class Records:

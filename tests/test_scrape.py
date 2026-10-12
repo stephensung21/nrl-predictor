@@ -126,7 +126,6 @@ def live_results_run(monkeypatch, tmp_path, fetch_season):
     for name in ("fetch_origin", "build_tables", "build_origin_table"):
         monkeypatch.setattr(scrape, name, lambda *a, **k: None)
     monkeypatch.setattr(run.fetch_odds, "api_key", lambda: None)
-    monkeypatch.setattr(run.fetch_sheet, "update", lambda: {"status": "skipped in tests"})
     graded = []
     monkeypatch.setattr(run, "grade_season", lambda *a: graded.append(True) or pd.DataFrame())
     records = Records(2027, replay=False, root=tmp_path)

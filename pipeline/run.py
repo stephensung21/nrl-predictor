@@ -46,13 +46,12 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from common import Records, load_matches
+from common import Records, load_matches, results_and_odds
 import config
 import brief as brieflib
 import draw as drawlib
 import explain
 import fetch_odds
-import fetch_sheet
 import fetch_weather
 import grade as gradelib
 import edges
@@ -217,11 +216,6 @@ def results_job(season, now, replay, records, run):
     problems = []
     if not replay:
         import scrape
-        try:
-            run["odds_sheet"] = fetch_sheet.update()
-        except Exception as ex:  # the copy in the checkout is still used
-            run["odds_sheet"] = {"status": "failed", "error": f"{type(ex).__name__}: {ex}"}
-            run.setdefault("warnings", []).append(f"odds sheet download failed: {run['odds_sheet']['error']}")
         # Only games not already cached are fetched. If nrl.com fails, what did come is still built and
         # graded, then the job fails so the alert goes out: a missing game is never silent.
         for fetch in (scrape.fetch_season, scrape.fetch_origin):
@@ -252,7 +246,9 @@ def grade_season(season, now, replay, records, run):
     record = record[record["match_id"].isin(finished["match_id"])]
     if record.empty:
         raise NothingToDo("no finished games with a prediction of record")
-    graded = gradelib.grade(record, finished)
+    odds = results_and_odds(records)  # Elo needs this season's results before the sheet has them
+    live = None if replay else fetch_odds.market_for_fixtures(finished, fetch_odds.game_prices(records.odds_snapshots()))
+    graded = gradelib.grade(record, finished, odds, live)
     records.write_graded(graded)
     (records.dir / "season.md").write_text(gradelib.season_report(graded, season, "replay" if replay else "live"),
                                            encoding="utf-8")

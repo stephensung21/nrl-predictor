@@ -59,6 +59,10 @@ CITY_STATE = {
     "Canberra": "ACT", "Melbourne": "VIC", "Perth": "WA", "Darwin": "NT", "Las Vegas": "USA",
 }
 
+STATE_TZ = {"NSW": "Australia/Sydney", "ACT": "Australia/Sydney", "VIC": "Australia/Melbourne",
+            "QLD": "Australia/Brisbane", "WA": "Australia/Perth", "NT": "Australia/Darwin",
+            "NZ": "Pacific/Auckland", "USA": "America/Los_Angeles"}
+
 BOOKMAKER_CHANGES = [("2018-04-02", "Pinnacle"), ("2024-04-28", "bet365")]  # before date -> bookmaker
 
 
@@ -167,6 +171,47 @@ def add_venue_flags(o, min_games=2):
     notes_neutral = o["notes"].str.contains("Neutral venue|Every match this round|Played at", case=False)
     o["neutral"] = ~o["home_at_ground"].astype(bool) | notes_neutral
     return o
+
+
+def add_scraped_results(odds, matches, neutral=()):
+    """The odds sheet plus finished scraped games it doesn't have yet, as rows with a result and no prices.
+
+    Elo and the team rating run over the sheet's results, and the sheet is downloaded only once a year,
+    after the grand final (PLAN_WEB.md step 4c). Without this, a season's results would never reach
+    them until then. `neutral` is the match ids at a neutral venue (the draw's rule,
+    pipeline/draw.neutral_games); other added games count as at the home team's ground. A finished game
+    scored 0-0 is left out with a warning: it's how nrl.com records some games it got wrong, and the
+    sheet isn't there yet to correct it (features.repair_scraped_games). Every scraped game since 2020
+    is in the sheet, so this adds nothing for past seasons.
+    """
+    done = matches[matches["home_score"].notna() & matches["away_score"].notna()]
+    joined = join_odds_to_matches(done, odds)
+    new = done[joined["odds_id"].isna().to_numpy()]
+    nil = new[(new["home_score"] == 0) & (new["away_score"] == 0)]
+    for r in nil.itertuples():
+        print(f"  warning: {r.home_team} v {r.away_team} ({r.start_time_utc}) recorded 0-0 by nrl.com; "
+              "left out of Elo and the team rating")
+    new = new.drop(nil.index)
+    if new.empty:
+        return odds
+    # The sheet dates each game at the venue's local time (Las Vegas games are a day earlier than in Sydney).
+    utc = pd.to_datetime(new["start_time_utc"], utc=True)
+    city = new["venue_city"].fillna("").str.split(",").str[0].str.strip()
+    zone = city.map(CITY_STATE).map(STATE_TZ).fillna("Australia/Sydney")
+    kick = pd.Series([t.tz_convert(z).tz_localize(None) for t, z in zip(utc, zone)], index=new.index)
+    at_neutral = new["match_id"].isin(set(neutral)).to_numpy()
+    extra = pd.DataFrame({
+        "date": kick.dt.normalize().to_numpy(), "kickoff_local": kick.dt.strftime("%H:%M:%S").to_numpy(),
+        "home_team": new["home_team"].to_numpy(), "away_team": new["away_team"].to_numpy(),
+        "venue": new["venue"].to_numpy(), "home_score": new["home_score"].astype(float).to_numpy(),
+        "away_score": new["away_score"].astype(float).to_numpy(), "season": new["season"].astype(int).to_numpy(),
+        "is_final": new["is_final"].astype(bool).to_numpy(), "extra_time": False, "notes": "",
+        "bookmaker": "BlueBet", "close_ok": False, "data_issue": False,
+        "home_at_ground": ~at_neutral, "away_at_ground": False, "neutral": at_neutral,
+    }).sort_values(["date", "kickoff_local"])
+    extra["odds_id"] = np.arange(len(extra)) + odds["odds_id"].max() + 1
+    out = pd.concat([odds, extra.reindex(columns=odds.columns)], ignore_index=True)
+    return out.sort_values(["date", "kickoff_local"], kind="stable").reset_index(drop=True)
 
 
 def join_odds_to_matches(matches, odds):

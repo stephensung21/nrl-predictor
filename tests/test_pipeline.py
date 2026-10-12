@@ -135,6 +135,75 @@ def test_grading_the_final_test_reproduces_its_report():
                     assert got.loc[mine, c] == pytest.approx(want[c], abs=5e-5), (mine, c)
 
 
+# ---------------------------------------------------------------- results the odds sheet doesn't have yet
+
+def sheet_without_2026():
+    from ingest import add_scraped_results, load_odds
+    odds = load_odds()
+    m26 = load_matches().query("season == 2026")
+    rebuilt = add_scraped_results(odds[odds["season"] < 2026].copy(), load_matches(), draw.neutral_games(m26))
+    return odds, rebuilt, m26
+
+
+def by_match(odds, games):
+    from elo import load_params, run_elo
+    from features import team_ratings
+    from ingest import join_odds_to_matches
+    o = odds.join(run_elo(odds, **load_params(odds), after=True))
+    o = o.merge(team_ratings(odds)[["odds_id", "team_margin"]], on="odds_id", how="left")
+    j = join_odds_to_matches(games[["match_id", "start_time_utc", "home_team", "away_team"]], o)
+    return j[["match_id", "odds_id"]].merge(o, on="odds_id").set_index("match_id").sort_index()
+
+
+def test_scraped_results_change_nothing_while_the_sheet_has_every_game():
+    from ingest import add_scraped_results, load_odds
+    odds = load_odds()
+    assert add_scraped_results(odds, load_matches()) is odds
+
+
+def test_scraped_results_stand_in_for_a_season_the_sheet_doesnt_have_yet():
+    """With 2026 taken out of the odds sheet, the scraped results (neutral venues from the draw) give
+    every 2026 game the same date, venue flags, Elo and team rating as the sheet does."""
+    odds, rebuilt, m26 = sheet_without_2026()
+    a, b = by_match(odds, m26), by_match(rebuilt, m26)
+    assert len(a) == len(b) == len(m26)
+    assert (a["date"] == b["date"]).all()
+    for c in ["season", "home_score", "away_score", "neutral", "is_final"]:
+        assert (a[c].astype(float) == b[c].astype(float)).all(), c
+    for c in ["elo_home", "elo_away", "elo_prob", "elo_home_after", "elo_away_after", "team_margin"]:
+        assert np.allclose(a[c], b[c], atol=1e-9, equal_nan=True), c
+
+
+def test_a_0_0_scraped_result_is_left_out():
+    from ingest import add_scraped_results, load_odds
+    odds = load_odds()
+    m = load_matches().query("season == 2026").head(2).copy()
+    m["start_time_utc"] = ["2027-03-06T09:00:00Z", "2027-03-07T06:00:00Z"]
+    m["season"], m["home_score"], m["away_score"] = 2027, [0, 24], [0, 12]
+    out = add_scraped_results(odds, m)
+    added = out[out["season"] == 2027]
+    assert list(zip(added["home_score"], added["away_score"])) == [(24, 12)]
+    assert added["p_open"].isna().all() and not added["close_ok"].any()
+
+
+def test_grading_takes_betr_s_prices_for_games_the_sheet_doesnt_price():
+    odds, rebuilt, m26 = sheet_without_2026()
+    games = m26.head(3)
+    live = pd.DataFrame({"p_open": [0.6, 0.4], "open_line": [-4.5, 2.5], "open_total": [44.5, 40.5],
+                         "p_close": [0.65, np.nan], "close_line": [-6.5, np.nan], "close_total": [43.5, np.nan]},
+                        index=pd.Index(games["match_id"].iloc[:2], name="match_id"))
+    got = grade.market_and_elo(games, rebuilt, live).set_index("match_id")
+    first, second, third = games["match_id"]
+    assert got.loc[first, ["p_open", "p_close", "close_line"]].tolist() == [0.6, 0.65, -6.5]
+    assert got.loc[first, "close_ok"] and not got.loc[second, "close_ok"]
+    assert got.loc[[first, second], "market_source"].eq("Betr live").all()
+    assert pd.isna(got.loc[third, "market_source"]) and pd.isna(got.loc[third, "p_open"])
+    assert got["elo_prob"].notna().all()
+    with_sheet = grade.market_and_elo(games, odds, live).set_index("match_id")
+    assert with_sheet["market_source"].eq("sheet").all()  # the sheet's prices come first
+    assert "Betr's from The Odds API" in grade.market_note(got.assign(market_source=got["market_source"]))
+
+
 # ---------------------------------------------------------------- the jobs, replayed
 
 @pytest.mark.slow

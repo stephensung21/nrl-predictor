@@ -91,6 +91,18 @@ def test_fixtures_are_matched_either_way_round():
     assert (live.loc[1, "open_line"], live.loc[1, "open_total"]) == (6.5, 44.5)
 
 
+def test_closing_prices_for_fixtures_are_turned_round_too():
+    snaps = pd.concat([snapshot("2027-03-01T23:15:00+00:00", 1.5, 2.6, -6.5, 44.5),
+                       snapshot("2027-03-04T05:15:00+00:00", 1.4, 2.9, -8.5, 42.5)])
+    prices = fetch_odds.game_prices(snaps)
+    fixtures = pd.DataFrame({"match_id": [1], "start_time_utc": ["2027-03-05T09:00:00Z"],
+                             "home_team": ["Broncos"], "away_team": ["Storm"]})
+    m = fetch_odds.market_for_fixtures(fixtures, prices).loc[1]
+    assert m["p_open"] == pytest.approx(1 - prices.loc[0, "p_open"])
+    assert m["p_close"] == pytest.approx(1 - prices.loc[0, "p_close"])
+    assert (m["open_line"], m["close_line"], m["close_total"]) == (6.5, 8.5, 42.5)
+
+
 @pytest.fixture
 def records(tmp_path, monkeypatch):
     monkeypatch.setattr(fetch_odds, "RAW", tmp_path / "raw")
