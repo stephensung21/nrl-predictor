@@ -35,7 +35,7 @@ export const TEAMS: Record<TeamName, Team> = {
   Knights: { name: "Knights", code: "NEW", primary: "#24519e", secondary: "#ee3524", ink: "#ffffff", bar: "#ee4a3a", lightBar: "#d2281a" },
   Cowboys: { name: "Cowboys", code: "NQL", primary: "#1f4a80", secondary: "#ffc425", bar: "#f0b92a", lightBar: "#1f4a80" },
   Eels: { name: "Eels", code: "PAR", primary: "#0a6cb0", secondary: "#ffd200", bar: "#f5cc1a", lightBar: "#0a6cb0" },
-  Panthers: { name: "Panthers", code: "PEN", primary: "#2b2d30", secondary: "#e8414a", bar: "#f07ab4", lightBar: "#2b2d30" },
+  Panthers: { name: "Panthers", code: "PEN", primary: "#f07ab4", secondary: "#2b2d30", bar: "#f07ab4", lightBar: "#e0418f" },
   Rabbitohs: { name: "Rabbitohs", code: "SOU", primary: "#14713f", secondary: "#e0262f", ink: "#ffffff", bar: "#2a9a5c", lightBar: "#14713f" },
   Dragons: { name: "Dragons", code: "SGI", primary: "#e2231a", secondary: "#ffffff", bar: "#ec4038", lightBar: "#d21f26" },
   Roosters: { name: "Roosters", code: "SYD", primary: "#22457f", secondary: "#e31e26", ink: "#ffffff", bar: "#5a83c8", lightBar: "#22457f" },
