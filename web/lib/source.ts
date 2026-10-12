@@ -3,11 +3,12 @@
 // Server code only.
 
 import {
-  currentRound, eloSeason, eloTeamView, matchDetail, modelRecord, oddsRounds, roundData, seasonBets, seasonGames, summary,
-  upcomingEdges,
+  currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, modelRecord, oddsRounds, roundData,
+  seasonBets, seasonGames, summary, upcomingEdges,
 } from "./data";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
+import { buildRecord, type SeasonRecord } from "./model-record";
 import { ODDS_ROUNDS, SEASON_BETS, SEASON_GAMES } from "./sample-odds";
 import type { TeamName } from "./teams";
 import type { Edge, EloSeason, EloTeamView, MatchDetail, ModelRecord, OddsRound, RoundData, SeasonBet, SeasonGame } from "./types";
@@ -148,4 +149,14 @@ export async function liveTipRound(now: Date): Promise<RoundData | null | undefi
   const home = await liveHome(now);
   if (!home) return undefined;
   return home.kind === "round" ? home.round : null;
+}
+
+/** The Model's record over the latest graded season, for /model: null before any game is graded,
+ * undefined when there's no database (the page uses the sample). */
+export async function liveModelRecord(): Promise<{ season: number; record: SeasonRecord } | null | undefined> {
+  const sql = siteDb();
+  if (!sql) return undefined;
+  const season = await latestGradedSeason(sql);
+  if (season == null) return null;
+  return { season, record: buildRecord(await gradedGames(sql, season)) };
 }

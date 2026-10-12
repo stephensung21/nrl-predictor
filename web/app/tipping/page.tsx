@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { PageMessage } from "@/components/page-message";
 import { SampleNote } from "@/components/sample-note";
 import { TipList, type TipGame } from "@/components/tip-list";
 import { ladderBefore, seasonAt, tipFor } from "@/lib/ladder";
@@ -22,7 +22,7 @@ export default async function TipsPage({ searchParams }: { searchParams: Promise
   if (tippingLive) {
     const round = await liveTipRound(new Date());
     // Live tips need live games: without the model's database (SITE_DATABASE_URL) there are none.
-    if (round === undefined) return <Message title="Tipping isn't connected yet." body="The site can't reach the Model's games right now." />;
+    if (round === undefined) return <PageMessage title="Tipping isn't connected yet." body="The site can't reach the Model's games right now." />;
     return <LiveTipsPage round={round} />;
   }
   const state: State = (await searchParams).state === "live" ? "live" : "open";
@@ -82,25 +82,6 @@ export default async function TipsPage({ searchParams }: { searchParams: Promise
   );
 }
 
-function Message({ title, body, action }: { title: string; body: string; action?: { href: string; label: string } }) {
-  return (
-    <main>
-      <section className="pt-12">
-        <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">{title}</h1>
-        <p className="mt-4 max-w-[38ch] text-[16px] leading-relaxed text-ink-2">{body}</p>
-        {action && (
-          <Link
-            href={action.href}
-            className="mt-6 inline-flex items-center justify-center rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink"
-          >
-            {action.label}
-          </Link>
-        )}
-      </section>
-    </main>
-  );
-}
-
 /** The live comp: the round in play from the model's data, the viewer's tips and the comp's from
  * Supabase as the viewer, so row-level security decides what they may see (others' tips only
  * after kickoff). */
@@ -109,12 +90,12 @@ async function LiveTipsPage({ round }: { round: RoundData | null }) {
   const { data: auth } = await sb.auth.getUser();
   const user = auth.user;
   if (!user) {
-    return <Message title="Sign in to tip." body="The comp is invite-only. Sign in with the Google account you joined with." action={{ href: "/sign-in", label: "Sign in" }} />;
+    return <PageMessage title="Sign in to tip." body="The comp is invite-only. Sign in with the Google account you joined with." action={{ href: "/sign-in", label: "Sign in" }} />;
   }
   const { data: me } = await sb.from("profiles").select("id").eq("id", user.id).maybeSingle();
-  if (!me) return <Message title="Signed in, but not in the comp." body="Joining needs an invite link from whoever runs the comp." />;
+  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Joining needs an invite link from whoever runs the comp." />;
   if (!round) {
-    return <Message title="No round to tip." body="It's the off-season. Tipping opens when the Model's first predictions for next season are out." />;
+    return <PageMessage title="No round to tip." body="It's the off-season. Tipping opens when the Model's first predictions for next season are out." />;
   }
 
   const view = buildRound({ data: round, now: new Date(), tips: [], tippers: [], ladderBefore: [] });

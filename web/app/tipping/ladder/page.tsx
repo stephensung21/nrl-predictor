@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { PageMessage } from "@/components/page-message";
 import { SampleNote } from "@/components/sample-note";
 import { ModelBadge, TeamBadge } from "@/components/team-badge";
-import { ladder as buildLadder, seasonAt, seasonStats, tagsFor, type LadderEntry, type SampleState } from "@/lib/ladder";
-import { ordinal } from "@/lib/round";
+import { compSeason, COMP_FIRST_SEASON, readLadder, type LadderView } from "@/lib/comp";
+import { seasonStats, tagsFor } from "@/lib/comp-stats";
+import { ladder as buildLadder, seasonAt, statGames, type LadderEntry, type SampleState } from "@/lib/ladder";
+import { ordinal, roundName } from "@/lib/round";
 import { YOU_ID } from "@/lib/sample";
+import { tippingLive } from "@/lib/supabase";
+import { serverClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = { title: "Ladder · rugbyleague-tipper" };
 
@@ -15,50 +20,102 @@ const STATES: { state: SampleState; label: string }[] = [
 ];
 
 export default async function LadderPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  if (tippingLive) return <LiveLadder />;
   // Same sample week as the home and tips pages, so the numbers agree everywhere.
   const q = (await searchParams).state;
   const state: SampleState = q === "recap" || q === "live" ? q : "open";
   const rounds = seasonAt(state);
   const latest = rounds.at(-1)!;
   const ladder = buildLadder(rounds);
-  const tags = tagsFor(ladder);
-  const stats = seasonStats(rounds);
-  const you = ladder.find((e) => e.tipper.id === YOU_ID)!;
-  const model = ladder.find((e) => e.tipper.isModel)!;
-  const leader = ladder.find((e) => !e.tipper.isModel)!;
+  const view: LadderView = {
+    season: 2026,
+    ladder,
+    tags: tagsFor(ladder),
+    stats: seasonStats(ladder, statGames(rounds)),
+    latest: { round: latest.round, title: roundName(latest.round), partial: !!latest.partial, games: latest.games.length },
+  };
 
   return (
     <main>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-4 pb-3">
-        <h1 className="font-display text-[26px] leading-none font-bold uppercase">Ladder</h1>
-        <p className="text-[13px] font-medium text-ink-3">
-          {latest.partial
-            ? `Round ${latest.round} in progress · ${latest.games.length} game${latest.games.length === 1 ? "" : "s"} in`
-            : `After Round ${latest.round}`}
-        </p>
-      </div>
-
-      <LadderTable ladder={ladder} tags={tags} round={latest.round} />
-
-      <p className="mt-3 text-[14px] leading-snug text-ink-2">
-        You&rsquo;re {you.tied ? "equal " : ""}
-        {ordinal(you.position!)}
-        {leader.tipper.id === you.tipper.id ? ", top of the ladder" : `, ${gap(leader.points - you.points)} off the lead`}
-        {model.points > you.points
-          ? ` and ${gap(model.points - you.points)} behind the Model.`
-          : model.points < you.points
-            ? ` and ${gap(you.points - model.points)} ahead of the Model.`
-            : " and level with the Model."}
-      </p>
-
-      <RoundGrid ladder={ladder} />
-      <Stats stats={stats} />
-
+      <Ladder view={view} youId={YOU_ID} />
       <SampleNote states={STATES.map((s) => ({ href: `/tipping/ladder?state=${s.state}`, label: s.label, on: s.state === state }))}>
         Real 2026 games, results and the Model&rsquo;s tips for rounds 1&ndash;{latest.round}. The other tippers, their tips, margins
         and forgotten tips are made up.
       </SampleNote>
     </main>
+  );
+}
+
+/** The live comp's ladder, read as the signed-in tipper (lib/comp.ts). */
+async function LiveLadder() {
+  const sb = (await serverClient())!;
+  const { data: auth } = await sb.auth.getUser();
+  const user = auth.user;
+  if (!user) {
+    return (
+      <PageMessage
+        title="Sign in to see the ladder."
+        body="The comp is invite-only. Sign in with the Google account you joined with."
+        action={{ href: "/sign-in", label: "Sign in" }}
+      />
+    );
+  }
+  const { data: me } = await sb.from("profiles").select("id").eq("id", user.id).maybeSingle();
+  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Joining needs an invite link from whoever runs the comp." />;
+  const season = await compSeason(sb);
+  const view = season == null ? null : await readLadder(sb, season);
+  if (!view) {
+    return (
+      <PageMessage
+        title="The ladder starts with Round 1."
+        body={`Points start counting once the first game of the ${season ?? COMP_FIRST_SEASON} season is decided.`}
+      />
+    );
+  }
+  return (
+    <main>
+      <Ladder view={view} youId={user.id} />
+    </main>
+  );
+}
+
+function Ladder({ view, youId }: { view: LadderView; youId: string }) {
+  const { ladder, tags, stats, latest } = view;
+  const you = ladder.find((e) => e.tipper.id === youId);
+  const model = ladder.find((e) => e.tipper.isModel);
+  const leader = ladder.find((e) => !e.tipper.isModel);
+
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-4 pb-3">
+        <h1 className="font-display text-[26px] leading-none font-bold uppercase">Ladder</h1>
+        <p className="text-[13px] font-medium text-ink-3">
+          {latest.partial
+            ? `${latest.title} in progress · ${latest.games} game${latest.games === 1 ? "" : "s"} in`
+            : `After ${latest.title}`}
+        </p>
+      </div>
+
+      <LadderTable ladder={ladder} tags={tags} round={latest.round} youId={youId} />
+
+      {you && leader && (
+        <p className="mt-3 text-[14px] leading-snug text-ink-2">
+          You&rsquo;re {you.tied ? "equal " : ""}
+          {ordinal(you.position!)}
+          {leader.tipper.id === you.tipper.id ? ", top of the ladder" : `, ${gap(leader.points - you.points)} off the lead`}
+          {!model
+            ? "."
+            : model.points > you.points
+              ? ` and ${gap(model.points - you.points)} behind the Model.`
+              : model.points < you.points
+                ? ` and ${gap(you.points - model.points)} ahead of the Model.`
+                : " and level with the Model."}
+        </p>
+      )}
+
+      <RoundGrid ladder={ladder} youId={youId} />
+      <Stats stats={stats} />
+    </>
   );
 }
 
@@ -82,7 +139,7 @@ function Movement({ n }: { n: number | null }) {
   );
 }
 
-function LadderTable({ ladder, tags, round }: { ladder: LadderEntry[]; tags: Map<string, string>; round: number }) {
+function LadderTable({ ladder, tags, round, youId }: { ladder: LadderEntry[]; tags: Map<string, string>; round: number; youId: string }) {
   return (
     <table className="w-full border-collapse text-left">
       <caption className="sr-only">Tipping ladder, round {round}</caption>
@@ -104,7 +161,7 @@ function LadderTable({ ladder, tags, round }: { ladder: LadderEntry[]; tags: Map
       </thead>
       <tbody>
         {ladder.map((e) => {
-          const you = e.tipper.id === YOU_ID;
+          const you = e.tipper.id === youId;
           const tag = tags.get(e.tipper.id);
           return (
             <tr
@@ -149,7 +206,7 @@ function LadderTable({ ladder, tags, round }: { ladder: LadderEntry[]; tags: Map
   );
 }
 
-function RoundGrid({ ladder }: { ladder: LadderEntry[] }) {
+function RoundGrid({ ladder, youId }: { ladder: LadderEntry[]; youId: string }) {
   const rounds = ladder[0].rounds.map((r) => r.round);
   const humans = ladder.filter((e) => !e.tipper.isModel);
   // A round's best score among the tippers (the Model isn't competing for it).
@@ -181,7 +238,7 @@ function RoundGrid({ ladder }: { ladder: LadderEntry[] }) {
           </thead>
           <tbody>
             {ladder.map((e) => {
-              const you = e.tipper.id === YOU_ID;
+              const you = e.tipper.id === youId;
               const rowBg = you ? "bg-lime-wash" : e.tipper.isModel ? "bg-raised-2" : "";
               return (
                 <tr key={e.tipper.id} className={`border-b border-line-soft ${rowBg}`}>
@@ -229,7 +286,7 @@ function RoundGrid({ ladder }: { ladder: LadderEntry[] }) {
   );
 }
 
-function Stats({ stats }: { stats: ReturnType<typeof seasonStats> }) {
+function Stats({ stats }: { stats: LadderView["stats"] }) {
   const streak = stats.longestStreak[0];
   const upset = stats.biggestUpset;
   const rows: [string, React.ReactNode][] = [

@@ -3,6 +3,7 @@
 // function takes the connection, so the tests can run them against a throwaway Postgres.
 
 import type { Sql } from "./db";
+import type { GradedGame } from "./model-record";
 import type {
   Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsRound, Prediction,
   RoundData, SeasonBet, SeasonGame, Weather,
@@ -225,6 +226,26 @@ export async function upcomingEdges(sql: Sql, at?: Date): Promise<Edge[]> {
     marketHomeProb: num(r.market_home_prob), homeEdge: num(r.home_edge), awayEdge: num(r.away_edge),
     bet: r.bet_side ? { side: r.bet_side, team: r.bet_team as TeamName, edge: r.bet_edge } : null,
   }));
+}
+
+/** A season's graded games in kickoff order, for /model's round-by-round record (lib/model-record.ts):
+ * the prediction of record, the opening market and Elo, each a home chance. */
+export async function gradedGames(sql: Sql, season: number): Promise<GradedGame[]> {
+  const rows = await sql`
+    select m.id, m.round, m.round_title, m.home_team, m.away_team, m.home_score, m.away_score, g.home_win_prob, g.p_open, g.elo_prob
+    from graded_games g join matches m on m.id = g.match_id
+    where m.season = ${season} and m.status = 'final'
+    order by m.kickoff, m.id`;
+  return rows.map((r) => ({
+    round: r.round, roundTitle: r.round_title, matchId: String(r.id), home: r.home_team as TeamName, away: r.away_team as TeamName,
+    homeScore: r.home_score, awayScore: r.away_score, modelHomeProb: r.home_win_prob, market: num(r.p_open), elo: num(r.elo_prob),
+  }));
+}
+
+/** The latest season with a graded game, or null before the first. */
+export async function latestGradedSeason(sql: Sql): Promise<number | null> {
+  const [r] = await sql`select max(m.season) as season from graded_games g join matches m on m.id = g.match_id`;
+  return r?.season ?? null;
 }
 
 /** The model's record for a season (`model_accuracy`), with the bookies' favourite on the same games. */

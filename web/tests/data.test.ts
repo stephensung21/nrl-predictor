@@ -10,9 +10,10 @@ import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  currentRound, eloSeason, eloTeamView, matchDetail, modelRecord, oddsRounds, roundData, seasonGames, summary,
-  upcomingEdges,
+  currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, modelRecord, oddsRounds, roundData,
+  seasonGames, summary, upcomingEdges,
 } from "../lib/data";
+import { buildRecord } from "../lib/model-record";
 import type { Sql } from "../lib/db";
 
 const migrationsDir = new URL("../../supabase/migrations/", import.meta.url);
@@ -130,6 +131,21 @@ describe("the site's data layer", () => {
     expect(games.map((g) => [g.round, g.homeWin])).toEqual([["Round 1", 1], ["Round 1", 0.5]]);
   });
 
+  it("builds /model's record from the graded games: a draw is right for everyone", async () => {
+    expect(await latestGradedSeason(sql)).toBe(2027);
+    const games = await gradedGames(sql, 2027);
+    expect(games.map((g) => [g.matchId, g.roundTitle, g.modelHomeProb, g.market, g.elo])).toEqual([
+      ["1", "Round 1", 0.7, 0.62, 0.58],
+      ["2", "Round 1", 0.55, 0.48, 0.51],
+    ]);
+    const r = buildRecord(games);
+    expect(r).toMatchObject({ lastRound: 1, games: 2, model: 2, market: 2, elo: 2 });
+    expect(r.perRound).toEqual([{ round: 1, label: "R1", games: 2, model: 2, market: 2, elo: 2, results: [true, true] }]);
+    // The draw: the Model picked the Eels at 55% and the bookies had the Panthers, so it counts as a best call.
+    expect(r.best.map((c) => [c.matchId, c.result, c.againstMarket])).toEqual([["2", "drew 18–18", true]]);
+    expect(r.worst).toEqual([]);
+  });
+
   it("reads Elo by round, finals as one point a week, and a team's swings", async () => {
     const s = (await eloSeason(sql, 2027))!;
     expect(s.rounds).toEqual(["R1", "F"]);
@@ -199,5 +215,12 @@ describe.skipIf(!process.env.TEST_SITE_DATABASE_URL)("against a published season
     expect((await oddsRounds(live, 2026)).length).toBeGreaterThan(25);
     expect((await seasonGames(live, 2026)).length).toBe(213);
     expect((await eloTeamView(live, "Storm")).swings.length).toBe(6);
+    // /model's record agrees with model_accuracy (and so with grade.metrics and the reports).
+    const totals = Object.fromEntries(
+      (await live`select source, tips from model_accuracy where season = 2026 and round is null`).map((x) => [x.source, x.tips]),
+    );
+    expect(buildRecord(await gradedGames(live, 2026))).toMatchObject({
+      games: 213, model: totals.model, market: totals.market_open, elo: totals.elo,
+    });
   });
 });
