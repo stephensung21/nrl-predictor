@@ -321,7 +321,7 @@ The wet-conditions flag (rain or a wet ground) is used by the total-points model
 
 - **The model stays in Python.** The weekly pipeline is plain, deterministic code (see PLAN.md §7.5). It writes its results to a database and never talks to the website directly.
 - **The database is the contract between the model and the website.** The pipeline writes matches, Elo, predictions and odds. The website reads them, and writes only tipping data.
-- **A personal project for a few friends.** The site says so plainly on every page (see §3.7). That keeps everything small: one invite-only tipping comp, no public sign-up, no moderation, and everything on free plans.
+- **A personal project for a few friends.** The footer on every page says what it is (see §3.7). That keeps everything small: one invite-only tipping comp, no public sign-up, no moderation, and everything on free plans.
 - **The tipping comp is the only part that needs accounts.** Everything else is read-only and can be heavily cached.
 - **Timing:** the 2026 season has just finished, so the off-season is the build window. Aim to have everything live for **pre-season trials in February 2027**, which gives a few weeks of real runs before Round 1.
 
@@ -661,7 +661,7 @@ Rule details to settle while building:
 
 ### 3.7 General
 
-- **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** and a "personal project" tag, and every page has a one-line footer: "Tipping comp and predictor for the boys. I'm not responsible if you lose money." Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
+- **Personal project, said plainly:** the header carries the name **rugbyleague-tipper** (the "personal project" tag beside it was removed on 12 October 2026), and every page has a one-line footer: "Tipping comp and predictor for the boys. I'm not responsible if you lose money." Use team names but not official NRL or club logos. Use plain coloured badges in team colours instead.
 - **Kept out of search engines:** `noindex` on every page and a `robots.txt` that blocks crawlers. Friends get the link directly.
 - **Phone first:** most tipping happens on a phone. Design every page for a narrow screen first.
 - **Dark by default, with a light mode** (see DESIGN.md, "Day Game"): team colours are lightened where needed to read on the dark background and use the real club colours by day.
@@ -743,7 +743,7 @@ The core model is done and beats Elo, so there's no Elo-only stage: publish the 
 | Who is the tipping comp for? | A few friends only: one invite-only comp, no public sign-up |
 | Budget | Free plans only (§1.6). No paid odds plan is needed. |
 | Name | **rugbyleague-tipper** for now, at `rugbyleague-tipper.vercel.app` |
-| How public | A personal project, said plainly on every page, and kept out of search engines (§3.7) |
+| How public | A personal project, said in every page's footer, and kept out of search engines (§3.7) |
 | Tipping rules | The official NRL Tipping rules (§3.5) |
 | Which model | With-odds ensemble for predictions and the "Model" tipper; no-odds ensemble for model vs market and as the fallback without odds |
 | Refitting | Frozen once before the season; features update weekly (weekly refitting tested worse) |
