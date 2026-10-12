@@ -22,17 +22,25 @@ T = lambda s: pd.Timestamp(s, tz="UTC")  # noqa: E731
 
 
 class FakeClient:
-    """Answers like client.beta.messages.create; `stop` sets the stop reason of every reply."""
+    """Answers like client.beta.messages.create; `stop` sets the stop reason of every reply, `replies`
+    the texts in turn (the last one repeats)."""
 
-    def __init__(self, stop="end_turn"):
-        self.calls, self.stop = [], stop
+    def __init__(self, stop="end_turn", replies=("A preview.",)):
+        self.calls, self.stop, self.replies = [], stop, list(replies)
         self.beta = SimpleNamespace(messages=SimpleNamespace(create=self.create))
 
     def create(self, **request):
         self.calls.append(request)
+        text = self.replies[min(len(self.calls), len(self.replies)) - 1]
         return SimpleNamespace(stop_reason=self.stop,
                                content=[SimpleNamespace(type="thinking", thinking=""),
-                                        SimpleNamespace(type="text", text=f"Text {len(self.calls)}.")])
+                                        SimpleNamespace(type="text", text=text)])
+
+
+def prompt_facts(request):
+    """The facts JSON at the end of a prompt."""
+    content = request["messages"][0]["content"]
+    return json.loads(content[content.index("\n{") + 1:])
 
 
 @pytest.fixture
@@ -66,10 +74,12 @@ def test_previews_are_written_once_per_coming_game(records):
     request = client.calls[0]
     assert request["model"] == "claude-opus-5-5" and request["fallbacks"] == "default"
     assert request["betas"] == ["server-side-fallback-2026-07-01"]
-    facts = json.loads(request["messages"][0]["content"].split("\n\n", 1)[1])
+    facts = prompt_facts(request)
     first = games.sort_values("start_time_utc").iloc[0]
-    assert facts["game"].startswith(first["home_team"]) and len(facts["last_meetings"]) <= 3
-    assert all(len(v) == 5 for v in facts["form_last_5"].values())
+    assert facts["game"]["home_team"] == first["home_team"] and len(facts["form"]["last_meetings"]) <= 3
+    assert all(len(v) == 5 for v in facts["form"]["last_5"].values())
+    # No brief was recorded with these predictions, so one is built from the prediction record.
+    assert set(facts) == {"game", "prediction", "market", "form"} and written[0]["brief_run_id"] is None
 
 
 def test_games_already_started_get_no_preview(records):
@@ -95,6 +105,33 @@ def test_a_recap_waits_for_the_whole_round(records):
     client = FakeClient()
     written = summaries.recap(rec, client, T("2026-05-12"))
     assert [(w["kind"], w["round"], w["match_id"]) for w in written] == [("round_recap", 10, None)]
-    facts = json.loads(client.calls[0]["messages"][0]["content"].split("\n\n", 1)[1])
+    facts = prompt_facts(client.calls[0])
     assert facts["model_tips_correct"] == f"{int(graded['tip_correct'].sum())}/3" and len(facts["games"]) == 3
     assert summaries.recap(rec, client, T("2026-05-13")) == []  # once per round
+
+
+def test_a_preview_with_invented_numbers_is_asked_for_again_then_dropped(records):
+    rec, games = records
+    before = pd.to_datetime(games["start_time_utc"], utc=True).min() - pd.Timedelta(days=1)
+    # 70% is in the first game's facts (the model's chance); 93% isn't in any game's.
+    client = FakeClient(replies=["They're 93% to win.", "They're 70% to win."])
+    written = summaries.previews(rec, client, before)
+    # The first game's retry is grounded; the other two games' aren't (70% isn't theirs): dropped.
+    assert [w["body"] for w in written] == ["They're 70% to win."] and len(client.calls) == 6
+    assert "93" in client.calls[1]["messages"][0]["content"]  # the retry says which number was wrong
+    assert summaries.previews(rec, FakeClient(replies=["They're 93% to win."]), before, rewrite=True) == []
+
+
+def test_a_preview_uses_the_brief_recorded_with_its_prediction(records):
+    rec, games = records
+    pred = rec.predictions().iloc[0]
+    brief = {"brief_version": "1", "run_id": "tue", "match_id": int(pred["match_id"]), "season": 2026, "round": 10,
+             "game": {"home_team": pred["home_team"], "away_team": pred["away_team"]},
+             "sections": {"drivers": {"unit": "points of predicted margin", "drivers": []}}}
+    rec.add_briefs([brief])
+    client = FakeClient()
+    before = pd.to_datetime(games["start_time_utc"], utc=True).min() - pd.Timedelta(days=1)
+    written = summaries.previews(rec, client, before)
+    mine = [w for w in written if w["match_id"] == brief["match_id"]][0]
+    assert mine["brief_run_id"] == "tue"
+    assert {"game", "drivers"} in [set(prompt_facts(c)) for c in client.calls]

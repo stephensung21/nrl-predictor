@@ -27,6 +27,8 @@ PREDICTION_COLS = ["run_id", "created_at", "match_id", "season", "round", "start
                    "away_team", "home_win_prob", "margin", "total", "home_score", "away_score", "model",
                    "no_odds_home_win_prob", "market_open_home_prob", "model_version", "inputs"]
 
+DRIVER_COLS = ["run_id", "match_id", "variant", "group", "feature", "value", "margin_pts", "win_logodds"]
+
 
 def load_matches():
     return pd.read_csv(PROCESSED / "matches.csv", low_memory=False)
@@ -46,6 +48,8 @@ class Records:
         self.rounds_file = self.dir / "rounds.csv"
         self.summaries_file = self.dir / "summaries.csv"
         self.weather_file = self.dir / "weather.csv"
+        self.drivers_file = self.dir / "drivers.csv"
+        self.briefs_file = self.dir / "briefs.jsonl"
 
     def add_run(self, record):
         with self.runs_file.open("a", encoding="utf-8") as f:
@@ -108,7 +112,9 @@ class Records:
         return pd.read_csv(self.summaries_file, dtype={"body": str})
 
     def add_summaries(self, rows):
-        rows.to_csv(self.summaries_file, mode="a", header=not self.summaries_file.exists(), index=False)
+        if self.summaries_file.exists():  # rewritten whole, so a file from before a new column still lines up
+            rows = pd.concat([self.summaries(), rows], ignore_index=True)
+        rows.to_csv(self.summaries_file, index=False)
 
     def weather(self):
         """Every forecast and observation fetched for the site (fetch_weather.py), oldest first."""
@@ -119,6 +125,27 @@ class Records:
 
     def add_weather(self, rows):
         rows.to_csv(self.weather_file, mode="a", header=not self.weather_file.exists(), index=False)
+
+    def drivers(self):
+        """What drove each prediction (explain.py), keyed by the run and game it explains."""
+        if not self.drivers_file.exists():
+            return pd.DataFrame(columns=DRIVER_COLS)
+        return pd.read_csv(self.drivers_file, dtype={"run_id": str})
+
+    def add_drivers(self, rows):
+        rows = rows[DRIVER_COLS]
+        rows.to_csv(self.drivers_file, mode="a", header=not self.drivers_file.exists(), index=False)
+
+    def briefs(self):
+        """Every match brief (brief.py): one per prediction, oldest first."""
+        if not self.briefs_file.exists():
+            return []
+        return [json.loads(line) for line in self.briefs_file.read_text(encoding="utf-8").splitlines() if line]
+
+    def add_briefs(self, briefs):
+        with self.briefs_file.open("a", encoding="utf-8") as f:
+            for b in briefs:
+                f.write(json.dumps(b, default=str, ensure_ascii=False) + "\n")
 
     def update_fixtures(self, fixtures):
         new = fixtures.reindex(columns=FIXTURE_COLS)

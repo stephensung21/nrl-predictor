@@ -194,13 +194,17 @@ def round_rows(drawn, match_ids):
                          "featured_match": d["featured_match"].astype("int64"), "drawn_at": ts(d["drawn_at"])})
 
 
-def summary_rows(summaries, match_ids, run_ids):
-    """The latest text for each kind and subject (summaries.py)."""
+def summary_rows(summaries, match_ids, run_ids, briefs=()):
+    """The latest text for each kind and subject (summaries.py), each linked to the brief it was written
+    from when that brief is published (`briefs`: (run id, match id) pairs)."""
     if summaries.empty:
         return pd.DataFrame()
     s = summaries[summaries["match_id"].isna() | summaries["match_id"].isin(match_ids)]
     s = s.drop_duplicates(["kind", "season", "round", "match_id"], keep="last")
+    brief_run = s["brief_run_id"] if "brief_run_id" in s else pd.Series(None, index=s.index, dtype=object)
+    published = [(r, m) in set(briefs) for r, m in zip(brief_run, s["match_id"])]
     return pd.DataFrame({
+        "brief_run_id": brief_run.where(published),
         "kind": s["kind"], "season": s["season"].astype(int), "round": s["round"].astype("Int64"),
         "match_id": s["match_id"].astype("Int64"), "body": s["body"], "llm_model": s["llm_model"],
         "prompt_version": s["prompt_version"], "run_id": s["run_id"].where(s["run_id"].isin(run_ids)),
@@ -218,6 +222,26 @@ def weather_rows(weather, match_ids):
         "rain_chance": w["rain_chance"].astype("Int64"), "wind_kmh": w["wind_kmh"], "gust_kmh": w["gust_kmh"],
         "wind_dir": w["wind_dir"].astype("Int64"), "weather_code": w["weather_code"].astype("Int64"),
         "conditions": w["conditions"]})
+
+
+def driver_rows(drivers, predicted):
+    """What drove each published prediction (explain.py). `predicted`: its (run id, match id) pairs."""
+    if drivers.empty:
+        return pd.DataFrame()
+    keep = [k in predicted for k in zip(drivers["run_id"], drivers["match_id"])]
+    d = drivers[keep]
+    return pd.DataFrame({
+        "run_id": d["run_id"].astype(str), "match_id": d["match_id"].astype("int64"), "variant": d["variant"],
+        "driver_group": d["group"], "feature": d["feature"], "value": d["value"], "margin_pts": d["margin_pts"],
+        "win_logodds": d["win_logodds"]})
+
+
+def brief_rows(briefs, predicted):
+    """Each published prediction's match brief (brief.py)."""
+    rows = [{"run_id": b["run_id"], "match_id": int(b["match_id"]), "brief_version": b["brief_version"],
+             "brief": Jsonb(b), "created_at": pd.Timestamp(b["created_at"])}
+            for b in briefs if (b.get("run_id"), int(b["match_id"])) in predicted]
+    return pd.DataFrame(rows)
 
 
 def run_rows(runs):
@@ -266,6 +290,8 @@ def live_tables(season, records):
     preds = records.predictions()
     preds = preds[preds["match_id"].isin(matches["id"])]
     graded = records.graded()
+    predicted = set(zip(preds["run_id"].astype(str), preds["match_id"].astype("int64")))
+    briefs = brief_rows(records.briefs(), predicted)
     versions = {r["model_version"] for r in runs if r.get("model_version")} | set(preds["model_version"].astype(str))
     return {
         "model_versions": model_version_rows(versions) if versions else pd.DataFrame(),
@@ -277,8 +303,11 @@ def live_tables(season, records):
         "elo_ratings": elo_rows(odds, set(matches["id"]), [season]),
         "pipeline_runs": run_rows(runs),
         "predictions": prediction_rows(preds),
+        "prediction_drivers": driver_rows(records.drivers(), predicted),
+        "match_briefs": briefs,
         "graded_games": graded_rows(graded) if graded is not None else pd.DataFrame(),
-        "summaries": summary_rows(records.summaries(), set(matches["id"]), {r["id"] for r in runs}),
+        "summaries": summary_rows(records.summaries(), set(matches["id"]), {r["id"] for r in runs},
+                                  set(zip(briefs["run_id"], briefs["match_id"])) if len(briefs) else ()),
         "weather": weather_rows(records.weather(), set(matches["id"])),
     }
 
@@ -331,6 +360,7 @@ KEYS = {"model_versions": ["version"], "matches": ["id"], "odds_sheet": ["match_
         "odds_snapshots": ["match_id", "bookmaker", "captured_at"], "team_lists": ["match_id", "fetched_at", "player_id"],
         "elo_ratings": ["team", "played_on"], "rounds": ["season", "round"],
         "summaries": ["kind", "season", "round", "match_id"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
+        "prediction_drivers": ["run_id", "match_id", "feature"], "match_briefs": ["run_id", "match_id"],
         "graded_games": ["match_id"], "weather": ["match_id", "kind"]}
 
 

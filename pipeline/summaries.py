@@ -3,8 +3,11 @@ LLM-written text for the site (PLAN_WEB.md §7): a short preview of each coming 
 each finished round, written by Claude from the pipeline's own numbers and kept in
 data/pipeline/live/<season>/summaries.csv, which publish.py copies to the `summaries` table.
 
-Only model data goes into a prompt (predictions, the market, Elo, results, head to head), never
-anything about the tippers. Each text records the Claude model and the prompt version that wrote it,
+A preview is written from the game's match brief (brief.py, PLAN_WEB.md §7.4): the facts assembled
+when it was predicted (the prediction, what drove it, the market, Elo, form, team news, conditions).
+Every number in a text must appear in the facts it was written from (brief.ungrounded); a text that
+fails is asked for once more, then dropped. Only model data goes into a prompt, never anything about
+the tippers. Each text records the Claude model and the prompt version that wrote it,
 so a change to either can be traced. A preview is written once per game, from its latest prediction;
 a recap once per round, after every game in it is graded. Nothing is rewritten unless --rewrite.
 
@@ -21,13 +24,15 @@ import json
 
 import pandas as pd
 
+import brief as brieflib
 from common import Records, load_matches
 import config
 from publish import env
 
 MODEL = "claude-opus-5-5"
-PROMPT_VERSION = "2026-10-v1"
-SUMMARY_COLS = ["kind", "season", "round", "match_id", "body", "llm_model", "prompt_version", "run_id", "created_at"]
+PROMPT_VERSION = "2026-10-v2"  # v2: previews from the match brief, with what drove the prediction
+SUMMARY_COLS = ["kind", "season", "round", "match_id", "body", "llm_model", "prompt_version", "run_id", "created_at",
+                "brief_run_id"]
 
 SYSTEM = """You write short pieces for a private NRL tipping comp's website, read by a group of friends \
 who tip each week. The site's model predicts every game; you explain its numbers in plain words.
@@ -39,10 +44,19 @@ the market disagree. No betting advice, no headings, no lists, no emoji. Write p
 Markdown formatting."""
 
 PREVIEW = """Write a preview of this game in 60 to 90 words: who the model tips and how confident it \
-is (as a percentage), its predicted score, how that compares with the market, and one thing from the \
-form or head-to-head data that stands out.
+is (as a percentage), its predicted score, how that compares with the market, the one or two biggest \
+things driving the prediction (from "drivers", naming players from "team_news" where it fits), and one \
+thing from the form or head-to-head data that stands out.
+
+The facts are below, in sections. Use only the sections present, and only numbers that appear in them \
+exactly as given: don't add, subtract or convert numbers yourself.
 
 {data}"""
+
+RETRY = """
+
+Your last version used numbers that aren't in the facts: {bad}. Write it again using only numbers \
+that appear in the facts."""
 
 RECAP = """Write a recap of this round in 100 to 150 words: how many games the model tipped correctly, \
 its best call and its worst miss (by how confident it was), how it did against the market's \
@@ -81,35 +95,30 @@ def pct(p):
     return None if p is None or pd.isna(p) else round(100 * float(p))
 
 
-def game_facts(pred, matches):
-    """The numbers a preview may use: the prediction, the market, each side's last five results and
-    the last three meetings."""
+def preview_brief(pred, briefs, matches):
+    """The brief a preview is written from: the one recorded with the prediction, or for a prediction
+    made without one, a brief built from what the prediction record holds. Returns (brief, the run that
+    recorded it), the run None for a brief that wasn't recorded."""
+    for b in reversed(briefs):
+        if b.get("run_id") == pred.get("run_id") and b.get("match_id") == int(pred["match_id"]):
+            return b, b["run_id"]
     kick = pd.Timestamp(pred["start_time_utc"])
     played = matches[matches["home_score"].notna() & (pd.to_datetime(matches["start_time_utc"], utc=True) < kick)]
+    return brieflib.build(pred, {"p_open": pred.get("market_open_home_prob")}, played=played), None
 
-    def form(team):
-        g = played[(played["home_team"] == team) | (played["away_team"] == team)].tail(5)
-        out = []
-        for r in g.itertuples():
-            us, them = (r.home_score, r.away_score) if r.home_team == team else (r.away_score, r.home_score)
-            opp = r.away_team if r.home_team == team else r.home_team
-            out.append(f"{'W' if us > them else 'L' if us < them else 'D'} {int(us)}-{int(them)} v {opp}")
-        return out
 
-    h2h = played[((played["home_team"] == pred["home_team"]) & (played["away_team"] == pred["away_team"]))
-                 | ((played["home_team"] == pred["away_team"]) & (played["away_team"] == pred["home_team"]))].tail(3)
-    tip_home = pred["home_win_prob"] >= 0.5
-    return {
-        "game": f"{pred['home_team']} (home) v {pred['away_team']}",
-        "model_tip": pred["home_team"] if tip_home else pred["away_team"],
-        "model_win_chance_pct": pct(max(pred["home_win_prob"], 1 - pred["home_win_prob"])),
-        "model_predicted_score": f"{pred['home_team']} {int(pred['home_score'])} - {int(pred['away_score'])} {pred['away_team']}",
-        "model_margin": round(float(pred["margin"]), 1),
-        "market_home_win_chance_pct": pct(pred.get("market_open_home_prob")),
-        "form_last_5": {pred["home_team"]: form(pred["home_team"]), pred["away_team"]: form(pred["away_team"])},
-        "last_meetings": [f"{int(r.season)}: {r.home_team} {int(r.home_score)}-{int(r.away_score)} {r.away_team}"
-                          for r in h2h.itertuples()],
-    }
+def write_grounded(client, prompt, facts):
+    """A text whose numbers all appear in `facts`, asking once more if the first try's don't; None if
+    the second try's don't either (logged), so invented figures are never published."""
+    text = write(client, prompt)
+    bad = None if text is None else brieflib.ungrounded(text, facts)
+    if bad:
+        text = write(client, prompt + RETRY.format(bad=", ".join(f"{n:g}" for n in bad)))
+        bad = None if text is None else brieflib.ungrounded(text, facts)
+        if bad:
+            print(f"  summary dropped: numbers not in the facts: {bad}")
+            return None
+    return text
 
 
 def round_facts(graded, rnd):
@@ -144,14 +153,17 @@ def previews(records, client, now, run_id=None, rewrite=False):
     done = records.summaries()
     have = set(done.loc[done["kind"] == "match_preview", "match_id"].dropna().astype(int))
     matches = load_matches()
+    briefs = records.briefs()
     out = []
     for pred in coming.sort_values("start_time_utc").to_dict("records"):
         if int(pred["match_id"]) in have and not rewrite:
             continue
-        text = write(client, PREVIEW.format(data=json.dumps(game_facts(pred, matches), indent=1)))
+        b, brief_run = preview_brief(pred, briefs, matches)
+        facts = {"game": b["game"], **b["sections"]}
+        text = write_grounded(client, PREVIEW.format(data=json.dumps(facts, indent=1, ensure_ascii=False)), facts)
         if text:
             out.append({"kind": "match_preview", "season": int(pred["season"]), "round": int(pred["round"]),
-                        "match_id": int(pred["match_id"]), "body": text})
+                        "match_id": int(pred["match_id"]), "body": text, "brief_run_id": brief_run})
     return stamp(records, out, run_id, now)
 
 
@@ -169,7 +181,8 @@ def recap(records, client, now, run_id=None, rewrite=False):
             continue
         if not set(predicted.loc[predicted["round"] == rnd, "match_id"]) <= set(graded.loc[graded["round"] == rnd, "match_id"]):
             continue  # some of the round's games aren't graded yet
-        text = write(client, RECAP.format(data=json.dumps(round_facts(graded, rnd), indent=1)))
+        facts = round_facts(graded, rnd)
+        text = write_grounded(client, RECAP.format(data=json.dumps(facts, indent=1)), facts)
         if text:
             out.append({"kind": "round_recap", "season": int(graded["season"].iloc[0]), "round": int(rnd),
                         "match_id": None, "body": text})

@@ -239,6 +239,8 @@ Lessons from doing them:
 - The odds sheet decision (open question below; making the repo private is the simplest).
 - At deploy: import the repo into Vercel and add its variables (Supabase setup step 6), then add the Vercel address to Supabase's Site URL and redirect URLs, and to the Google OAuth client if it asks.
 - Optional: a Reddit app (step 11b).
+- Push the `20261017000000_explanations.sql` migration (`npx supabase db push`) once `explain-briefs` is merged: until then publishing the drivers and briefs fails.
+- Add credit to the Anthropic API account: on 12 October 2026 it had none, so previews and recaps can't be written.
 
 *Me (Claude):*
 - Step 10, the rest: the ladder (`/tipping/ladder`) and `/model` from `ladder()` and `round_scores`; the tippers' parts of `/` and `/round`; tipping itself in the February trials.
@@ -246,6 +248,7 @@ Lessons from doing them:
 - Step 4c: the odds sheet's 403 on GitHub.
 - Step 11b: the Reddit API, once there's an app.
 - Step 13 when the 2027 draw is out, and step 14 in February.
+- §7.1 on the site: the "What drove this" panel on match pages, from `record_drivers`.
 
 **Open questions**
 
@@ -746,7 +749,7 @@ Planned: LLM-written match previews and round recaps, a weekly review of the mod
 
 Rules for all of them: agents read through the `analyst` role or the repo, never the service key; nothing about the tippers goes into a prompt; and anything that changes the model goes through a pull request and a backtest.
 
-### 7.1 Game-by-game explanations ⬜
+### 7.1 Game-by-game explanations 🔶 (pipeline built; the match page's panel to come)
 
 Every prediction says what drove it: "Storm 68%: the market had them at 62%; Hughes is back (+4 points); the Storm's line-up is stronger than usual (+2)". This is plain code in the pipeline, not an agent: the numbers have to be exact and reproducible.
 
@@ -760,6 +763,7 @@ Every prediction says what drove it: "Storm 68%: the market had them at 62%; Hug
 - **Stored:** a new `prediction_drivers` table (run, match, model, group, feature, contribution in margin points and in log-odds), written with the prediction it explains.
 - **Shown:** on `/match/[id]` as a "What drove this" bar list. The drivers are also the first section of the match brief (§7.4), so the preview quotes the real drivers instead of guessing.
 - **Checks:** a test that the contributions plus the baseline give back the uncalibrated prediction for every model; and a replay of a 2026 round that gives the same drivers twice.
+- **Built (October 2026, `explain-briefs` branch):** `src/explain.py` (`explain()`, `by_group()`; `python src/explain.py --season 2026 --round 10` prints a replayed round's drivers). The predict job records them in `drivers.csv` beside the predictions (`run.explain_step`, after the predictions are recorded; a failure is only a warning), and `publish.py` writes them to `prediction_drivers` (migration `20261017000000_explanations.sql`, with the `record_drivers` view: each game's prediction of record, summed by group). Two scales per input: margin points, which add up exactly to the ensemble's predicted margin (the baseline is the home side's average edge, about +2.8), and win log-odds before calibration, with a `(calibration)` row closing the gap to the published probability. The BlueBet inputs are read as part of the opening price. *Checked:* `tests/test_explain.py` (both variants add up to 1e-9 on 2026 Round 10, mixed variants, every input in a named group; slow: a replayed Tuesday run gives the same drivers twice and they add up to the recorded margins) and the publish test. *Still to do:* the "What drove this" panel on `/match/[id]` (web branch, from `record_drivers`); player names behind star absences (the brief's team news lists ins and outs meanwhile); the change since Tuesday as `updated_reason`.
 
 ### 7.2 Post-mortems of wrong predictions ⬜
 
@@ -810,7 +814,7 @@ Model changes come from patterns across many games, never from one. This is the 
 
 **Why this split.** The post-mortem is a fixed sequence (gather facts, classify, write), so it's a pipeline step with one Claude call, like the recaps. Only the reviewer needs to be an agent: it has to look at the patterns, decide what to test, edit code, run backtests and judge the result.
 
-### 7.4 Match briefs: one fact pack for every LLM summary ⬜
+### 7.4 Match briefs: one fact pack for every LLM summary 🔶 (built for previews)
 
 The aim, over time: one plain-English summary per game that pulls everything together: what drove the prediction (7.1), Elo, form, team news, the market and its moves, the weather, and later data not collected yet. The design keeps one split: **code decides the facts, Claude only words them.** Today's previews already work this way on a small scale (`summaries.game_facts`); the brief makes it the general pattern, so adding a data point is one new section and never a rewrite of the prompts.
 
@@ -849,5 +853,7 @@ The aim, over time: one plain-English summary per game that pulls everything tog
 - **Grounding:** every number in a text must appear in its brief (a cheap pattern match on the numbers, rounding allowed). A text that fails is written again once, then dropped and logged. It's never published with invented figures.
 - **Sections:** each section function has a test on a replayed 2026 game, and the brief for a replayed round is the same twice.
 - **Prompt changes** are tried on a fixed set of saved briefs (a few ordinary games, an upset, a game with late changes, one with missing odds) and read side by side before `PROMPT_VERSION` is bumped.
+
+**Built (October 2026, `explain-briefs` branch):** `pipeline/brief.py` with the sections `prediction`, `drivers`, `market` (opening price, Betr's latest price and its move), `elo` (both ratings going in, the gap, the change over the last five games and the season), `form`, `team_news` (ins and outs against each side's last game) and `conditions` (neutral venue, playing outside home state, rest, the latest weather). The predict job records a brief per prediction in `briefs.jsonl`; `publish.py` writes `match_briefs` (and the `record_briefs` view), and `summaries` gained `brief_run_id` and the new kinds. Previews are written from the brief (`PROMPT_VERSION` 2026-10-v2) with the grounding check (`brief.ungrounded`: one retry naming the stray numbers, then dropped), which recaps use too. A brief comes to about 700 tokens. *Checked:* `tests/test_explain.py` (sections, which side each driver favours, missing sections left out, the grounding check, the same briefs twice on a replay), `tests/test_summaries.py` (a preview uses the brief recorded with its prediction; invented numbers retried, then dropped) and the publish test. *Not yet tried with real Claude:* the API account had no credit (12 October 2026). *Still to do:* the full match summary prompt, and the post-mortem sections with 7.2.
 
 **Order of work:** the brief comes with 7.1. `brief.py` starts with the sections available now plus `drivers`, and `summaries.game_facts` is replaced by it, so the previews move onto the brief straight away. The full match summary, post-mortems and later sources then each add a section and a prompt; none of them change the brief's structure.

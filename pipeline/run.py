@@ -9,7 +9,8 @@ without a price get the no-odds prediction. `--job odds` runs the fetch on its o
 
 After every live job except odds, the weather for the site (fetch_weather.py): forecasts for the coming
 games, and what the weather was for games just finished. Not a model input; a failure is a warning.
-After every live job, the coming games' edges against Betr's latest price (edges.py): edges.csv and
+Each prediction is recorded with what drove it (explain.py) and its match brief (brief.py), the facts
+every LLM-written text about the game is written from. After every live job, the coming games' edges against Betr's latest price (edges.py): edges.csv and
 edges.md beside the records. Also only a warning if it fails.
 
 - results (Monday): scrape the current season's finished games into the processed tables, then grade
@@ -47,7 +48,9 @@ import pandas as pd
 
 from common import Records, load_matches
 import config
+import brief as brieflib
 import draw as drawlib
+import explain
 import fetch_odds
 import fetch_sheet
 import fetch_weather
@@ -171,9 +174,24 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
     out["start_time_utc"] = pd.to_datetime(rows["start_time_utc"], utc=True).to_numpy()
     out["inputs"] = out["match_id"].map(inputs)
     records.add_predictions(out)
+    explain_step(records, bundle, out, rows, lists, fixtures, now, run)
     print(out[["round", "home_team", "away_team", "tip", "home_win_prob", "margin", "total", "model"]]
           .to_string(index=False))
     return out
+
+
+def explain_step(records, bundle, out, rows, lists, fixtures, now, run):
+    """What drove each prediction (explain.py) and its match brief (brief.py), recorded with the run that
+    made it. Computed now, from the same frozen models and inputs, never later. A failure is a warning:
+    the predictions stand without them."""
+    try:
+        drivers = explain.explain(bundle, rows, predict.variant_of(out), out.set_index("match_id")["home_win_prob"])
+        records.add_drivers(drivers.assign(run_id=run["id"]))
+        briefs = brieflib.build_round(out, rows, lists, drivers, fixtures, records, now)
+        records.add_briefs(briefs)
+        run["explained"] = len(briefs)
+    except Exception as ex:
+        run.setdefault("warnings", []).append(f"drivers and briefs failed: {type(ex).__name__}: {ex}")
 
 
 def results_job(season, now, replay, records, run):
