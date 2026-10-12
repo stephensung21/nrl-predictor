@@ -6,9 +6,10 @@ import type { Sql } from "./db";
 import type { GradedGame } from "./model-record";
 import type {
   Drivers, Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsHistory, OddsRound,
-  Prediction, RoundData, SeasonBet, SeasonGame, Weather,
+  Prediction, RoundBet, RoundData, SeasonBet, SeasonGame, Weather,
 } from "./types";
 import type { TeamName } from "./teams";
+import { paperBet } from "./odds";
 
 const iso = (d: Date | string) => new Date(d).toISOString();
 const num = (v: unknown) => (v == null ? null : Number(v));
@@ -50,7 +51,8 @@ export async function roundData(sql: Sql, season: number, round: number): Promis
     homePred: r.p_home, awayPred: r.p_away, model: r.model as Prediction["model"], modelVersion: r.model_version,
     ...(r.updated_reason ? { updated: r.updated_reason } : {}),
   }));
-  const weather = await weatherFor(sql, rows.map((r) => String(r.id)));
+  const ids = rows.map((r) => String(r.id));
+  const [weather, bets] = await Promise.all([weatherFor(sql, ids), roundBets(sql, predictions)]);
   return {
     season, round,
     // The pipeline draws the margin game; until it has, the round's first game stands in.
@@ -61,7 +63,28 @@ export async function roundData(sql: Sql, season: number, round: number): Promis
       return w ? { ...m, weather: w } : m;
     }),
     predictions,
+    bets,
   };
+}
+
+/** Paper trading's bet on each game: at Betr's latest price while it's still to kick off (`match_edges`,
+ * as /odds's coming games), then at the opening price (`match_odds`, as /odds's season record). */
+async function roundBets(sql: Sql, predictions: Prediction[]): Promise<RoundBet[]> {
+  const ids = predictions.map((p) => p.matchId);
+  const [latest, opening] = await Promise.all([
+    sql`select match_id, home_odds, away_odds from match_edges where match_id in ${sql(ids)}`,
+    sql`select match_id, home_odds_open as home_odds, away_odds_open as away_odds from match_odds where match_id in ${sql(ids)}`,
+  ]);
+  const byId = (rows: typeof latest) => new Map(rows.map((r) => [String(r.match_id), r]));
+  const [live, open] = [byId(latest), byId(opening)];
+  return predictions.flatMap((p) => {
+    // A game in match_edges hasn't kicked off: its latest price or, unpriced, no bet yet.
+    const price = live.has(p.matchId) ? "latest" : "opening";
+    const r = (price === "latest" ? live : open).get(p.matchId);
+    if (r?.home_odds == null || r.away_odds == null) return [];
+    const bet = paperBet(p.homeWinProb, Number(r.home_odds), Number(r.away_odds));
+    return bet ? [{ matchId: p.matchId, ...bet, price }] : [];
+  });
 }
 
 /** Each game's weather (`match_weather`: observed if known, otherwise the latest forecast). */

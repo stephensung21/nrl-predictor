@@ -88,6 +88,27 @@ function Status({ game }: { game: Game }) {
   }
 }
 
+/** Paper trading's bet against the Model's tip, and once final how it went (1 unit staked). */
+function ValueUnderdog({ dog }: { dog: NonNullable<Game["valueUnderdog"]> }) {
+  const edge = Math.round(dog.edge * 100);
+  return (
+    <span className="flex flex-wrap items-center gap-x-1.5">
+      <span className="rounded-sm border border-line px-1.5 py-[3px] text-[10px] leading-none font-semibold tracking-[0.06em] text-ink-2 uppercase">
+        Value underdog
+      </span>
+      <span>
+        Back {team(dog.team).code} at <span className="font-score text-[14px] text-ink-2">{dog.odds.toFixed(2)}</span>
+        {dog.price === "opening" ? " opening" : ""}: the Model gives them {Math.round(dog.prob * 100)}%, +{edge}% edge
+        {dog.won != null && (
+          <span className={`font-semibold ${dog.won ? "text-lime-fg" : "text-ink-3"}`}>
+            {dog.won ? `, won +${(dog.odds - 1).toFixed(2)}` : ", lost"}
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 export function GameRow({ game }: { game: Game }) {
   const { match, prediction } = game;
   const final = game.status === "final";
@@ -129,14 +150,14 @@ export function GameRow({ game }: { game: Game }) {
           </div>
         </div>
 
-        {(final || inPlay || game.featured || prediction.updated || prediction.model === "no odds" || weather) && (
+        {(final || inPlay || game.valueUnderdog || prediction.updated || prediction.model === "no odds" || weather) && (
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-medium text-ink-3">
             {(final || inPlay) && (
               <span>
                 Model {final ? "said" : "says"} {tip.code} by {game.callMargin}
               </span>
             )}
-            {game.featured && <span className="font-semibold text-ink-2">Margin game</span>}
+            {game.valueUnderdog && <ValueUnderdog dog={game.valueUnderdog} />}
             {prediction.updated && !final && (
               <span className="flex items-center gap-1 text-live">
                 <RefreshCw className="size-3" strokeWidth={2.5} aria-hidden />
