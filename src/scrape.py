@@ -52,17 +52,30 @@ session = requests.Session()
 session.headers.update(HEADERS)
 
 
-def get_q_data(url, element_id):
+class FetchError(RuntimeError):
+    """nrl.com didn't answer as expected: blocked, down, or the page has changed."""
+
+
+def get_q_data(url, element_id, missing_ok=False):
+    """The JSON a page embeds in `element_id`'s q-data. With `missing_ok`, a 404 is None: a season or
+    round nrl.com hasn't published. Anything else that fails three times raises FetchError, so a
+    blocked or broken site is never mistaken for "nothing there"."""
+    last = None
     for attempt in range(3):
         try:
             resp = session.get(url, timeout=30)
+            if missing_ok and resp.status_code == 404:
+                return None
             resp.raise_for_status()
             el = BeautifulSoup(resp.text, "html.parser").find(id=element_id)
-            return json.loads(el["q-data"]) if el else None
+            if el is None or not el.get("q-data"):
+                raise ValueError(f"no #{element_id} data on the page")
+            return json.loads(el["q-data"])
         except (requests.RequestException, ValueError) as ex:
+            last = ex
             print(f"  attempt {attempt + 1} failed for {url}: {ex}")
             time.sleep(2 * (attempt + 1))
-    return None
+    raise FetchError(f"{url}: {last}")
 
 
 def match_url(path):
@@ -75,7 +88,7 @@ def fetch_fixtures(year, competition=COMPETITION_ID):
     fixtures = []
     for rnd in range(1, MAX_ROUNDS + 1):
         url = f"https://www.nrl.com/draw/?competition={competition}&round={rnd}&season={year}"
-        data = get_q_data(url, "vue-draw")
+        data = get_q_data(url, "vue-draw", missing_ok=True)
         time.sleep(DELAY)
         matches = [f for f in (data or {}).get("fixtures", []) if f.get("type") == "Match"]
         # Past the last round the site returns the final round again, so stop on a repeat.
@@ -92,22 +105,39 @@ def fetch_season(year, competition=COMPETITION_ID, raw_dir=RAW_DIR):
     fixtures = fetch_fixtures(year, competition)
     (year_dir / "fixtures.json").write_text(json.dumps(fixtures, indent=1), encoding="utf-8")
     print(f"{year}: {len(fixtures)} fixtures")
+    fetch_matches(year, [fx["matchCentreUrl"] for fx in fixtures if fx.get("matchMode") == "Post"], raw_dir)
 
-    for i, fx in enumerate(fixtures, 1):
-        if fx.get("matchMode") != "Post":
-            continue  # not played yet
-        slug = fx["matchCentreUrl"].strip("/").split("/")
-        path = year_dir / f"{slug[-2]}_{slug[-1]}.json"
+
+def raw_path(year, url, raw_dir=RAW_DIR):
+    """Where a game's match-centre page is cached: <raw_dir>/<year>/<round>_<teams>.json."""
+    slug = url.strip("/").split("/")
+    return raw_dir / str(year) / f"{slug[-2]}_{slug[-1]}.json"
+
+
+def fetch_matches(year, urls, raw_dir=RAW_DIR):
+    """Cache the match-centre page of each finished game not cached yet. Every game is tried; if any
+    fails, FetchError lists them (the rest are kept), so a missing game is never silently left out."""
+    (raw_dir / str(year)).mkdir(parents=True, exist_ok=True)
+    failed = []
+    for i, url in enumerate(urls, 1):
+        path = raw_path(year, url, raw_dir)
         if path.exists():
             continue
-        data = get_q_data(match_url(fx["matchCentreUrl"]), "vue-match-centre")
-        time.sleep(DELAY)
-        if not data or "match" not in data:
-            print(f"  no match data: {fx['matchCentreUrl']}")
+        try:
+            data = get_q_data(match_url(url), "vue-match-centre")
+        except FetchError as ex:
+            failed.append(str(ex))
+            continue
+        finally:
+            time.sleep(DELAY)
+        if "match" not in data:
+            failed.append(f"{url}: no match in the page's data")
             continue
         path.write_text(json.dumps(data["match"]), encoding="utf-8")
         if i % 25 == 0:
-            print(f"  {year}: {i}/{len(fixtures)}")
+            print(f"  {year}: {i}/{len(urls)}")
+    if failed:
+        raise FetchError(f"{len(failed)} finished game(s) not fetched: " + "; ".join(failed))
 
 
 def fetch_origin(year):
@@ -115,7 +145,7 @@ def fetch_origin(year):
     year_dir = ORIGIN_DIR / str(year)
     year_dir.mkdir(parents=True, exist_ok=True)
     url = f"https://www.nrl.com/draw/?competition={ORIGIN_COMPETITION_ID}&round=1&season={year}"
-    data = get_q_data(url, "vue-draw")
+    data = get_q_data(url, "vue-draw", missing_ok=True)
     time.sleep(DELAY)
     games = [f for f in (data or {}).get("fixtures", []) if f.get("type") == "Match" and f.get("matchMode") == "Post"]
     print(f"{year}: {len(games)} Origin games")
@@ -127,10 +157,9 @@ def fetch_origin(year):
             continue
         match = get_q_data(f"https://www.nrl.com{fx['matchCentreUrl']}", "vue-match-centre")
         time.sleep(DELAY)
-        if match and "match" in match:
-            path.write_text(json.dumps(match["match"]), encoding="utf-8")
-        else:
-            print(f"  no match data: {fx['matchCentreUrl']}")
+        if "match" not in match:
+            raise FetchError(f"{fx['matchCentreUrl']}: no match in the page's data")
+        path.write_text(json.dumps(match["match"]), encoding="utf-8")
 
 
 def build_origin_table(years, merge=False):
@@ -153,7 +182,7 @@ def build_origin_table(years, merge=False):
                     })
     df = pd.DataFrame(rows)
     if merge:
-        df = merge_seasons(OUT_DIR / "origin_players.csv", df, years)
+        df = merge_seasons(OUT_DIR / "origin_players.csv", df, years, key=["season", "game"])
     df = df.sort_values(["start_time_utc", "state", "player_id"])
     df.to_csv(OUT_DIR / "origin_players.csv", index=False)
     print(f"wrote origin_players.csv: {len(df)} rows")
@@ -215,9 +244,18 @@ def team_stats(match, side):
     return row
 
 
-def merge_seasons(path, new, years):
-    """The table at `path` with the rows for `years` replaced by `new`."""
+def merge_seasons(path, new, years, key=None):
+    """The table at `path` with the rows for `years` replaced by `new`. With `key` (the columns naming
+    a game), refuses to drop a game the table already has: the rebuild reads only the cached raw pages,
+    so a lost cache plus a failed download would otherwise quietly delete games from the record."""
     old = pd.read_csv(path, low_memory=False)
+    if key:
+        kept = old[old["season"].isin(years)][key].drop_duplicates().astype(str)
+        have = set(map(tuple, new[key].astype(str).to_numpy())) if len(new) else set()
+        lost = [k for k in map(tuple, kept.to_numpy()) if k not in have]
+        if lost:
+            raise RuntimeError(f"rebuilding {path.name} for {list(years)} would drop {len(lost)} game(s) it already "
+                               f"has (raw pages missing?): {lost[:5]}; nothing written")
     return pd.concat([old[~old["season"].isin(years)], new], ignore_index=True)
 
 
@@ -287,9 +325,12 @@ def build_tables(years, merge=False):
         "team_match_stats": (pd.DataFrame(team_rows), ["season", "round", "match_id", "is_home"]),
         "player_match_stats": (pd.DataFrame(player_rows), ["season", "round", "match_id", "team"]),
     }
+    # Merge every table before writing any, so a refused merge leaves them all as they were. `matches`
+    # (one row a game) is the record of which games exist; a game can lack player stats.
+    if merge:
+        tables = {name: (merge_seasons(OUT_DIR / f"{name}.csv", df, years, key=["match_id"] if name == "matches" else None),
+                         order) for name, (df, order) in tables.items()}
     for name, (df, order) in tables.items():
-        if merge:
-            df = merge_seasons(OUT_DIR / f"{name}.csv", df, years)
         df = df.sort_values(order, kind="stable")
         df.to_csv(OUT_DIR / f"{name}.csv", index=False)
         print(f"wrote {name}.csv: {len(df)} rows, {df.shape[1]} columns")

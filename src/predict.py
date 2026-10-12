@@ -57,7 +57,7 @@ def live_round(season, rnd):
     """Fixtures and current team lists for one round from nrl.com, saved as a timestamped snapshot."""
     import scrape
     draw = scrape.get_q_data(f"https://www.nrl.com/draw/?competition={scrape.COMPETITION_ID}&round={rnd}"
-                             f"&season={season}", "vue-draw")
+                             f"&season={season}", "vue-draw", missing_ok=True)
     urls = [f["matchCentreUrl"] for f in (draw or {}).get("fixtures", []) if f.get("type") == "Match"]
     return fetch_lists(season, urls, snapshot=f"round-{rnd}")
 
@@ -69,8 +69,11 @@ def fetch_lists(season, urls, snapshot):
     fixtures, rows = [], []
     fetched = pd.Timestamp.now(tz="UTC")
     for url in urls:
-        data = scrape.get_q_data(scrape.match_url(url), "vue-match-centre")
-        m = (data or {}).get("match")
+        try:  # one game's page failing skips that game; the next refresh tries it again
+            m = scrape.get_q_data(scrape.match_url(url), "vue-match-centre").get("match")
+        except scrape.FetchError as ex:
+            print(f"  team lists not fetched: {ex}")
+            continue
         if not m:
             print(f"  no match data: {url}")
             continue

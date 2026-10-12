@@ -138,6 +138,8 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
         if now.year < season:
             raise NothingToDo(f"no {season} draw on nrl.com yet")
         raise RuntimeError(f"no {season} draw from nrl.com (site down or changed?)")
+    if not replay:
+        catch_up(draw, season, run)
     rnd, games = drawlib.games_to_predict(draw, now)
     if rnd is None:
         raise NothingToDo("no games left to predict this season")
@@ -180,6 +182,23 @@ def predict_job(season, now, replay, records, refresh, run, model_season):
     return out
 
 
+def catch_up(draw, season, run):
+    """Finished games the processed tables don't have yet (one played after Monday's results run, such
+    as an Easter Monday game): fetch them and rebuild the season, so the coming predictions count them.
+    A failure is only a warning: the predictions go ahead, and the next results run fetches them."""
+    import scrape
+    new = draw[(draw["status"] == "final") & draw["match_id"].isna()]
+    if new.empty:
+        return
+    try:
+        scrape.fetch_matches(season, list(new["url"]))
+        scrape.build_tables([season], merge=True)
+        run["caught_up"] = int(len(new))
+    except Exception as ex:
+        run.setdefault("warnings", []).append(
+            f"catching up on {len(new)} finished game(s) failed: {type(ex).__name__}: {ex}")
+
+
 def explain_step(records, bundle, out, rows, lists, fixtures, now, run):
     """What drove each prediction (explain.py) and its match brief (brief.py), recorded with the run that
     made it. Computed now, from the same frozen models and inputs, never later. A failure is a warning:
@@ -195,6 +214,7 @@ def explain_step(records, bundle, out, rows, lists, fixtures, now, run):
 
 
 def results_job(season, now, replay, records, run):
+    problems = []
     if not replay:
         import scrape
         try:
@@ -202,10 +222,29 @@ def results_job(season, now, replay, records, run):
         except Exception as ex:  # the copy in the checkout is still used
             run["odds_sheet"] = {"status": "failed", "error": f"{type(ex).__name__}: {ex}"}
             run.setdefault("warnings", []).append(f"odds sheet download failed: {run['odds_sheet']['error']}")
-        scrape.fetch_season(season)  # only fetches games not already cached
-        scrape.fetch_origin(season)
-        scrape.build_tables([season], merge=True)
+        # Only games not already cached are fetched. If nrl.com fails, what did come is still built and
+        # graded, then the job fails so the alert goes out: a missing game is never silent.
+        for fetch in (scrape.fetch_season, scrape.fetch_origin):
+            try:
+                fetch(season)
+            except scrape.FetchError as ex:
+                problems.append(str(ex))
+        scrape.build_tables([season], merge=True)  # refuses (failing the job) rather than drop a game
         scrape.build_origin_table([season], merge=True)
+    try:
+        graded = grade_season(season, now, replay, records, run)
+    except NothingToDo:
+        if not problems:
+            raise
+        graded = None
+    if problems:
+        raise RuntimeError("nrl.com: " + " | ".join(problems))
+    return graded
+
+
+def grade_season(season, now, replay, records, run):
+    """Grade every finished game that has a prediction of record, write the season report, and (live)
+    the paper trading record."""
     matches = load_matches()
     kickoff = pd.to_datetime(matches["start_time_utc"], utc=True)
     finished = matches[(matches["season"] == season) & (kickoff + drawlib.KICKOFF_TO_FINAL <= now)]
