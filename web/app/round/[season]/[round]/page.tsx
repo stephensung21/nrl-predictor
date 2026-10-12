@@ -6,7 +6,9 @@ import { SampleNote } from "@/components/sample-note";
 import { emptyCopy } from "@/lib/copy";
 import { CURRENT_ROUND, SAMPLE_ROUNDS, sampleRoundView } from "@/lib/match";
 import { buildRound } from "@/lib/round";
-import { liveRound, liveRoundTitle, type LiveRound } from "@/lib/source";
+import { YOU_ID } from "@/lib/sample";
+import type { RoundComp } from "@/lib/comp";
+import { liveRound, liveRoundTitle, viewerRoundComp, type LiveRound } from "@/lib/source";
 
 const SEASON = 2026;
 const LAST_ROUND = 27;
@@ -31,7 +33,7 @@ export default async function RoundPage({ params }: Props) {
   if (!Number.isInteger(season) || !Number.isInteger(round)) notFound();
   const live = await liveRound(season, round);
   if (live === null) notFound();
-  if (live) return <LiveRoundPage live={live} />;
+  if (live) return <LiveRoundPage live={live} comp={await viewerRoundComp(live.round)} />;
   if (season !== SEASON || !Number.isInteger(round) || round < 1 || round > LAST_ROUND) notFound();
 
   const prev = link(STEPS.filter((r) => r < round).at(-1));
@@ -72,7 +74,7 @@ export default async function RoundPage({ params }: Props) {
   return (
     <main>
       <RoundHeading view={view} prev={prev} next={next} />
-      <RecapPanel view={view} signedIn tipsBy={tipsBy} heading={false} />
+      <RecapPanel view={view} signedIn youId={YOU_ID} tipsBy={tipsBy} heading={false} />
       <h2 className="mt-9 mb-1 font-display text-[24px] leading-none font-bold uppercase">Results</h2>
       <ul className="divide-y divide-line-soft">
         {view.games.map((g) => (
@@ -87,24 +89,34 @@ export default async function RoundPage({ params }: Props) {
 }
 
 
-/** A round from the database: every game's prediction of record and, once played, its result.
- * The tipping recap (who tipped what) comes with sign-in (step 10). */
-function LiveRoundPage({ live }: { live: LiveRound }) {
+/** A round from the database: every game's prediction of record and, once played, its result. For a
+ * signed-in tipper in a comp season, their tips on each game and, once the round is over, everyone's
+ * scores for it. */
+function LiveRoundPage({ live, comp }: { live: LiveRound; comp: RoundComp | null }) {
   const { season, round } = live.round;
-  const view = buildRound({ data: live.round, now: new Date(), tips: [], tippers: [], ladderBefore: [] });
+  const view = buildRound({
+    data: live.round, now: new Date(), tips: comp?.tips ?? [], tippers: comp?.tippers ?? [],
+    ladderBefore: comp?.ladderBefore ?? [], youId: comp?.youId,
+  });
   const to = (r?: LiveRound["rounds"][number]) =>
     r == null ? undefined : { round: r.round, title: r.title ?? undefined, href: `/round/${season}/${r.round}` };
   const prev = to(live.rounds.filter((r) => r.round < round).at(-1));
   const next = to(live.rounds.find((r) => r.round > round));
   const done = view.games.filter((g) => g.status === "final");
+  const tipsBy = (id: string) => view.games.map((g) => comp?.tips.find((t) => t.tipperId === id && t.matchId === g.match.id)?.team);
   return (
     <main>
       <RoundHeading view={view} prev={prev} next={next} />
-      {done.length > 0 && (
-        <p className="mt-1 text-[15px] text-ink-2">
-          The Model tipped {done.filter((g) => g.modelCorrect).length} of {done.length}
-          {done.length < view.games.length ? " so far" : ""}.
-        </p>
+      {comp && view.phase === "recap" ? (
+        <RecapPanel view={view} signedIn youId={comp.youId} tipsBy={tipsBy} heading={false} />
+      ) : (
+        done.length > 0 && (
+          <p className="mt-1 text-[15px] text-ink-2">
+            The Model tipped {done.filter((g) => g.modelCorrect).length} of {done.length}
+            {done.length < view.games.length ? " so far" : ""}
+            {comp && `; you ${done.filter((g) => g.yourCorrect).length}`}.
+          </p>
+        )
       )}
       {live.recap && <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-ink-2">{live.recap}</p>}
       <h2 className="mt-9 mb-1 font-display text-[24px] leading-none font-bold uppercase">{done.length ? "Results" : "Games"}</h2>

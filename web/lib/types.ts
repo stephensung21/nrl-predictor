@@ -150,6 +150,33 @@ export type MatchDetail = {
   }[];
 };
 
+/** `record_drivers`: what drove a game's prediction of record (src/explain.py), by group, in points of
+ * predicted home margin (positive favours the home side). With the "baseline" group (the home side's
+ * average edge) they add up to the prediction's margin. The win model's calibration row is left out. */
+export type Drivers = {
+  variant: "with_odds" | "no_odds";
+  groups: { group: string; points: number }[];
+};
+
+/** The bookies' head-to-head price for a game up to kickoff, oldest first. */
+export type OddsHistory = {
+  bookmaker: string;
+  /** "live": every Betr price the pipeline saw (`odds_snapshots`); "sheet": the odds sheet's opening
+   * and closing prices only. */
+  source: "live" | "sheet";
+  points: {
+    /** When the price was taken (UTC ISO); null for the sheet's, which have no time. */
+    at: string | null;
+    /** Null where only the chance is known (the sample's prices). */
+    homeOdds: number | null;
+    awayOdds: number | null;
+    /** The home side's chance with the bookie's margin taken out. */
+    homeProb: number;
+    /** Handicap on the home team (negative = home favoured). */
+    line: number | null;
+  }[];
+};
+
 /** A completed round for the ladder: games with results, everyone's tips and featured-game margins. */
 export type SeasonRound = {
   round: number;

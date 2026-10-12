@@ -3,15 +3,19 @@
 // Server code only.
 
 import {
-  currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, modelRecord, oddsRounds, roundData,
-  seasonBets, seasonGames, summary, upcomingEdges,
+  currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
+  oddsRounds, roundData, seasonBets, seasonGames, summary, upcomingEdges,
 } from "./data";
+import { COMP_FIRST_SEASON, readRoundComp, type RoundComp } from "./comp";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
 import { buildRecord, type SeasonRecord } from "./model-record";
 import { ODDS_ROUNDS, SEASON_BETS, SEASON_GAMES } from "./sample-odds";
+import { serverClient } from "./supabase-server";
 import type { TeamName } from "./teams";
-import type { Edge, EloSeason, EloTeamView, MatchDetail, ModelRecord, OddsRound, RoundData, SeasonBet, SeasonGame } from "./types";
+import type {
+  Drivers, Edge, EloSeason, EloTeamView, MatchDetail, ModelRecord, OddsHistory, OddsRound, RoundData, SeasonBet, SeasonGame,
+} from "./types";
 
 export type EloSource = {
   live: boolean;
@@ -59,7 +63,10 @@ export async function oddsSource(): Promise<OddsSource> {
 /** A game's Claude-written preview; `stale` when the prediction changed after it was written. */
 export type Preview = { body: string; writtenAt: string; stale: boolean };
 
-export type LiveMatch = { round: RoundData; detail: MatchDetail; elo: MatchElo | undefined; preview: Preview | null };
+export type LiveMatch = {
+  round: RoundData; detail: MatchDetail; elo: MatchElo | undefined; preview: Preview | null;
+  drivers: Drivers | null; odds: OddsHistory | null;
+};
 
 /** A game from the database with its round, detail and Elo: null for an unknown or unpredicted game,
  * undefined when there's no database (the page uses the sample). */
@@ -85,7 +92,8 @@ export async function liveMatch(id: string): Promise<LiveMatch | null | undefine
     body: written.body, writtenAt: written.writtenAt,
     stale: p != null && new Date(p.created_at) > new Date(written.writtenAt),
   };
-  return { round, detail, elo, preview };
+  const [drivers, odds] = await Promise.all([matchDrivers(sql, id), oddsHistory(sql, id)]);
+  return { round, detail, elo, preview, drivers, odds };
 }
 
 export type LiveRound = { round: RoundData; rounds: { round: number; title: string | null }[]; recap: string | null };
@@ -159,4 +167,18 @@ export async function liveModelRecord(): Promise<{ season: number; record: Seaso
   const season = await latestGradedSeason(sql);
   if (season == null) return null;
   return { season, record: buildRecord(await gradedGames(sql, season)) };
+}
+
+/** A round's tipping comp as the signed-in tipper sees it: their tips, everyone's once locked, and the
+ * standings going in. Null when Supabase isn't set up, nobody is signed in, they haven't joined, or
+ * the round is before the comp's first season (the pages then show the round without the comp). */
+export async function viewerRoundComp(round: RoundData): Promise<RoundComp | null> {
+  if (round.season < COMP_FIRST_SEASON) return null;
+  const sb = await serverClient();
+  if (!sb) return null;
+  const { data } = await sb.auth.getUser();
+  if (!data.user) return null;
+  const { data: me } = await sb.from("profiles").select("id").eq("id", data.user.id).maybeSingle();
+  if (!me) return null;
+  return readRoundComp(sb, data.user.id, round);
 }
