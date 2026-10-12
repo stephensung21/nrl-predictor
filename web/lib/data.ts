@@ -5,8 +5,8 @@
 import type { Sql } from "./db";
 import type { GradedGame } from "./model-record";
 import type {
-  Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsRound, Prediction,
-  RoundData, SeasonBet, SeasonGame, Weather,
+  Drivers, Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsHistory, OddsRound,
+  Prediction, RoundData, SeasonBet, SeasonGame, Weather,
 } from "./types";
 import type { TeamName } from "./teams";
 
@@ -140,6 +140,56 @@ export async function matchDetail(sql: Sql, matchId: string): Promise<MatchDetai
       homeScore: r.home_score!, awayScore: r.away_score!,
     })),
   };
+}
+
+/** What drove a game's prediction of record (`record_drivers`), or null before it has any (games
+ * predicted before the drivers were recorded, 2026 included). */
+export async function matchDrivers(sql: Sql, matchId: string): Promise<Drivers | null> {
+  const rows = await sql`
+    select variant, driver_group, margin_pts from record_drivers
+    where match_id = ${matchId} and driver_group <> 'calibration' order by driver_group`;
+  if (!rows.length) return null;
+  return {
+    variant: rows[0].variant,
+    groups: rows.map((r) => ({ group: r.driver_group as string, points: Number(r.margin_pts) })),
+  };
+}
+
+/** Margin-free home chance from a head-to-head pair of prices. */
+const homeChance = (home: number, away: number) => 1 / home / (1 / home + 1 / away);
+
+/** The bookies' head-to-head price up to kickoff: every Betr snapshot when the pipeline took any,
+ * otherwise the odds sheet's opening (and, where reliable, closing) price. Null with neither. */
+export async function oddsHistory(sql: Sql, matchId: string): Promise<OddsHistory | null> {
+  const snaps = await sql`
+    select s.bookmaker, s.captured_at, s.home_odds, s.away_odds, s.home_line
+    from odds_snapshots s join matches m on m.id = s.match_id
+    where s.match_id = ${matchId} and s.captured_at < m.kickoff and s.home_odds is not null and s.away_odds is not null
+    order by s.captured_at`;
+  if (snaps.length) {
+    return {
+      bookmaker: snaps[0].bookmaker === "betr_au" ? "Betr" : snaps[0].bookmaker, source: "live",
+      points: snaps.map((s) => ({
+        at: iso(s.captured_at), homeOdds: s.home_odds, awayOdds: s.away_odds,
+        homeProb: homeChance(s.home_odds, s.away_odds), line: num(s.home_line),
+      })),
+    };
+  }
+  const [sh] = await sql`
+    select bookmaker, home_odds_open, away_odds_open, home_line_open, home_odds_close, away_odds_close, home_line_close, close_ok
+    from odds_sheet where match_id = ${matchId}`;
+  if (!sh || sh.home_odds_open == null || sh.away_odds_open == null) return null;
+  const points: OddsHistory["points"] = [{
+    at: null, homeOdds: sh.home_odds_open, awayOdds: sh.away_odds_open,
+    homeProb: homeChance(sh.home_odds_open, sh.away_odds_open), line: num(sh.home_line_open),
+  }];
+  if (sh.close_ok && sh.home_odds_close != null && sh.away_odds_close != null) {
+    points.push({
+      at: null, homeOdds: sh.home_odds_close, awayOdds: sh.away_odds_close,
+      homeProb: homeChance(sh.home_odds_close, sh.away_odds_close), line: num(sh.home_line_close),
+    });
+  }
+  return { bookmaker: sh.bookmaker, source: "sheet", points };
 }
 
 /* ---------- model vs market ---------- */

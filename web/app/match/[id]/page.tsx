@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
-  EloSection, HeadToHead, MatchHeading, MatchTabs, PreviewSection, TeamLists, TipLine, VoiceList, WeatherLine, type MatchTab,
+  DriversSection, EloSection, HeadToHead, MatchHeading, MatchTabs, matchTab, OddsSection, PreviewSection, TeamLists, TipLine,
+  VoiceList, WeatherLine,
 } from "@/components/match-sections";
 import { SampleNote } from "@/components/sample-note";
+import { sampleDrivers } from "@/lib/drivers";
 import { matchElo } from "@/lib/elo";
+import { sampleOddsHistory } from "@/lib/odds-history";
 import { CURRENT_ROUND, findSampleMatch, sampleRoundView, verdictFor, voicesFor } from "@/lib/match";
 import { buildRound } from "@/lib/round";
 import { SAMPLE_NOW, YOUR_EARLY_TIP_COUNT } from "@/lib/sample";
@@ -40,8 +43,12 @@ export default async function MatchPage({ params, searchParams }: Props) {
   }
 
   const voices = voicesFor(game, found.detail);
+  const drivers = sampleDrivers(id);
+  // Before kickoff the closing price isn't known yet.
+  const sheet = sampleOddsHistory(id);
+  const odds = sheet && state === "open" ? { ...sheet, points: sheet.points.slice(0, 1) } : sheet;
   const verdict = verdictFor(voices, game.status === "final");
-  const tab: MatchTab = query.tab === "h2h" || query.tab === "elo" ? query.tab : "teams";
+  const tab = matchTab(query.tab);
   const qs = new URLSearchParams(Object.entries(query).filter((e): e is [string, string] => e[1] != null)).toString();
 
   return (
@@ -49,9 +56,12 @@ export default async function MatchPage({ params, searchParams }: Props) {
       <MatchHeading game={game} verdict={verdict} voices={voices} />
       <VoiceList game={game} voices={voices} />
       <TipLine game={game} />
+      {drivers && <DriversSection game={game} drivers={drivers} />}
       <MatchTabs id={id} tab={tab} query={qs} />
       {tab === "teams" ? (
         <TeamLists game={game} detail={found.detail} before={game.status === "upcoming"} />
+      ) : tab === "odds" ? (
+        <OddsSection game={game} history={odds} />
       ) : tab === "elo" ? (
         <EloSection game={game} elo={matchElo(game.match, found.detail.neutral)} />
       ) : (
@@ -67,8 +77,8 @@ export default async function MatchPage({ params, searchParams }: Props) {
             : undefined
         }
       >
-        The real 2026 Round {found.round.data.round} replay: Tuesday predictions, the bookies&rsquo; opening price, Elo, team lists and
-        the result. Your tip is made up.
+        The real 2026 Round {found.round.data.round} replay: Tuesday predictions and what drove them, the bookies&rsquo; opening and
+        closing price, Elo, team lists and the result. Your tip is made up.
       </SampleNote>
     </main>
   );
@@ -80,7 +90,7 @@ function LiveMatchPage({ id, live, query }: { id: string; live: LiveMatch; query
   const game = view.games.find((g) => g.match.id === id)!;
   const voices = voicesFor(game, live.detail);
   const verdict = verdictFor(voices, game.status === "final");
-  const tab: MatchTab = query.tab === "h2h" || query.tab === "elo" ? query.tab : "teams";
+  const tab = matchTab(query.tab);
   const qs = new URLSearchParams(Object.entries(query).filter((e): e is [string, string] => e[1] != null)).toString();
   return (
     <main>
@@ -88,11 +98,14 @@ function LiveMatchPage({ id, live, query }: { id: string; live: LiveMatch; query
       <WeatherLine match={game.match} />
       <VoiceList game={game} voices={voices} />
       <TipLine game={game} />
+      {live.drivers && <DriversSection game={game} drivers={live.drivers} />}
       {/* A preview is for before the game; once it's final the result says it all. */}
       {live.preview && game.status !== "final" && <PreviewSection preview={live.preview} />}
       <MatchTabs id={id} tab={tab} query={qs} />
       {tab === "teams" ? (
         <TeamLists game={game} detail={live.detail} before={game.status === "upcoming"} />
+      ) : tab === "odds" ? (
+        <OddsSection game={game} history={live.odds} />
       ) : tab === "elo" ? (
         <EloSection game={game} elo={live.elo} />
       ) : (

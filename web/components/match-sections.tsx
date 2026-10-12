@@ -1,15 +1,18 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Check, ChevronLeft, Cloud, CloudRain, House, Wind, X } from "lucide-react";
+import { driverView, type DriverRow } from "@/lib/drivers";
 import { lineColours, type MatchElo } from "@/lib/elo";
+import { oddsMove } from "@/lib/odds-history";
 import { ordinal, roundName, type Game } from "@/lib/round";
 import type { Verdict, Voice } from "@/lib/match";
 import type { Preview } from "@/lib/source";
-import type { ListedPlayer, Match, MatchDetail } from "@/lib/types";
+import type { Drivers, ListedPlayer, Match, MatchDetail, OddsHistory } from "@/lib/types";
 import { weatherFlag, weatherParts } from "@/lib/weather";
 import { team, type TeamName } from "@/lib/teams";
 import { EloMatchChart } from "./elo-charts";
 import { LocalTime } from "./local-time";
+import { OddsChart } from "./odds-chart";
 import { PitchBar } from "./pitch-bar";
 import { ModelBadge, TeamBadge } from "./team-badge";
 
@@ -119,6 +122,86 @@ export function WeatherLine({ match }: { match: Match }) {
   );
 }
 
+/* ---------- What drove the prediction ---------- */
+
+const points = (n: number) => Math.abs(n).toFixed(1);
+
+/** The prediction split into its parts, in points of margin: each bar grows from the halfway line
+ * towards the side it favours, home to the left and away to the right, as on the pitch bars. */
+export function DriversSection({ game, drivers }: { game: Game; drivers: Drivers }) {
+  const { home, away } = game.match;
+  const view = driverView(drivers, home, away);
+  const colours = lineColours([home, away]);
+  const all = [...(view.base ? [view.base] : []), ...view.rows];
+  const scale = Math.max(...all.map((r) => Math.abs(r.points)), 1);
+  const leads = team(view.total >= 0 ? home : away).name;
+  const final = game.status === "final";
+
+  const Row = ({ r, quiet }: { r: DriverRow; quiet?: boolean }) => {
+    const width = `${(Math.abs(r.points) / scale) * 50}%`;
+    return (
+      <li className="border-b border-line-soft py-2">
+        <div className="flex items-baseline justify-between gap-3 text-[14px]">
+          <span className={quiet ? "text-ink-3" : "text-ink-2"}>{r.label}</span>
+          <span className="shrink-0 text-[13px] font-semibold text-ink-3">
+            {r.favours ? team(r.favours).code : "Even"}{" "}
+            <span className="font-score text-[16px] text-ink">+{points(r.points)}</span>
+          </span>
+        </div>
+        <div className="relative mt-1.5 h-[7px] rounded-[3px] bg-pitch" aria-hidden>
+          {r.favours && (
+            <div
+              className={`absolute inset-y-0 ${r.points > 0 ? "right-1/2 rounded-l-[3px]" : "left-1/2 rounded-r-[3px]"}`}
+              style={{ width, backgroundColor: colours[r.favours], opacity: quiet ? 0.5 : 1 }}
+            />
+          )}
+          <div className="absolute inset-y-[-3px] left-1/2 w-[2px] -translate-x-1/2 rounded-full bg-ink-3" />
+        </div>
+      </li>
+    );
+  };
+
+  return (
+    <section aria-labelledby="drivers" className="mt-6">
+      <h2 id="drivers" className="text-[16px] font-semibold text-ink">
+        What drove this
+      </h2>
+      <p className="mt-0.5 max-w-[60ch] text-[13px] leading-snug text-ink-3">
+        The Model&rsquo;s margin, in points, split into what {final ? "pushed" : "pushes"} it each way.
+        {drivers.variant === "no_odds" && " It had no odds for this game, so the bookies’ price isn’t in it."}
+      </p>
+      <div className="mt-3 flex justify-between text-[12px] font-semibold text-ink-3">
+        <span className="flex items-center gap-1.5">
+          <TeamBadge name={home} size="sm" />
+          {home}
+        </span>
+        <span className="flex items-center gap-1.5">
+          {away}
+          <TeamBadge name={away} size="sm" />
+        </span>
+      </div>
+      <ul className="mt-2 border-t border-line-soft">
+        {view.base && <Row r={view.base} quiet />}
+        {view.rows.map((r) => (
+          <Row key={r.group} r={r} />
+        ))}
+        <li className="flex items-baseline justify-between gap-3 py-2.5 text-[14px] font-semibold text-ink">
+          <span className="flex items-center gap-1.5">
+            <ModelBadge size="sm" />
+            Model&rsquo;s margin
+          </span>
+          <span>
+            {leads} by <span className="font-score text-[17px]">{points(view.total)}</span>
+          </span>
+        </li>
+      </ul>
+      <p className="text-[12px] leading-snug text-ink-3">
+        Rounded{view.trimmed ? ", and parts under 0.1 points left out" : ""}.
+      </p>
+    </section>
+  );
+}
+
 /* ---------- Claude's preview (live data only) ---------- */
 
 export function PreviewSection({ preview }: { preview: Preview }) {
@@ -219,11 +302,14 @@ export function TipLine({ game }: { game: Game }) {
 
 /* ---------- Tabs (links, so they work without JavaScript) ---------- */
 
-export type MatchTab = "teams" | "elo" | "h2h";
+export type MatchTab = "teams" | "odds" | "elo" | "h2h";
+
+export const matchTab = (t?: string): MatchTab => (t === "odds" || t === "elo" || t === "h2h" ? t : "teams");
 
 export function MatchTabs({ id, tab, query }: { id: string; tab: MatchTab; query: string }) {
   const tabs: [MatchTab, string][] = [
     ["teams", "Team lists"],
+    ["odds", "Odds"],
     ["elo", "Elo"],
     ["h2h", "Head to head"],
   ];
@@ -354,6 +440,64 @@ export function HeadToHead({ game, detail }: { game: Game; detail: MatchDetail }
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/* ---------- Odds: how the price moved before kickoff ---------- */
+
+const handicap = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
+
+export function OddsSection({ game, history }: { game: Game; history: OddsHistory | null }) {
+  const { home, away } = game.match;
+  const before = game.status === "upcoming";
+  if (!history) {
+    return (
+      <p className="mt-4 text-[14px] text-ink-3">
+        {before ? "No prices yet. Betr usually opens the market early in the week." : "No prices were recorded for this game."}
+      </p>
+    );
+  }
+  const m = oddsMove(history, home, away);
+  const name = team(m.team).name;
+  const one = history.points.length === 1;
+  const sheet = history.source === "sheet";
+  const now = before ? "now" : sheet ? "at the close" : "at kickoff";
+  const moved = m.move === 0 ? "no change" : `${Math.abs(m.move)} point${Math.abs(m.move) === 1 ? "" : "s"} ${m.move > 0 ? "their way" : "against them"}`;
+
+  return (
+    <section aria-label="Odds" className="mt-3">
+      <p className="text-[15px] leading-snug font-semibold text-ink">
+        {one ? (
+          <>
+            {history.bookmaker} {sheet ? "opened" : before ? "has" : "had"} the {name} at <span className="font-score text-[18px]">{m.last}%</span>
+            {sheet && !before ? "; the closing price isn’t reliable for this game." : "."}
+          </>
+        ) : (
+          <>
+            {history.bookmaker} opened the {name} at <span className="font-score text-[18px]">{m.first}%</span> and had them at{" "}
+            <span className="font-score text-[18px]">{m.last}%</span> {now}: {moved}.
+          </>
+        )}
+      </p>
+      {m.lastLine != null && (
+        <p className="mt-1 text-[14px] text-ink-2">
+          Line: {name} <span className="font-score text-[16px] text-ink">{handicap(m.lastLine)}</span>
+          {!one && m.firstLine != null && m.firstLine !== m.lastLine && (
+            <>
+              , from <span className="font-score text-[16px]">{handicap(m.firstLine)}</span> at opening
+            </>
+          )}
+          .
+        </p>
+      )}
+      {!one && <OddsChart history={history} team={m.team} isHome={m.team === home} />}
+      <p className="mt-2 text-[12px] leading-snug text-ink-3">
+        Head-to-head prices with the bookie&rsquo;s margin taken out.{" "}
+        {sheet
+          ? "From the aussportsbetting.com odds sheet: its opening and closing prices only."
+          : `Every ${history.bookmaker} price the pipeline saw, through The Odds API.`}
+      </p>
     </section>
   );
 }

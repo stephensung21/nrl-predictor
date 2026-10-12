@@ -3,7 +3,6 @@ import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock, RotateCw, X } from
 import { emptyCopy, modelRoundLine, perfectLine, roastLine, vsModelLine } from "@/lib/copy";
 import { ordinal, type Game, type RoundView, type Standing } from "@/lib/round";
 import type { ModelRecord } from "@/lib/types";
-import { YOU_ID } from "@/lib/sample";
 import { team } from "@/lib/teams";
 import { LocalTime } from "./local-time";
 import { PitchBar } from "./pitch-bar";
@@ -58,7 +57,7 @@ export function RoundHeading({ view, title, prev, next }: { view: RoundView; tit
 
 /* ---------- Tipping strip (signed in only) ---------- */
 
-function StandingLine({ you, leader, model, seed }: { you: Standing; leader: Standing; model: Standing; seed: number }) {
+function StandingLine({ you, leader, model, seed }: { you: Standing; leader: Standing; model?: Standing; seed: number }) {
   const gap = leader.points - you.points;
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-2.5 text-[13px] leading-snug">
@@ -67,14 +66,15 @@ function StandingLine({ you, leader, model, seed }: { you: Standing; leader: Sta
         <span className="text-ink-3"> · </span>
         {gap === 0 ? "Top of the ladder" : `${gap} pt${gap === 1 ? "" : "s"} off the lead`}
       </span>
-      <span className="text-right text-ink-2">{vsModelLine(you.points - model.points, seed)}</span>
+      {model && <span className="text-right text-ink-2">{vsModelLine(you.points - model.points, seed)}</span>}
     </div>
   );
 }
 
-export function TippingStrip({ view, nowIso }: { view: RoundView; nowIso: string }) {
-  const you = view.ladder.find((s) => s.tipper.id === YOU_ID)!;
-  const model = view.ladder.find((s) => s.tipper.isModel)!;
+export function TippingStrip({ view, nowIso, youId }: { view: RoundView; nowIso: string; youId: string }) {
+  const you = view.ladder.find((s) => s.tipper.id === youId);
+  if (!you) return null;
+  const model = view.ladder.find((s) => s.tipper.isModel);
   const leader = view.ladder.find((s) => !s.tipper.isModel)!;
   const open = view.games.filter((g) => g.status === "upcoming");
   const tipped = view.games.filter((g) => g.yourTip).length;
@@ -293,12 +293,15 @@ function Lamps({ results, chase }: { results: boolean[]; chase: boolean }) {
 export function RecapPanel({
   view,
   signedIn,
+  youId,
   tipsBy,
   nextRound,
   heading = true,
 }: {
   view: RoundView;
   signedIn: boolean;
+  /** The signed-in tipper, highlighted in the round's scores. */
+  youId?: string;
   tipsBy: (tipperId: string) => (string | undefined)[];
   nextRound?: { round: number; predictionsDue: string };
   /** The round page draws its own heading with round steppers. */
@@ -347,7 +350,7 @@ export function RecapPanel({
         {signedIn && (
           <ol className="border-t border-line-soft">
             {scores.map(({ s, score }) => {
-              const you = s.tipper.id === YOU_ID;
+              const you = s.tipper.id === youId;
               const results = view.games.map((g, i) => {
                 const t = tipsBy(s.tipper.id)[i];
                 return !!t && g.winners!.includes(t as never);

@@ -1,4 +1,5 @@
-// The live tipping comp's ladder, for /tipping/ladder and /model. The scoring is the database's
+// The live tipping comp's ladder, for /tipping/ladder and /model, and one round's tips and standings
+// for the home and round pages. The scoring is the database's
 // (`ladder()`, `round_scores` and `tip_results`, supabase/migrations/20261010000000_tipping.sql),
 // read through Supabase as the signed-in tipper, so row-level security applies; `ladderView` shapes
 // the rows into what the pages already show for the sample. Server code only.
@@ -8,6 +9,7 @@ import { seasonStats, tagsFor, type SeasonStats } from "./comp-stats";
 import { roundName } from "./round";
 import type { LadderEntry, RoundScore } from "./scoring";
 import type { TeamName } from "./teams";
+import type { LadderRow, RoundData, Tip, Tipper } from "./types";
 
 /** The comp's first season: the scoring auto-tips every game since a season began, so earlier
  * seasons (before anyone tipped) would only show auto-tips. Decided October 2026. */
@@ -133,6 +135,67 @@ async function every<T>(page: (from: number, to: number) => PromiseLike<{ data: 
     out.push(...(data ?? []));
     if (!data || data.length < 1000) return out;
   }
+}
+
+/* ---------- One round, for the home and round pages ---------- */
+
+export type RoundCompRows = {
+  profiles: { id: string; display_name: string; is_model: boolean; fav_team: string | null }[];
+  /** `round_scores` for the season's earlier rounds. */
+  before: { user_id: string; correct: number; bonus: number; margin_score: number }[];
+  /** The round's tips the viewer may see: their own, and everyone's once a game kicks off. */
+  tips: { user_id: string; match_id: number | string; team: string; margin: number | null }[];
+  /** `tip_results` for the round's decided games: every tipper's tip, their own or their auto-tip. */
+  results: { user_id: string; match_id: number | string; team: string }[];
+};
+
+/** What lib/round.ts's buildRound needs for the comp's part of a round, as the signed-in tipper. */
+export type RoundComp = {
+  youId: string;
+  tippers: Tipper[];
+  /** Decided games carry every tipper's scored tip (auto-tips included), so the round's tallies match the ladder's. */
+  tips: Tip[];
+  ladderBefore: LadderRow[];
+  /** The viewer's margin for the round's margin game, if they entered one. */
+  yourMargin?: number;
+};
+
+export function roundComp(youId: string, featuredMatchId: string, rows: RoundCompRows): RoundComp {
+  const tippers: Tipper[] = rows.profiles.map((p) => ({
+    id: p.id, name: p.display_name, ...(p.is_model ? { isModel: true } : {}), ...(p.fav_team ? { favTeam: p.fav_team as TeamName } : {}),
+  }));
+  const ladderBefore: LadderRow[] = rows.profiles.map((p) => {
+    const mine = rows.before.filter((s) => s.user_id === p.id);
+    return {
+      tipperId: p.id,
+      points: mine.reduce((n, s) => n + s.correct + s.bonus, 0),
+      marginScore: mine.reduce((n, s) => n + s.margin_score, 0),
+    };
+  });
+  const tips = new Map<string, Tip>();
+  const put = (t: { user_id: string; match_id: number | string; team: string }) =>
+    tips.set(`${t.user_id}:${t.match_id}`, { tipperId: t.user_id, matchId: String(t.match_id), team: t.team as TeamName });
+  rows.tips.forEach(put);
+  rows.results.forEach(put);
+  const margin = rows.tips.find((t) => t.user_id === youId && String(t.match_id) === featuredMatchId)?.margin;
+  return { youId, tippers, tips: [...tips.values()], ladderBefore, ...(margin != null ? { yourMargin: margin } : {}) };
+}
+
+/** A round's comp as the signed-in tipper sees it (row-level security decides which tips). */
+export async function readRoundComp(sb: SupabaseClient, youId: string, round: RoundData): Promise<RoundComp> {
+  const ids = round.matches.map((m) => Number(m.id));
+  const [profiles, before, tips, results] = await Promise.all([
+    every<RoundCompRows["profiles"][number]>((a, b) =>
+      sb.from("profiles").select("id, display_name, is_model, fav_team").order("id").range(a, b)),
+    every<RoundCompRows["before"][number]>((a, b) =>
+      sb.from("round_scores").select("user_id, correct, bonus, margin_score")
+        .eq("season", round.season).lt("round", round.round).order("round").order("user_id").range(a, b)),
+    every<RoundCompRows["tips"][number]>((a, b) =>
+      sb.from("tips").select("user_id, match_id, team, margin").in("match_id", ids).order("match_id").order("user_id").range(a, b)),
+    every<RoundCompRows["results"][number]>((a, b) =>
+      sb.from("tip_results").select("user_id, match_id, team").in("match_id", ids).order("match_id").order("user_id").range(a, b)),
+  ]);
+  return roundComp(youId, round.featuredMatchId, { profiles, before, tips, results });
 }
 
 /** The season's ladder as the signed-in tipper sees it. */

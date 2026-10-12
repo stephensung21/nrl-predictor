@@ -10,8 +10,8 @@ import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, modelRecord, oddsRounds, roundData,
-  seasonGames, summary, upcomingEdges,
+  currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
+  oddsRounds, roundData, seasonGames, summary, upcomingEdges,
 } from "../lib/data";
 import { buildRecord } from "../lib/model-record";
 import type { Sql } from "../lib/db";
@@ -60,7 +60,16 @@ const SEED = `
     (3, 'forecast', '2027-03-11 06:00+00', 'forecast', false, 26, 0.4, 70, 9, 18, 90, 80, 'Rain showers');
   insert into odds_snapshots (match_id, bookmaker, captured_at, home_odds, away_odds) values
     (3, 'betr_au', '2027-03-10 08:00+00', 2.6, 1.5),
-    (3, 'betr_au', '2027-03-11 08:00+00', 3.2, 1.36);
+    (3, 'betr_au', '2027-03-11 08:00+00', 3.2, 1.36),
+    (3, 'betr_au', '2027-03-13 09:00+00', 6.0, 1.1);
+  insert into prediction_drivers (run_id, match_id, variant, driver_group, feature, value, margin_pts, win_logodds) values
+    ('tue', 3, 'with_odds', 'baseline', '(baseline)', null, 2.8, 0.3),
+    ('tue', 3, 'with_odds', 'market', 'open_logit', -0.4, -6.8, -0.5),
+    ('wed', 3, 'with_odds', 'baseline', '(baseline)', null, 2.8, 0.3),
+    ('wed', 3, 'with_odds', 'market', 'open_logit', -0.5, -5.0, -0.4),
+    ('wed', 3, 'with_odds', 'market', 'open_line', 4.5, -1.5, -0.1),
+    ('wed', 3, 'with_odds', 'lineup', 'diff_rapm_total', -0.2, -2.3, -0.2),
+    ('wed', 3, 'with_odds', 'calibration', '(calibration)', null, 0, 0.05);
 `;
 
 let db: PGlite;
@@ -178,6 +187,29 @@ describe("the site's data layer", () => {
     // Before the second snapshot, the first price: no side 2% better, so no bet.
     const earlier = await upcomingEdges(sql, new Date("2027-03-10T12:00:00Z"));
     expect(earlier[0]).toMatchObject({ homeOdds: 2.6, bet: null });
+  });
+
+  it("reads what drove a game's prediction of record, by group, without the calibration row", async () => {
+    const d = (await matchDrivers(sql, "3"))!;
+    expect(d.variant).toBe("with_odds");
+    // The Wednesday refresh is the prediction of record, not Tuesday's; its two market inputs are summed.
+    expect(d.groups.map((g) => [g.group, g.points])).toEqual([["baseline", 2.8], ["lineup", -2.3], ["market", -6.5]]);
+    expect(d.groups.reduce((s, g) => s + g.points, 0)).toBeCloseTo(-6, 12); // the recorded margin
+    expect(await matchDrivers(sql, "1")).toBeNull(); // predicted before drivers were recorded
+  });
+
+  it("reads a game's price history: Betr's snapshots before kickoff, else the odds sheet's open and close", async () => {
+    const live = (await oddsHistory(sql, "3"))!;
+    expect(live).toMatchObject({ bookmaker: "Betr", source: "live" });
+    expect(live.points.map((p) => [p.at, p.homeOdds, p.awayOdds])).toEqual([
+      ["2027-03-10T08:00:00.000Z", 2.6, 1.5],
+      ["2027-03-11T08:00:00.000Z", 3.2, 1.36], // the price after kickoff is left out
+    ]);
+    expect(live.points[1].homeProb).toBeCloseTo(1 / 3.2 / (1 / 3.2 + 1 / 1.36), 12);
+    const sheet = (await oddsHistory(sql, "1"))!;
+    expect(sheet).toMatchObject({ bookmaker: "BlueBet", source: "sheet" });
+    expect(sheet.points.map((p) => [p.at, p.homeOdds, p.line])).toEqual([[null, 1.5, -4.5], [null, 1.45, null]]);
+    expect(await oddsHistory(sql, "2")).toBeNull();
   });
 
   it("finds a game's preview and a round's recap", async () => {
