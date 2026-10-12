@@ -173,17 +173,25 @@ def turn_round(snaps, flipped):
     return s
 
 
-def for_fixtures(fixtures, prices):
-    """The opening prices (p_open, open_line, open_total) for each fixture, by match id, turned round
-    to nrl.com's home team where the API lists the game the other way round (match_events)."""
-    cols = ["p_open", "open_line", "open_total"]
+def market_for_fixtures(fixtures, prices):
+    """Each fixture's opening and closing prices (p_open, open_line, open_total, p_close, close_line,
+    close_total), by match id, turned round to nrl.com's home team where the API lists the game the other
+    way round (match_events). The closing price is the last snapshot before kickoff (game_prices)."""
+    cols = [f"{x}_{w}" if x == "p" else f"{w}_{x}" for w in ("open", "close") for x in ("p", "line", "total")]
     if prices is None or prices.empty:
         return pd.DataFrame(columns=cols, index=pd.Index([], name="match_id"))
     m = prices.merge(match_events(prices, fixtures), on="event_id").drop_duplicates("match_id")
-    out = pd.DataFrame({"p_open": np.where(m["flipped"], 1 - m["p_open"], m["p_open"]),
-                        "open_line": np.where(m["flipped"], -m["open_line"], m["open_line"]),
-                        "open_total": m["open_total"].to_numpy()}, index=pd.Index(m["match_id"], name="match_id"))
-    return out.astype(float)
+    out = {}
+    for w in ("open", "close"):
+        out[f"p_{w}"] = np.where(m["flipped"], 1 - m[f"p_{w}"], m[f"p_{w}"])
+        out[f"{w}_line"] = np.where(m["flipped"], -m[f"{w}_line"], m[f"{w}_line"])
+        out[f"{w}_total"] = m[f"{w}_total"].to_numpy()
+    return pd.DataFrame(out, index=pd.Index(m["match_id"], name="match_id"))[cols].astype(float)
+
+
+def for_fixtures(fixtures, prices):
+    """The opening prices (p_open, open_line, open_total) for each fixture, by match id (market_for_fixtures)."""
+    return market_for_fixtures(fixtures, prices)[["p_open", "open_line", "open_total"]]
 
 
 # ---------------------------------------------------------------- fetching

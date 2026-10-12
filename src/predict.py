@@ -38,7 +38,7 @@ import pandas as pd
 import config
 from elo import load_params
 from features import PRE_KICKOFF_FILE, build_features, load_inputs, named_from_list
-from ingest import join_odds_to_matches
+from ingest import add_scraped_results, join_odds_to_matches
 from models import predict_models
 from reports import md_table
 
@@ -117,7 +117,8 @@ def named_17(lists):
 def inputs_before(fixtures, keep_weather, neutral=(), live_odds=None):
     """Every input as it stood before the round's first kickoff: later games are removed, and the
     round's own games keep only what is known in advance (draw, venue, opening odds). `neutral` is
-    the match ids the draw puts at a neutral venue, used for games the odds sheet doesn't have yet.
+    the match ids the draw puts at a neutral venue, used for games the odds sheet doesn't have yet
+    (earlier results as well as the round's games).
     `live_odds` (p_open, open_line, open_total by match id; pipeline/fetch_odds.py) gives the opening
     prices of games the sheet doesn't have or hasn't priced yet; the sheet's own prices come first."""
     matches, team_stats, players, odds, origin, reserve = load_inputs()
@@ -129,6 +130,7 @@ def inputs_before(fixtures, keep_weather, neutral=(), live_odds=None):
     kickoff = pd.to_datetime(matches["start_time_utc"], utc=True)
     earlier = set(matches.loc[kickoff < first, "match_id"]) - ids
     matches = matches[matches["match_id"].isin(earlier)]
+    odds = add_scraped_results(odds, matches, neutral)  # results the sheet doesn't have yet, for Elo
     new = fx.reindex(columns=matches.columns)
     new["start_time_utc"] = fx["start_time_utc"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     if not keep_weather:

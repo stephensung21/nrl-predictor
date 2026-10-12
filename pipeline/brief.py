@@ -14,7 +14,7 @@ To add a data source: write a section function, add it to SECTIONS and bump BRIE
 import numpy as np
 import pandas as pd
 
-from common import load_matches
+from common import load_matches, results_and_odds
 import explain
 from elo import load_params, run_elo
 from features import NOT_NAMED
@@ -185,7 +185,8 @@ SECTIONS = {"prediction": prediction_section, "drivers": drivers_section, "marke
 
 def elo_before(games, odds=None):
     """Each team's Elo rating going into each game (by match id), its change over its last five games
-    and over the season so far: from every result in the odds sheet before the game's date."""
+    and over the season so far: from every result before the game's date (the odds sheet, plus scraped
+    results it doesn't have yet when called with common.results_and_odds)."""
     odds = load_odds() if odds is None else odds
     params = load_params(odds)
     hist = odds.join(run_elo(odds, **params, after=True))
@@ -288,7 +289,7 @@ def build_round(out, rows, lists, drivers, fixtures, records=None, now=None):
     """Briefs for a run's predictions (`out` as recorded, `rows` the model rows by match id)."""
     matches = load_matches()
     kickoffs = pd.to_datetime(matches["start_time_utc"], utc=True)
-    elo = elo_before(out)
+    elo = elo_before(out, results_and_odds(records))
     news = team_news(out, lists)
     prices = latest_prices(records, now, fixtures) if records is not None else {}
     weather = latest_weather(records, now) if records is not None else {}

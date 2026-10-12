@@ -33,7 +33,7 @@ So the Elo-only stage in the milestones below is no longer needed: the website c
 | State of Origin and reserve-grade stats | ✅ | `scrape.py` (`--reserve` for reserve grade) |
 | Live team lists, every version kept | ✅ | Fetched by `predict.py`; each fetch saved to `data/raw/teamlists_live/` with a timestamp |
 | Historical pre-kickoff (Tuesday) lists | ✅ | `python src/teamlists.py` (Internet Archive), 2023–2026 |
-| Historical betting odds (aussportsbetting.com sheet) | 🔶 | `data/nrl_betting_odds.xlsx`, downloaded by the live results job (`pipeline/fetch_sheet.py`, step 4c) and used only if it loads, has at least as many games and ends no earlier; impossible prices are counted. It only updates now and then, so the weekly predictions don't depend on it (live odds below); it's for closing prices (grading), retraining and the yearly routine. **Terms:** "personal use only. Do not make the data available elsewhere", so the workflow never commits the downloaded copy; but the copy already committed to this public repo, and the odds sheet's prices on the public site, need a decision (see Open questions). **Blocked on GitHub (11 October 2026):** the first scheduled-style results run got `403 Forbidden` from `https://www.aussportsbetting.com/historical_data/nrl.xlsx`, most likely because the site blocks GitHub's servers or the script's user agent. It's only a warning (the run finished "nothing to do"), and the committed copy is used meanwhile. See step 4c. |
+| Historical betting odds (aussportsbetting.com sheet) | ✅ | `data/nrl_betting_odds.xlsx`, committed. **Downloaded by hand once a year, after the grand final** (`python pipeline/fetch_sheet.py`, step 4c; decided October 2026): the new file replaces the old only if it loads, has at least as many games and ends no earlier; impossible prices are counted. The site does update it during the season (an archived copy from 15 August 2025 ran to 10 August), but it refuses GitHub's runners (403), so the weekly jobs don't use it. **In season nothing depends on it:** the opening prices come from Betr (live odds below); Elo and the team rating take the season's results from the nrl.com scrape for games the sheet doesn't have yet (`ingest.add_scraped_results`, identical to the sheet's on 2026); and grading scores the market on Betr's prices (step 2). The yearly download then brings the true closing prices, for regrading the season and retraining. **Terms:** "personal use only. Do not make the data available elsewhere". Keeping the sheet in this public repo and its prices on the site is your decision (October 2026: not seen as an issue). |
 | Live odds (The Odds API, Betr) | 🔶 | `pipeline/fetch_odds.py`, run at the start of every live job and by `run.py --job odds`: Betr's head-to-head, line and total (Betr is BlueBet since the 2024 merger, the sheet's bookmaker), every snapshot kept in `odds_snapshots.csv`, impossible prices dropped, credits guarded. A game's first snapshot is its opening price when the sheet doesn't have it. Built and tested; the key works and Betr prices come through on the free plan (checked October 2026 on the EPL, as NRL is out of season). Still to confirm in the February trials: Betr lists NRL, and its first snapshot matches the sheet's opening price (see step 4). |
 | Elo, team rating, player ratings (RAPM), features | ✅ | Recomputed from the latest results by `features.py` and `predict.py` |
 
@@ -228,7 +228,7 @@ Lessons from doing them:
 - ✅ **Encrypted backup of the tipping tables** (`pipeline/backup.py`): sign-in ids and emails, profiles, rounds, invites and tips, AES-256-GCM under a key from `BACKUP_PASSPHRASE`; Monday's workflow keeps it 90 days. Tested: export, wipe, restore gives the same rows; no names or emails readable without the passphrase.
 - ✅ **Claude-written previews and recaps** (`pipeline/summaries.py`, §7): a preview of each coming game after predict and refresh, a recap of each fully graded round after results, from model data only (never the tippers), Claude Opus 5.5 at low effort with server-side refusal fallbacks; each text records the model and prompt version, goes to `summaries.csv` and the `summaries` table, and the round and home pages show the recap. Without `ANTHROPIC_API_KEY` it does nothing, and it can't fail a run. Tested with a fake client.
 - ✅ **Paper trading** (above, build status).
-- 🔶 **Step 4c, the odds sheet download** (above, build status). Built, but on GitHub's runners the site answers `403 Forbidden` (first seen 11 October 2026, in the results run's `odds_sheet` entry in `runs.jsonl`). Options: send a browser-like user agent, if the terms allow automated downloads at all; download it by hand or from your computer before the yearly routine; or drop the automatic download. It only matters for closing prices, grading against the market and retraining, not for the weekly predictions. Tie this to the open question on the sheet's terms.
+- ✅ **Step 4c, the odds sheet download: once a year, by hand** (decided October 2026). On GitHub's runners the site answers `403 Forbidden` (first seen 11 October 2026), so the results job no longer downloads it. Run `python pipeline/fetch_sheet.py` from your computer after the grand final (yearly routine, note 5) and commit the sheet. To make that safe, nothing weekly needs it any more: `ingest.add_scraped_results` adds finished scraped games the sheet doesn't have yet to Elo and the team rating (used by predict, grading, the briefs and publishing), with venue-local dates and neutral venues from the draw. *Checked:* with 2026 taken out of the sheet, every 2026 game gets exactly the sheet's date, venue flags, Elo and team rating (`tests/test_pipeline.py`), and replayed 2026 rounds predict exactly as before. Grading takes Betr's prices for games the sheet doesn't price (`fetch_odds.market_for_fixtures`: opening the first snapshot, closing the last before kickoff, marked `market_source = Betr live` in `graded.csv`, and noted in `season.md`); regrade after the yearly download to score against the true closing prices. A scraped 0-0 result is left out of Elo with a warning (nrl.com records some games it got wrong that way, and the sheet isn't there to correct it).
 - 🔶 **Step 13, the Perth Bears:** in `ingest.TEAM_MAP`/`TEAM_STATE`, `features.TEAM_BASE` (Perth; left out of seasons before 2027, and the features are identical with and without them), the `teams` table (migration `20261012000000_perth_bears.sql`) and `web/lib/teams.ts` (red and black, PER). Assumes nrl.com calls them "Bears" and the odds sheet "Perth Bears": check both when the 2027 draw is out. Still to do in step 13: `REGULAR_ROUNDS[2027]` once the draw is known, the final 2026 data and the `2027.1` freeze.
 
 **Trying step 10 on your computer** (steps 1–5 done; the `SITE_DATABASE_URL` password fixed by 13 October 2026):
@@ -244,7 +244,7 @@ Lessons from doing them:
 *You:*
 - ✅ Checked `/tipping` and made an invite on the admin page (October 2026).
 - Optional: `SUPABASE_SERVICE_ROLE_KEY` in `web/.env.local`, to try deleting an account.
-- The odds sheet decision (open question below; making the repo private is the simplest).
+- ✅ The odds sheet decision (October 2026): it stays in the repo, and its prices stay on the site.
 - On the live site (https://nrl-predictor.vercel.app, deployed 12 October 2026): sign in with Google, make an invite on `/tipping/admin`, and have a friend join with `/join/<CODE>`. While the Google OAuth app is in "Testing", only Gmail addresses added as test users can sign in: add friends there, or publish the app (name and email only, so no review is usually needed).
 - Optional: a custom domain (step 12).
 - Optional: a Reddit app (step 11b).
@@ -253,7 +253,7 @@ Lessons from doing them:
 *Me (Claude):*
 - Step 10, the rest: the tippers' parts of `/` and `/round`; tipping itself, and the live ladder with real tips, in the February trials.
 - Step 12 is done; the revalidation endpoint only if pages are ever cached.
-- Step 4c: the odds sheet's 403 on GitHub.
+- ✅ Step 4c: the sheet is downloaded once a year by hand, and nothing weekly depends on it (October 2026).
 - Step 11b: the Reddit API, once there's an app.
 - Step 13 when the 2027 draw is out, and step 14 in February.
 - §7.1 on the site: the "What drove this" panel on match pages, from `record_drivers` (web branch; see "Still to add to the website").
@@ -261,7 +261,7 @@ Lessons from doing them:
 
 **Open questions**
 
-- **The odds sheet's terms** ("personal use only; do not make the data available elsewhere"): the sheet is committed to this public repo, and its prices appear on the public site (`/odds`, match pages) and in `odds_sheet`. Options: make the repo private (GitHub Actions stays free at 2,000 minutes a month, more than enough), stop committing the sheet (download it in each run instead), ask aussportsbetting.com, or show only Betr's live prices on the site. Your call. Related: the site refuses the automatic download from GitHub's runners (403, step 4c), which may itself be a sign it doesn't want automated downloads.
+- ✅ **The odds sheet's terms** ("personal use only; do not make the data available elsewhere"): *decided October 2026:* the sheet stays committed to this public repo and its prices stay on the site (`/odds`, match pages, `odds_sheet`); not seen as an issue. The automatic download is dropped (step 4c).
 
 **The 2027 season**
 
@@ -290,12 +290,12 @@ The wet-conditions flag (rain or a wet ground) is used by the total-points model
 
 **4. The odds sheet.**
 `data/nrl_betting_odds.xlsx` comes from aussportsbetting.com's historical NRL results-and-odds download. It's the only source of the *opening* prices the with-odds model was trained on, and of closing prices for grading against the market.
-- *Recommendation:* download it in the Monday results job (confirm the direct file link and the site's terms first). It doesn't reliably list the coming round in time, so the week's opening prices come from Betr through The Odds API (step 4); the sheet stays the source of closing prices and of the history for retraining.
+- *Decided (October 2026):* download it by hand once a year, after the grand final (step 4c). The site updates it during the season but refuses GitHub's runners, so the week's opening prices come from Betr through The Odds API (step 4), this season's results reach Elo and the team rating from the nrl.com scrape, and grading uses Betr's prices; the yearly sheet brings the true closing prices and the history for retraining.
 - `ingest.load_odds` stops on unknown team names, so a new team or renamed column fails loudly rather than silently.
 - Run the impossible-price check (implied probabilities summing to under 100%) on every download; the 2026 sheet had bad line and totals prices.
 
 **5. The yearly routine (after each grand final, before the next Round 1).**
-1. Scrape the finished season and download the final odds sheet; rebuild the features.
+1. Scrape the finished season and download the final odds sheet (`python pipeline/fetch_sheet.py`, then commit `data/nrl_betting_odds.xlsx`); rebuild the features, and regrade the season against the sheet's closing prices (rerun the results job's grading).
 2. Check for rule or format changes, like the 2026 six-man interchange on Tuesday lists, and **new teams**. A new club (the Perth Bears are due to join in 2027) needs entries in `ingest.TEAM_MAP` (the odds sheet's name), `TEAM_STATE` and `features.TEAM_BASE`. It starts with an average Elo and team rating; its players' ratings carry over from their old clubs. Expect its early predictions to be rough.
 3. Optionally add the finished season to the backtest (`BACKTEST_SEASONS`) and rerun `train.py --backtest` to confirm nothing has drifted.
 4. Commit, then freeze the models for the new season: set `config.PREDICT_SEASON` and run `python src/train.py --freeze` (it refuses to run with uncommitted changes).
@@ -304,7 +304,7 @@ The wet-conditions flag (rain or a wet ground) is used by the total-points model
 
 **6. Weekly grading and the season record.**
 - **Prediction of record:** for each game, the latest prediction made before its kickoff (from the run records; each run has a `run_at` time and a model version).
-- **Grading (Monday results job):** join the round's predictions of record to the results and to the market (opening and closing prices from the odds sheet), and append one row per game to a season record (committed CSV first, later the `predictions` table and `model_accuracy` view).
+- **Grading (Monday results job):** join the round's predictions of record to the results and to the market (opening and closing prices from the odds sheet, or Betr's live prices for games the sheet doesn't have yet: step 4c), and append one row per game to a season record (committed CSV first, later the `predictions` table and `model_accuracy` view).
 - **Metrics per round and cumulative:** tips correct and accuracy, margin and total-points error, log loss and Brier score, each for the model, the opening market, the closing market and Elo.
 - **Paper trading** (IMPROVEMENTS.md item 33): with live odds, also record the bets the model would have made (2% minimum edge at the price available when predicting), and grade them for profit and closing line value. This is the honest test of the betting edge on fully live information.
 
@@ -345,7 +345,7 @@ There is no always-on server. The model is the frozen bundle committed in `model
 |---|---|---|---|
 | Scheduled runs | GitHub Actions `results.yml` (Mon), `predict.yml` (Tue), `refresh.yml` (Wed–Sun), `odds.yml` (Sun night), each calling `pipeline-job.yml`, and `ci.yml`: install, restore the raw-page cache, call `pipeline/run.py`, alert on failure, commit records (also the keep-alive) | `backend`, step 8 | 🔶 on `main` and scheduled; every workflow run by hand (11 October 2026); a full in-season week still to come |
 | The weekly jobs | `pipeline/run.py`: scrape, round detection, predict, validate, grade, run log | `pipeline`, steps 1–2 | ✅ |
-| Data sources | Draw, results and team lists (`scrape.py`, `draw.py`); Betr's live prices from The Odds API (`fetch_odds.py`); odds sheet download (`fetch_sheet.py`); weather for the site (`fetch_weather.py`) | `backend`, steps 4–5 | ✅ built; the weather display is on the website side |
+| Data sources | Draw, results and team lists (`scrape.py`, `draw.py`); Betr's live prices from The Odds API (`fetch_odds.py`); odds sheet download, by hand once a year (`fetch_sheet.py`); weather for the site (`fetch_weather.py`) | `backend`, steps 4–5 | ✅ built; the weather display is on the website side |
 | Interim storage | Run log, every prediction and the graded season as CSV in `data/pipeline/live/<season>/`, committed by the results job | `pipeline` | ✅ (until step 7) |
 | Database: tipping | `matches`, `profiles`, `rounds`, `tips`, scoring views, `ladder()`, row-level security | step 3 | ✅ tested locally and pushed to the live project |
 | Database: model data | `teams`, `model_versions`, `pipeline_runs`, `predictions`, `graded_games`, `team_lists`, `odds_snapshots`, `odds_sheet`, `elo_ratings`, `summaries`, `invites`; views `prediction_of_record`, `match_odds_probs`, `model_accuracy`; the `analyst` role; the Supabase project itself | `supabase`, step 6 | ✅ live project `nrl-predictor`, migrations pushed, 2026 loaded |

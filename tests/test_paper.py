@@ -66,7 +66,6 @@ def test_the_live_results_job_writes_the_paper_trading_record(tmp_path, monkeypa
     for name in ("fetch_season", "fetch_origin", "build_tables", "build_origin_table"):
         monkeypatch.setattr(scrape, name, lambda *a, **k: None)
     monkeypatch.setattr(run.fetch_odds, "api_key", lambda: None)
-    monkeypatch.setattr(run.fetch_sheet, "update", lambda: {"status": "skipped in tests"})
     rec = Records(2026, replay=False, root=tmp_path)
     g = load_matches().query("season == 2026 and round == 10").iloc[0]
     kick = pd.Timestamp(g["start_time_utc"])
