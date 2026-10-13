@@ -27,11 +27,17 @@ export const winners = (g: Game): TeamName[] =>
 
 type NrlRow = { pts: number; diff: number };
 
-/** NRL ladder from the games before a round: 2 points a win, 1 a draw, then points difference. */
+/**
+ * NRL ladder from the games before a round: 2 points a win or a bye, 1 a draw, then points difference.
+ * A bye is an earlier round with no game for the team. As the database's nrl_ladder_before, except
+ * that `rounds` holds decided games only, so a postponed or cancelled earlier game counts as a bye here.
+ */
 export function nrlLadderBefore(rounds: SeasonRound[], round: number) {
   const table = new Map<TeamName, NrlRow>();
-  const row = (t: TeamName) => table.get(t) ?? (table.set(t, { pts: 0, diff: 0 }), table.get(t)!);
-  for (const g of rounds.filter((r) => r.round < round).flatMap((r) => r.games)) {
+  const earlier = rounds.filter((r) => r.round < round);
+  const played = (t: TeamName) => earlier.filter((r) => r.games.some((g) => g.home === t || g.away === t)).length;
+  const row = (t: TeamName) => table.get(t) ?? (table.set(t, { pts: 2 * (earlier.length - played(t)), diff: 0 }), table.get(t)!);
+  for (const g of earlier.flatMap((r) => r.games)) {
     const [h, a] = [row(g.home), row(g.away)];
     h.diff += g.homeScore - g.awayScore;
     a.diff += g.awayScore - g.homeScore;
@@ -41,7 +47,7 @@ export function nrlLadderBefore(rounds: SeasonRound[], round: number) {
     } else if (g.homeScore > g.awayScore) h.pts += 2;
     else a.pts += 2;
   }
-  return (t: TeamName): NrlRow => table.get(t) ?? { pts: 0, diff: 0 };
+  return (t: TeamName): NrlRow => row(t);
 }
 
 /** The team higher on the NRL ladder: points, then points difference; level goes to the home team. */

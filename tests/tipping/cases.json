@@ -142,6 +142,52 @@
       }
     },
     {
+      "name": "the ladder auto-tip counts byes: 2 points, so the Eels (a Round 1 bye) sit above the Panthers (a draw)",
+      "tippers": [
+        { "id": "lou", "autoTip": "ladder" },
+        { "id": "hana", "autoTip": "home" }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "401",
+          "games": [
+            { "id": "401", "home": "Storm", "away": "Broncos", "score": [20, 10] },
+            { "id": "402", "home": "Panthers", "away": "Titans", "score": [12, 12] }
+          ],
+          "tips": [
+            { "tipper": "lou", "match": "401", "team": "Storm" }, { "tipper": "lou", "match": "402", "team": "Panthers" },
+            { "tipper": "hana", "match": "401", "team": "Storm" }, { "tipper": "hana", "match": "402", "team": "Titans" }
+          ]
+        },
+        {
+          "round": 2,
+          "featured": "411",
+          "games": [
+            { "id": "411", "home": "Panthers", "away": "Eels", "score": [10, 24] },
+            { "id": "412", "home": "Titans", "away": "Storm", "score": [12, 18] }
+          ],
+          "tips": []
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "lou": [
+            { "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 2, "partial": false },
+            { "round": 2, "correct": 2, "games": 2, "bonus": 0, "autoTips": 2, "marginScore": 2, "partial": false }
+          ],
+          "hana": [
+            { "round": 1, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 2, "partial": false },
+            { "round": 2, "correct": 0, "games": 2, "bonus": 0, "autoTips": 2, "marginScore": 26, "partial": false }
+          ]
+        },
+        "ladder": {
+          "lou": { "points": 4, "marginScore": 4, "position": 1, "tied": false, "movement": 0 },
+          "hana": { "points": 2, "marginScore": 28, "position": 2, "tied": false, "movement": -1 }
+        }
+      }
+    },
+    {
       "name": "bonus point: every winner in a round of 8 or more, with no auto-tips",
       "tippers": [
         { "id": "perf", "autoTip": "home" },
