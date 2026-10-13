@@ -67,31 +67,132 @@ the Model's pre-season run home on its own.
 
 ### What it needs
 
-1. **The whole season's draw in the database.** `matches` holds only the games the predict job has seen
-   (`pipeline/publish.py`), so later rounds aren't there. `pipeline/draw.py` already reads the full draw
-   from nrl.com (`live_draw`). `publish.py` would publish every game in it as `scheduled`. Check first
-   that nothing reads "every scheduled game" as "this round's games".
-2. **A pure ladder function** in `web/lib/` (or `nrlLadderBefore` extended). It would take the decided
-   games plus the picks and return the rows: played, points, W-D-L, byes and points difference. Test
-   it against hand-worked cases, as `tests/tipping/cases.json` does.
-3. **The run-home simulation.** It could run in the browser (10,000 seasons of about 100 remaining
-   games each takes well under a second) or in the pipeline after each round, saved as one table.
-   The pipeline is better: it's the same for everyone, it can be tested in Python, and the site only
-   reads it. Elo is the right engine. The full Model needs team lists, so it can't predict games weeks
-   ahead.
-4. **The page**: the round-by-round picker, the ladder table with the actual/predicted switch and
-   movement arrows, Auto fill, Reset, and the finals bracket.
+#### 1. The rest of the season's draw in the database
+
+**The gap.** `publish.py` (`match_rows`) publishes two kinds of game to `matches`: the ones already
+played, and the coming ones the predict job has seen. The predict job only looks at the round in play.
+So on a Tuesday in Round 12 the database has Rounds 1–12, and nothing for Rounds 13–27. A ladder
+predictor needs every remaining game.
+
+**Why it isn't just "publish more rows".** `matches.id` is nrl.com's match id, and `tips`, `predictions`,
+`odds` and the rest point at it. nrl.com's draw pages (the `vue-draw` data that `scrape.fetch_fixtures`
+and `draw.live_draw` read) don't carry that id. A game only has its URL
+(`/draw/nrl-premiership/2026/round-1/knights-v-cowboys/`) until its match-centre page is fetched, which
+the pipeline does with the team lists in the week of the game. `live_draw` leaves `match_id` empty for
+those games.
+
+**Options:**
+
+| Option | How | Catch |
+|---|---|---|
+| **A. A separate `fixtures` table** (recommended) | Keyed on `(season, url)`: round, kickoff, home, away, venue, `is_final`. `publish.py` replaces the season's rows from `live_draw` on every run, so moved kickoffs and postponements follow nrl.com | A second list of games. It's for the ladder predictor only, and nothing in tipping reads it |
+| B. Every game in `matches`, with ids from the match-centre pages | Fetch each future game's match-centre page for its id: about 100–200 extra page fetches a week, before the polite delay | Pages for games months away may not exist yet. Every view and page that reads "scheduled games" has to be checked: the tip page's round in play, the admin's "still to tip" counts, Auto Pick, the Model's tips |
+| C. Made-up ids for future games | Negative ids until the real one is known | It swaps ids under the tips and predictions that point at them. Not worth the risk |
+
+With A, the predictor reads the decided games from `matches` and the rest from `fixtures`, joining
+them on round, home and away. Byes come out of it naturally: a team with no game in a round has a
+bye. The draw for a new season usually comes out late in the year, so before that the page has
+nothing to show beyond the real ladder.
+
+#### 2. A pure ladder function
+
+It goes in `web/lib/`, or as an extension of `nrlLadderBefore`. It takes the decided games plus the
+picks and returns the rows: played, points, W-D-L, byes and points difference. It's tested against
+hand-worked cases, as `tests/tipping/cases.json` does. It can share the tie-break with the tipping
+ladder auto-tip, so the two never disagree.
+
+#### 3. The run-home simulation
+
+**Engine: Elo, not the full Model.** The Model needs team lists, odds and the latest form, none of
+which exist for a game weeks away. Elo needs only the two ratings and home advantage. With the tuned
+settings (`data/processed/elo_params.json`: home advantage 50, K 12, 40% regression to the mean
+between seasons), the home win chance is `1 / (1 + 10^((away − home − 50) / 400))`. In the 2026 final
+test, Elo alone got 62.4% of winners, against 63–67% for the Model (`reports/final_2026.md`). That's
+good enough for weeks ahead.
+
+**Margins.** Points difference breaks ties on points, so each simulated game needs a margin. NRL
+margins have a spread of about 20 points (2020–2026 regular season: standard deviation 20.0, median
+winning margin 14). The Model's margin errors are a little smaller (mean absolute error about 15,
+which is a spread of about 19). So each game's margin is drawn from a normal distribution, with its
+mean set so that the chance of a home win matches Elo's, and a spread of 19.
+
+**How it runs:**
+
+- 10,000 seasons, each playing every remaining game.
+- Update the ratings inside each season, as FiveThirtyEight's forecasts do. A team that wins
+  simulated games then goes in stronger, which widens the range realistically. Without this, the
+  favourites' chances come out too certain.
+- Count, for each team, how often it finishes top 8, top 4 and first, plus its average points and
+  position.
+
+**Where it runs: the pipeline**, after the Monday results job (`results.yml`), as a new step:
+
+- It's the same for everyone and can be tested in Python.
+- It writes one small table, for example `run_home(season, after_round, team, top8, top4, minor_premiership, avg_points, avg_position)`.
+- The site only reads that table.
+
+10,000 seasons of about 100 games each takes a few seconds in numpy. Keeping every week's rows also
+gives a "chances over the season" chart for free.
+
+**Auto fill uses the same numbers.** For the round in play, it uses the Model's own tip and margin
+(from `predictions`). For later rounds, it uses the Elo favourite and the Elo margin, rounded to the
+nearest margin step.
+
+#### 4. The page
+
+The parts:
+
+- the round-by-round picker,
+- the ladder table, with the actual/predicted switch and movement arrows,
+- Auto fill and Reset,
+- the finals bracket.
+
+Picks are kept in the browser. A share link could carry them in the address.
 
 Size: one website branch for the page and the ladder function, and one backend branch for the full
 draw and the simulation, since website and backend work go on separate branches.
 
 ### Open questions
 
-- **Draws in the simulation.** NRL draws are rare (golden point). Allow none, or about 1%?
-- **Margin steps or free entry?** nrl.com's steps are quicker on a phone. Free entry suits the margin
-  game's habits. Steps are recommended.
-- **Should the run home be on `/elo` or the round page too?** A small "top 8 chance" column on `/elo`
-  would be cheap once the table exists.
+**Draws in the simulation.** Since golden point, regular-season draws are rare: 8 in 1,360 games from
+2020 to 2026 (0.6%), and none in 2026. That's about one a season. A draw gives each team 1 point
+instead of 2 and 0, so it only matters when two teams finish level.
+
+- *Recommended:* no draws in the simulation, which keeps it simple. Points difference already
+  separates most teams level on points, and leaving out about one draw a season moves no team's
+  chances by more than a point or so.
+- *But keep "Draw" in the picker*, as nrl.com did, so a fan can play out a draw.
+- If the chances are ever compared with the bookmakers' top-8 prices, a 0.6% draw rate is a one-line
+  change.
+
+**Margin steps or free entry?**
+
+| | nrl.com's steps (1, 2, 4, 8, 12, 18, 24, 30, 38, 48) | Free entry |
+|---|---|---|
+| Speed | One tap. Mid-season there are about 100 games left, so it has to be quick on a phone | A keyboard for every game |
+| Fit to real margins | Good: real winning margins have a median of 14, a middle half of 6–24 and 90% under 34, and the steps are spread across that | Exact |
+| Precision needed | Low: a margin only moves points difference, which only matters for teams level on points | Not needed |
+| Default | 12 points: the same as nrl.com and the tipping comp's default margin | — |
+
+*Recommended:* steps, with 12 as the default. Auto fill rounds the Model's margin to the nearest step.
+
+**Where else to show the run home?** Once the `run_home` table exists, each of these is a small
+addition:
+
+| Place | What | Effort |
+|---|---|---|
+| `/elo` | A "Top 8 %" column beside each rating | Smallest: one join |
+| Home page | The viewer's favourite team: "Storm: 87% to make the top 8, 41% top 4" | Small (needs sign-in for the favourite team) |
+| Match page | **What's at stake**: each team's top-8 chance if it wins and if it loses, as FiveThirtyEight showed. It comes from the same simulations, split by that game's result, so it costs no extra runs | Medium: the pipeline keeps the split for the coming round |
+| Round page | A line on the biggest swing of the round: "Biggest game: Eels v Dolphins, 30 points of top-8 chance at stake" | Small, once the match page has it |
+| `/model` | Chances over the season as a chart, and at season's end how they compared with what happened | Later |
+
+*Recommended:* the `/elo` column and the match-page "what's at stake" first. They show the Model's
+view on pages people already visit, and the ladder predictor page then adds the do-it-yourself part.
+
+**When to show it.** The chances mean little until a few rounds are played, because the pre-season
+ratings are pulled 40% back to the average. So show them from about Round 5, or before that with a
+note that they're mostly last year's form.
 
 ## The bye fix (done, October 2026)
 
