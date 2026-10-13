@@ -5,6 +5,11 @@ tipping, lockout, auto-tips, the margin game, the ladder, what drove each predic
 players out), the price history and the value underdog flag before 2027. The real site, database and
 comp are untouched.
 
+The trial site: https://nrl-predictor-trial.vercel.app (Supabase project `oekzakejprqqzxyiicvh`). Each
+friend joins with their own invite link, `https://nrl-predictor-trial.vercel.app/join/<code>`, made on
+the trial's `/tipping/admin` page: each code works once and lasts 7 days. Add their Gmail address as a
+test user in Google Cloud (step 7) before sending it.
+
 How it works: `pipeline/trial.py` (its docstring has the details). Each round opens on a Tuesday at
 07:15 UTC (6:15pm Sydney in daylight saving), when the real predict job runs, with the real predictions
 and Tuesday's team lists. Its games are played that week on their real weekdays at their real Sydney
