@@ -89,6 +89,8 @@ export type Tipper = {
   favTeam?: TeamName;
   /** Fills untipped games at lockout. The Model never needs one. */
   autoTip?: AutoTip;
+  /** When they joined (UTC ISO). Games that kicked off before it count as away-team tips. Unset: from the start. */
+  joinedAt?: string;
 };
 
 export type Tip = { tipperId: string; matchId: string; team: TeamName };

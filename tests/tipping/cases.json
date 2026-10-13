@@ -1,5 +1,5 @@
 {
-  "about": "Tipping rule cases shared by web/lib/scoring.ts and the database scoring (supabase/migrations). Every expected value was worked out by hand from the rules in PLAN_WEB.md §3.5. A game with score null hasn't been played; `sqlOnly` cases use rules the sample doesn't model. Run with `npm test` in web/.",
+  "about": "Tipping rule cases shared by web/lib/scoring.ts and the database scoring (supabase/migrations). Every expected value was worked out by hand from the rules in PLAN_WEB.md §3.5. A game with score null hasn't been played; `joinedRound` means the tipper joined an hour before that round's first game; `sqlOnly` cases use rules the sample doesn't model. Run with `npm test` in web/.",
   "season": 2026,
   "cases": [
     {
@@ -333,6 +333,70 @@
         "ladder": {
           "amy": { "points": 2, "marginScore": 0, "position": 1, "tied": true, "movement": null },
           "ben": { "points": 2, "marginScore": 0, "position": 1, "tied": true, "movement": null }
+        }
+      }
+    },
+    {
+      "name": "a late joiner: games before they joined are away-team tips worth at most 4 points a round; after that, their auto-tip",
+      "tippers": [
+        { "id": "amy", "autoTip": "crowd" },
+        { "id": "cal", "autoTip": "crowd", "joinedRound": 2 },
+        { "id": "model", "isModel": true }
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "featured": "801",
+          "games": [
+            { "id": "801", "home": "Storm", "away": "Broncos", "score": [10, 24] },
+            { "id": "802", "home": "Panthers", "away": "Eels", "score": [12, 20] },
+            { "id": "803", "home": "Sharks", "away": "Dragons", "score": [30, 6] },
+            { "id": "804", "home": "Roosters", "away": "Rabbitohs", "score": [6, 18] },
+            { "id": "805", "home": "Knights", "away": "Titans", "score": [10, 16] },
+            { "id": "806", "home": "Cowboys", "away": "Raiders", "score": [4, 22] }
+          ],
+          "tips": [
+            { "tipper": "amy", "match": "801", "team": "Storm", "margin": 6 }, { "tipper": "amy", "match": "802", "team": "Eels" },
+            { "tipper": "amy", "match": "803", "team": "Sharks" }, { "tipper": "amy", "match": "804", "team": "Roosters" },
+            { "tipper": "amy", "match": "805", "team": "Titans" }, { "tipper": "amy", "match": "806", "team": "Raiders" },
+            { "tipper": "model", "match": "801", "team": "Broncos", "margin": 10 }, { "tipper": "model", "match": "802", "team": "Eels" },
+            { "tipper": "model", "match": "803", "team": "Sharks" }, { "tipper": "model", "match": "804", "team": "Rabbitohs" },
+            { "tipper": "model", "match": "805", "team": "Titans" }, { "tipper": "model", "match": "806", "team": "Raiders" }
+          ]
+        },
+        {
+          "round": 2,
+          "featured": "811",
+          "games": [
+            { "id": "811", "home": "Eels", "away": "Storm", "score": [20, 10] },
+            { "id": "812", "home": "Broncos", "away": "Panthers", "score": [8, 28] }
+          ],
+          "tips": [
+            { "tipper": "amy", "match": "811", "team": "Eels", "margin": 8 }, { "tipper": "amy", "match": "812", "team": "Broncos" },
+            { "tipper": "cal", "match": "811", "team": "Storm", "margin": 4 },
+            { "tipper": "model", "match": "811", "team": "Eels", "margin": 12 }, { "tipper": "model", "match": "812", "team": "Panthers" }
+          ]
+        }
+      ],
+      "expect": {
+        "rounds": {
+          "amy": [
+            { "round": 1, "correct": 4, "games": 6, "bonus": 0, "autoTips": 0, "marginScore": 20, "partial": false },
+            { "round": 2, "correct": 1, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 2, "partial": false }
+          ],
+          "cal": [
+            { "round": 1, "correct": 4, "games": 6, "bonus": 0, "autoTips": 6, "marginScore": 2, "partial": false },
+            { "round": 2, "correct": 0, "games": 2, "bonus": 0, "autoTips": 1, "marginScore": 14, "partial": false }
+          ],
+          "model": [
+            { "round": 1, "correct": 6, "games": 6, "bonus": 0, "autoTips": 0, "marginScore": 4, "partial": false },
+            { "round": 2, "correct": 2, "games": 2, "bonus": 0, "autoTips": 0, "marginScore": 2, "partial": false }
+          ]
+        },
+        "ladder": {
+          "amy": { "points": 5, "marginScore": 22, "position": 1, "tied": false, "movement": 1 },
+          "cal": { "points": 4, "marginScore": 16, "position": 2, "tied": false, "movement": -1 },
+          "model": { "points": 8, "marginScore": 6, "position": null, "tied": false, "movement": null }
         }
       }
     }

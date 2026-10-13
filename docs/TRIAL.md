@@ -80,6 +80,24 @@ October for the 20 October start) so friends have the invite before the round's 
    home page and `/tipping` show Round 1, and a match page shows "What drove this" with any star
    players out named under it.
 
+## New migrations during the trial
+
+When a change adds a migration under `supabase/migrations/` (for example `20261020000000_late_joiners.sql`),
+the trial database needs it as well as the real one. In a separate PowerShell window at the repo root,
+on a checkout that has the migration (`main` once it's merged):
+```
+npx supabase link --project-ref <trial ref>          # asks for the trial database password
+npx supabase db push                                 # lists only the migrations the trial lacks; confirm with y
+npx supabase link --project-ref szukyfanuvjajjezxuar # back to the real project afterwards
+```
+`supabase/.temp/project-ref` shows which project the CLI is linked to. Link back straight away, so a
+later push doesn't go to the wrong project. The migration changes the trial database at once. The
+site's own changes reach the trial when `main` is pushed and Vercel redeploys it.
+
+A scoring change such as late joiners re-scores everyone straight away: a tipper whose profile was
+created after a game kicked off now gets the away team for that game. Anyone who joined before Round
+1's first game is unaffected.
+
 ## What to ask testers to try
 
 - Join with the invite link and sign in with Google; pick a name, a favourite team and an auto-tip.

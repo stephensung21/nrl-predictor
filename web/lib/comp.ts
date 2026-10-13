@@ -11,8 +11,8 @@ import type { LadderEntry, RoundScore } from "./scoring";
 import type { TeamName } from "./teams";
 import type { LadderRow, RoundData, Tip, Tipper } from "./types";
 
-/** The comp's first season: the scoring auto-tips every game since a season began, so earlier
- * seasons (before anyone tipped) would only show auto-tips. Decided October 2026. The trial site
+/** The comp's first season: the scoring fills every game since a season began (away-team tips for games
+ * before a tipper joined), so earlier seasons (before anyone tipped) would only show those. Decided October 2026. The trial site
  * (pipeline/trial.py) sets NEXT_PUBLIC_COMP_FIRST_SEASON=2026 for its replayed rounds. */
 export const COMP_FIRST_SEASON = Number(process.env.NEXT_PUBLIC_COMP_FIRST_SEASON) || 2027;
 

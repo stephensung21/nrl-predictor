@@ -1,6 +1,6 @@
 // The live ladder (lib/comp.ts): the rows the ladder page reads through Supabase, read here with the
 // same queries in PGlite as a signed-in tipper under row-level security, then shaped by ladderView.
-// A hand-worked two-round comp: Cal joined late and has Round 1 filled by auto-tips.
+// A hand-worked two-round comp: Cal joined after Round 1, so its games count as away-team tips.
 
 import type { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -13,9 +13,9 @@ const [AMY, BEN, CAL, MODEL] = [uuid(1), uuid(2), uuid(3), uuid(9)];
 
 const SEED = `
   insert into auth.users (id) values ('${AMY}'), ('${BEN}'), ('${CAL}'), ('${MODEL}');
-  insert into profiles (id, display_name, fav_team, auto_tip, is_model) values
-    ('${AMY}', 'Amy', 'Storm', 'home', false), ('${BEN}', 'Ben', null, 'home', false),
-    ('${CAL}', 'Cal', 'Eels', 'home', false), ('${MODEL}', 'Model', null, 'home', true);
+  insert into profiles (id, display_name, fav_team, auto_tip, is_model, created_at) values
+    ('${AMY}', 'Amy', 'Storm', 'home', false, now() - interval '30 days'), ('${BEN}', 'Ben', null, 'home', false, now() - interval '30 days'),
+    ('${CAL}', 'Cal', 'Eels', 'home', false, now() - interval '10 days'), ('${MODEL}', 'Model', null, 'home', true, now());
   insert into matches (id, season, round, kickoff, home_team, away_team, status, home_score, away_score) values
     (11, 2027, 1, now() - interval '14 days', 'Storm', 'Broncos', 'final', 24, 16),
     (12, 2027, 1, now() - interval '14 days' + interval '3 hours', 'Eels', 'Panthers', 'final', 10, 30),
@@ -96,19 +96,19 @@ describe("the live ladder", () => {
     expect(view.ladder.map((e) => [e.tipper.name, e.points, e.marginScore, e.position, e.movement])).toEqual([
       ["Amy", 4, 4, 1, 0],
       ["Model", 2, 7, null, null],
-      ["Cal", 2, 7, 2, 0],
-      ["Ben", 2, 32, 3, 0],
+      ["Cal", 2, 23, 2, 0],
+      ["Ben", 2, 32, 3, -1],
     ]);
     expect(view.ladder[0].tipper).toEqual({ id: AMY, name: "Amy", favTeam: "Storm" });
     expect(view.ladder[1].tipper.isModel).toBe(true);
     expect(view.latest).toEqual({ round: 2, title: "Round 2", partial: false, games: 2 });
   });
 
-  it("fills a late joiner's missed round with auto-tips, flagged in the round grid", async () => {
+  it("counts a late joiner's missed round as away-team tips, flagged as auto-tips in the round grid", async () => {
     const view = (await as(db, BEN, () => rows(db, 2027).then((r) => ladderView(2027, r))))!;
     const cal = view.ladder.find((e) => e.tipper.id === CAL)!;
     expect(cal.rounds.map((s) => [s.round, s.correct, s.games, s.autoTips, s.marginScore])).toEqual([
-      [1, 1, 2, 2, 4],
+      [1, 1, 2, 2, 20],
       [2, 1, 2, 0, 3],
     ]);
   });
@@ -142,25 +142,27 @@ describe("a round's comp on the home and round pages", () => {
     expect(comp.ladderBefore.sort((a, b) => a.tipperId.localeCompare(b.tipperId))).toEqual([
       { tipperId: AMY, points: 2, marginScore: 0 },
       { tipperId: BEN, points: 1, marginScore: 20 },
-      { tipperId: CAL, points: 1, marginScore: 4 },
+      { tipperId: CAL, points: 1, marginScore: 20 },
       { tipperId: MODEL, points: 1, marginScore: 2 },
     ]);
     expect(comp.tips).toHaveLength(8);
     expect(comp.yourMargin).toBe(3);
     expect(comp.tippers.find((t) => t.id === MODEL)?.isModel).toBe(true);
 
-    // The pages' round view then agrees with the ladder (Amy 4; the rest 2).
+    // The pages' round view then agrees with the ladder on points (Amy 4; the rest 2). Its margin
+    // scores are those going into the round, so Ben and Cal (both 20) share 2nd here, where the
+    // ladder, with Round 2's margin game, has Cal ahead.
     const view = buildRound({ data, now: new Date(Date.now() + 864e5 * 30), ...comp });
     expect(view.phase).toBe("recap");
     expect(view.ladder.map((s) => [s.tipper.name, s.points, s.roundCorrect, s.position])).toEqual([
-      ["Amy", 4, 2, 1], ["Model", 2, 1, 0], ["Cal", 2, 1, 2], ["Ben", 2, 1, 3],
+      ["Amy", 4, 2, 1], ["Model", 2, 1, 0], ["Ben", 2, 1, 2], ["Cal", 2, 1, 2],
     ]);
     expect(view.games.map((g) => [g.yourTip, g.yourCorrect])).toEqual([["Storm", false], ["Panthers", true]]);
   });
 
-  it("fills a late joiner's untipped games with their auto-tip once decided", async () => {
+  it("gives a late joiner the away team for games before they joined, once decided", async () => {
     const comp = roundComp(CAL, "11", await as(db, CAL, () => roundRows(db, 2027, 1)));
-    expect(comp.tips.filter((t) => t.tipperId === CAL).map((t) => [t.matchId, t.team])).toEqual([["11", "Storm"], ["12", "Eels"]]);
+    expect(comp.tips.filter((t) => t.tipperId === CAL).map((t) => [t.matchId, t.team])).toEqual([["11", "Broncos"], ["12", "Panthers"]]);
     expect(comp.yourMargin).toBeUndefined();
     expect(comp.ladderBefore.every((r) => r.points === 0)).toBe(true);
   });

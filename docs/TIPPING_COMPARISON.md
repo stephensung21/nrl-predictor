@@ -21,14 +21,14 @@ The official rules page (tipping.nrl.com/help) is built with JavaScript; its tex
 | Margin score | Gap between predicted and actual margin, added up over the season | Same; a wrong-team tip also counts as a negative margin (the official rules don't say) | ✅ |
 | **Default margin** | **Average of all margins entered that round** | Fixed 12 | ❌ |
 | Ladder ties | Lowest total margin score, then whoever registered first | Lowest total margin score, then a shared place | ✅ close enough for a friends' comp |
-| **Late joiners** | Past rounds are scored as away-team tips, **capped at 4 points a round** | Auto-tips for every past game, no cap | ❌ |
+| **Late joiners** | Past rounds are scored as away-team tips, **capped at 4 points a round** | Same since October 2026 (games before you joined); before that, auto-tips with no cap | ✅ fixed |
 | Matches covered | All NRL games, the finals and the men's State of Origin | NRL games and finals only | Minor difference |
 | Experts in comps | Comp admins can add "expert" tippers to their comp | The Model tips as an unranked yardstick | ✅ same idea |
 
 ### Things to fix
 
 1. **Default margin.** `PLAN_WEB.md` §3.5 says the official rules don't give the default margin, but the 2026 rules do: it's the average of the margins entered that round. In SQL this is an `avg(margin)` over the round's tips in the `featured` part of `round_scores`. Decide whether the Model's margin counts towards the average.
-2. **Late joiners.** `effective_tips` cross-joins every profile with every game that has locked, and doesn't check when the tipper joined. Someone who joins in Round 10 with the "crowd" auto-tip gets the group's consensus on every earlier game, which could put them ahead of people who tipped all season. The official rule is away-team tips, capped at 4 points a round. The simplest fix is to filter on `profiles.created_at < kickoff`, or copy the official cap. It may never come up in a small invite-only comp, but it should be a deliberate choice.
+2. ✅ **Late joiners** (done, October 2026: the official rule, in `20261020000000_late_joiners.sql` and `web/lib/scoring.ts`). `effective_tips` cross-joins every profile with every game that has locked, and doesn't check when the tipper joined. Someone who joins in Round 10 with the "crowd" auto-tip gets the group's consensus on every earlier game, which could put them ahead of people who tipped all season. The official rule is away-team tips, capped at 4 points a round. The simplest fix is to filter on `profiles.created_at < kickoff`, or copy the official cap. It may never come up in a small invite-only comp, but it should be a deliberate choice.
 3. **The "Favourites" auto-tip.** The pipeline already ingests bookmaker odds, so this is cheap to add, and it's the strongest of the official options. "The Model's tip" would make a natural extra option.
 
 ## What other comps do that this comp doesn't
@@ -36,7 +36,7 @@ The official rules page (tipping.nrl.com/help) is built with JavaScript; its tex
 | Feature | Who uses it | Worth adding? |
 |---|---|---|
 | **Streak game**: pick winners in a row and skip any game you like; your longest streak ranks you | Official NRL (separate prize) | "Longest streak" is already planned as a stat. A separate streak game is more than a few friends need |
-| **Auto Pick button**: fills a whole round in one tap using a chosen strategy | Official NRL | Cheap, and "tip what the Model says" would suit the site |
+| **Auto Pick button**: fills a whole round in one tap using a chosen strategy | Official NRL | ✅ Added October 2026: the Model, home teams or ladder, for the games you haven't tipped |
 | **Round winner and monthly winners** | Official NRL (round and monthly rankings) | Round winners are already planned |
 | **Club leagues**: everyone is ranked against fans of their own team | Official NRL | The favourite team is already stored |
 | **Joker round**: doubles your score once a season | iTipFooty | Optional extra |
