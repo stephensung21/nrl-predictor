@@ -7,6 +7,9 @@ export const DEFAULT_MARGIN = 12;
 /** A perfect round earns a bonus point only in rounds of at least this many games. */
 export const BONUS_MIN_GAMES = 8;
 
+/** At most this many points a round from games that kicked off before a tipper joined (they count as away-team tips). */
+export const LATE_JOIN_MAX_POINTS = 4;
+
 /** What fills an untipped game at lockout. Ties and gaps fall back to the home team. */
 export type AutoTip = "home" | "crowd" | "ladder";
 

@@ -22,7 +22,8 @@ type Expected = {
 type Case = {
   name: string;
   sqlOnly?: boolean;
-  tippers: { id: string; autoTip?: AutoTip; isModel?: boolean }[];
+  /** `joinedRound`: joined an hour before that round's first game (otherwise before the season). */
+  tippers: { id: string; autoTip?: AutoTip; isModel?: boolean; joinedRound?: number }[];
   rounds: CaseRound[];
   expect: Expected;
 };
@@ -30,16 +31,24 @@ type Case = {
 const root = new URL("../../", import.meta.url);
 const { season, cases } = JSON.parse(readFileSync(new URL("tests/tipping/cases.json", root), "utf8")) as { season: number; cases: Case[] };
 
+/** Kickoffs a round a week, an hour apart within a round, as the database's (below). */
+const HOUR = 3600e3;
+const kickoffAt = (round: number, i: number) => new Date(Date.UTC(2026, 0, 1) + (round * 7 * 24 + i) * HOUR).toISOString();
+
 /* ---------- the website's rules ---------- */
 
 function inTypeScript(c: Case) {
-  const tippers: Tipper[] = c.tippers.map((t) => ({ id: t.id, name: t.id, isModel: t.isModel, autoTip: t.autoTip }));
+  const tippers: Tipper[] = c.tippers.map((t) => ({
+    id: t.id, name: t.id, isModel: t.isModel, autoTip: t.autoTip,
+    ...(t.joinedRound ? { joinedAt: new Date(Date.parse(kickoffAt(t.joinedRound, 0)) - HOUR).toISOString() } : {}),
+  }));
   const rounds: ScoredRound[] = c.rounds.map((r) => ({
     round: r.round,
     featuredMatchId: r.featured,
     games: r.games
+      .map((g, i) => ({ ...g, i }))
       .filter((g) => g.score)
-      .map((g) => ({ matchId: g.id, kickoff: "", home: g.home, away: g.away, homeScore: g.score![0], awayScore: g.score![1], modelHomeProb: 0.5, modelMargin: 0 })),
+      .map((g) => ({ matchId: g.id, kickoff: kickoffAt(r.round, g.i), home: g.home, away: g.away, homeScore: g.score![0], awayScore: g.score![1], modelHomeProb: 0.5, modelMargin: 0 })),
     tips: r.tips.map((t) => ({ tipperId: t.tipper, matchId: t.match, team: t.team })),
     margins: r.tips.filter((t) => t.margin != null).map((t) => ({ tipperId: t.tipper, team: t.team, margin: t.margin! })),
     partial: r.games.some((g) => !g.score),
@@ -69,7 +78,12 @@ async function load(db: PGlite, c: Case) {
   const ids = new Map(c.tippers.map((t, i) => [t.id, uuid(i + 1)]));
   for (const t of c.tippers) {
     await db.query("insert into auth.users (id) values ($1)", [ids.get(t.id)]);
-    await db.query("insert into profiles (id, display_name, auto_tip, is_model) values ($1, $2, $3, $4)", [ids.get(t.id), t.id, t.autoTip ?? "home", !!t.isModel]);
+    // Joined before the season (a year ago), or an hour before a round's first game, as kickoffs are set below.
+    const joined = t.joinedRound ? `now() - interval '${(40 - t.joinedRound) * 7} days' - interval '1 hour'` : "now() - interval '1 year'";
+    await db.query(
+      `insert into profiles (id, display_name, auto_tip, is_model, created_at) values ($1, $2, $3, $4, ${joined})`,
+      [ids.get(t.id), t.id, t.autoTip ?? "home", !!t.isModel],
+    );
   }
   for (const r of c.rounds) {
     for (const [i, g] of r.games.entries()) {

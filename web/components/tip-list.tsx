@@ -27,7 +27,18 @@ export type TipGame = {
   tippers: number;
   /** What the viewer's auto-tip choice gives this game, if they leave it untipped past lockout. */
   autoTeam?: TeamName;
+  /** It kicked off before the viewer joined, so it counts as an away-team tip. */
+  autoLate?: boolean;
+  /** The team higher on the NRL ladder going into the round (Auto Pick's "Ladder"). */
+  ladderTip?: TeamName;
 };
+
+/** Auto Pick: fills every open game the viewer hasn't tipped, in one go, as the official game's button does. */
+const AUTO_PICKS = [
+  { value: "model", label: "The Model", pick: (g: TipGame) => g.modelTip },
+  { value: "home", label: "Home teams", pick: (g: TipGame) => g.home },
+  { value: "ladder", label: "Ladder", pick: (g: TipGame) => g.ladderTip ?? g.home },
+] as const;
 
 type Save = "saving" | "saved" | "error" | "locked";
 
@@ -101,6 +112,20 @@ export function TipList({
     }
   }
 
+  async function autoPick(choose: (g: TipGame) => TeamName) {
+    const picks = Object.fromEntries(untipped.map((g) => [g.matchId, choose(g)])) as Record<string, TeamName>;
+    if (!untipped.length) return;
+    setTips((x) => ({ ...x, ...picks }));
+    flash("autoPick", "saving");
+    try {
+      await store.setTips(season, round, picks);
+      flash("autoPick", "saved");
+    } catch (e) {
+      setTips((x) => Object.fromEntries(Object.entries(x).filter(([id]) => !(id in picks))));
+      flash("autoPick", e instanceof LockedError ? "locked" : "error");
+    }
+  }
+
   function toggleHint() {
     setShowHint((v) => {
       try {
@@ -111,6 +136,7 @@ export function TipList({
   }
 
   const open = games.filter((g) => !locked.has(g.matchId));
+  const untipped = open.filter((g) => !tips[g.matchId]);
   const tipped = games.filter((g) => tips[g.matchId]).length;
   const nextLock = open[0];
 
@@ -149,6 +175,33 @@ export function TipList({
           />
         </button>
       </div>
+
+      {(untipped.length > 0 || saves.autoPick) && (
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line-soft py-2.5">
+          <span className="flex flex-wrap items-baseline gap-x-2 text-[14px] text-ink-2">
+            {untipped.length > 0 && (
+              <span id="auto-pick-label">
+                Tip the <span className="font-score">{untipped.length}</span> untipped {untipped.length === 1 ? "game" : "games"} with
+              </span>
+            )}
+            <SaveNote save={saves.autoPick} />
+          </span>
+          {untipped.length > 0 && (
+            <div role="group" aria-labelledby="auto-pick-label" className="flex flex-wrap gap-2">
+              {AUTO_PICKS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => autoPick(o.pick)}
+                  className="min-h-11 rounded-full px-3.5 text-[13px] font-semibold text-ink-2 ring-1 ring-line ring-inset hover:bg-raised hover:text-ink"
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <ul className="divide-y divide-line-soft">
         {games.map((g) => (
@@ -289,7 +342,8 @@ function TipRow({
         )}
         {locked && !tip && g.autoTeam && (
           <span className="text-ink-2">
-            Not tipped. Auto-tip: <span className="font-semibold">{g.autoTeam}</span>
+            {g.autoLate ? "Before you joined. Counts as: " : "Not tipped. Auto-tip: "}
+            <span className="font-semibold">{g.autoTeam}</span>
           </span>
         )}
       </div>

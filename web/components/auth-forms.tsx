@@ -15,7 +15,7 @@ import {
   type Profile,
   type Session,
 } from "@/lib/auth";
-import type { AutoTip } from "@/lib/rules";
+import { LATE_JOIN_MAX_POINTS, type AutoTip } from "@/lib/rules";
 import { TEAMS, type TeamName } from "@/lib/teams";
 import { TeamBadge } from "./team-badge";
 
@@ -191,7 +191,7 @@ function AutoTipPicker({ value, onChange, mode }: { value?: AutoTip; onChange: (
   const locked = mode === "locked";
   const note = {
     open: "You can change this until the first game of the season kicks off.",
-    "joining-mid-season": "The season's under way, so pick one now: it stays for the rest of the season.",
+    "joining-mid-season": `The season's under way, so pick one now: it stays for the rest of the season. Games played before you join count as away-team tips, up to ${LATE_JOIN_MAX_POINTS} points a round.`,
     locked: "Locked for this season: it can only change before the first game of the season.",
   }[mode];
   return (

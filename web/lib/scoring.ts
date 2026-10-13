@@ -1,14 +1,15 @@
 // The official NRL Tipping rules as pure functions over a comp (PLAN_WEB.md §3.5):
 // 1 point per correct tip (a draw counts for both teams); untipped games filled
 // at lockout by each tipper's auto-tip; 1 bonus point for tipping every winner in
-// a completed round of 8 or more games with no auto-tips; and a margin score on
+// a completed round of 8 or more games with no auto-tips; games that kicked off before a tipper
+// joined count as away-team tips, worth at most 4 points a round; and a margin score on
 // each round's featured game that breaks ties on points (lowest wins).
 //
 // The database scores the live comp with the same rules (supabase/migrations,
 // the `effective_tips`, `round_scores` and `ladder` objects). Both are checked
 // against the shared cases in tests/tipping/cases.json, so change them together.
 
-import { BONUS_MIN_GAMES, DEFAULT_MARGIN } from "./rules";
+import { BONUS_MIN_GAMES, DEFAULT_MARGIN, LATE_JOIN_MAX_POINTS } from "./rules";
 import type { SeasonRound, Tipper } from "./types";
 import type { TeamName } from "./teams";
 
@@ -24,9 +25,11 @@ export const winners = (g: Game): TeamName[] =>
 
 /* ---------- Auto-tips ---------- */
 
+type NrlRow = { pts: number; diff: number };
+
 /** NRL ladder from the games before a round: 2 points a win, 1 a draw, then points difference. */
-function nrlLadderBefore(rounds: SeasonRound[], round: number) {
-  const table = new Map<TeamName, { pts: number; diff: number }>();
+export function nrlLadderBefore(rounds: SeasonRound[], round: number) {
+  const table = new Map<TeamName, NrlRow>();
   const row = (t: TeamName) => table.get(t) ?? (table.set(t, { pts: 0, diff: 0 }), table.get(t)!);
   for (const g of rounds.filter((r) => r.round < round).flatMap((r) => r.games)) {
     const [h, a] = [row(g.home), row(g.away)];
@@ -38,22 +41,31 @@ function nrlLadderBefore(rounds: SeasonRound[], round: number) {
     } else if (g.homeScore > g.awayScore) h.pts += 2;
     else a.pts += 2;
   }
-  return (t: TeamName) => table.get(t) ?? { pts: 0, diff: 0 };
+  return (t: TeamName): NrlRow => table.get(t) ?? { pts: 0, diff: 0 };
 }
 
-/** The tipper's tip for a game: their own, or their auto-tip filled at lockout. */
-export function tipFor(comp: Comp, r: SeasonRound, g: Game, tipper: Tipper): { team: TeamName; auto: boolean } {
+/** The team higher on the NRL ladder: points, then points difference; level goes to the home team. */
+export function higherOnLadder(nrl: (t: TeamName) => NrlRow, home: TeamName, away: TeamName): TeamName {
+  const [h, a] = [nrl(home), nrl(away)];
+  return a.pts > h.pts || (a.pts === h.pts && a.diff > h.diff) ? away : home;
+}
+
+/** A game that kicked off before the tipper joined (never the Model's). */
+export const joinedAfter = (tipper: Tipper, kickoff: string) =>
+  !tipper.isModel && !!tipper.joinedAt && Date.parse(kickoff) < Date.parse(tipper.joinedAt);
+
+/** The tipper's tip for a game: their own; the away team if it kicked off before they joined; or their auto-tip filled at lockout. */
+export function tipFor(comp: Comp, r: SeasonRound, g: Game, tipper: Tipper): { team: TeamName; auto: boolean; late?: boolean } {
   const own = r.tips.find((t) => t.tipperId === tipper.id && t.matchId === g.matchId);
   if (own) return { team: own.team, auto: false };
+  if (joinedAfter(tipper, g.kickoff)) return { team: g.away, auto: true, late: true };
   let team: TeamName = g.home; // "home", and the fallback for every tie
   if (tipper.autoTip === "crowd") {
     const others = r.tips.filter((t) => t.matchId === g.matchId && t.tipperId !== tipper.id && !comp.tippers.find((x) => x.id === t.tipperId)?.isModel);
     const [h, a] = [g.home, g.away].map((t) => others.filter((x) => x.team === t).length);
     if (a > h) team = g.away;
   } else if (tipper.autoTip === "ladder") {
-    const nrl = nrlLadderBefore(comp.season, r.round);
-    const [h, a] = [nrl(g.home), nrl(g.away)];
-    if (a.pts > h.pts || (a.pts === h.pts && a.diff > h.diff)) team = g.away;
+    team = higherOnLadder(nrlLadderBefore(comp.season, r.round), g.home, g.away);
   }
   return { team, auto: true };
 }
@@ -73,7 +85,8 @@ export type RoundScore = {
 
 export function scoreRound(comp: Comp, r: ScoredRound, tipper: Tipper): RoundScore {
   const tips = r.games.map((g) => ({ g, ...tipFor(comp, r, g, tipper) }));
-  const correct = tips.filter((t) => winners(t.g).includes(t.team)).length;
+  const right = tips.filter((t) => winners(t.g).includes(t.team));
+  const correct = right.filter((t) => !t.late).length + Math.min(LATE_JOIN_MAX_POINTS, right.filter((t) => t.late).length);
   const autoTips = tips.filter((t) => t.auto).length;
   const featured = r.games.find((g) => g.matchId === r.featuredMatchId);
   let marginScore = 0;

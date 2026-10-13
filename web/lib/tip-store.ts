@@ -18,6 +18,8 @@ export interface TipStore {
   load(season: number, round: number): Promise<RoundTips | null>;
   /** Saves one tip. Rejects if the game has locked or the save fails. */
   setTip(season: number, round: number, matchId: string, team: TeamName): Promise<void>;
+  /** Saves several tips at once (Auto Pick), all or none. Rejects if any game has locked. */
+  setTips(season: number, round: number, tips: Record<string, TeamName>): Promise<void>;
   setMargin(season: number, round: number, margin: number | null): Promise<void>;
 }
 
@@ -53,6 +55,11 @@ export class BrowserTipStore implements TipStore {
   async setTip(season: number, round: number, matchId: string, team: TeamName) {
     if (this.isLocked(matchId)) throw new LockedError();
     await this.write(season, round, (r) => ({ ...r, tips: { ...r.tips, [matchId]: team } }));
+  }
+
+  async setTips(season: number, round: number, tips: Record<string, TeamName>) {
+    if (Object.keys(tips).some(this.isLocked)) throw new LockedError();
+    await this.write(season, round, (r) => ({ ...r, tips: { ...r.tips, ...tips } }));
   }
 
   async setMargin(season: number, round: number, margin: number | null) {
@@ -109,6 +116,16 @@ export class SupabaseTipStore implements TipStore {
     const user_id = await this.userId();
     // An upsert sets only these columns, so a margin already on this tip stays.
     const { error } = await this.sb.from("tips").upsert({ user_id, match_id: Number(matchId), team }, { onConflict: "user_id,match_id" });
+    if (error?.code === RLS_DENIED) throw new LockedError();
+    if (error) throw error;
+  }
+
+  async setTips(_season: number, _round: number, tips: Record<string, TeamName>) {
+    if (Object.keys(tips).some(this.isLocked)) throw new LockedError();
+    const user_id = await this.userId();
+    // One statement, so a game locking part-way refuses the lot rather than saving some.
+    const rows = Object.entries(tips).map(([matchId, team]) => ({ user_id, match_id: Number(matchId), team }));
+    const { error } = await this.sb.from("tips").upsert(rows, { onConflict: "user_id,match_id" });
     if (error?.code === RLS_DENIED) throw new LockedError();
     if (error) throw error;
   }
