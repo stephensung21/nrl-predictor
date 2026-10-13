@@ -65,6 +65,101 @@ Where it would go: a new page, `/ladder-predictor`, linked from the round page a
 for mid-season, once the run home matters. Before Round 1, or in the off-season, the page could show
 the Model's pre-season run home on its own.
 
+### How it works, step by step
+
+**1. Opening the page.** The page loads two things:
+
+- every decided game of the season, from `matches`;
+- every game still to play, from the draw (`fixtures`, below).
+
+It also loads the latest run-home chances (`run_home`, below). If this browser has saved picks for
+the season, it loads those too. A pick for a game that has since been played is dropped: the real
+result replaces it.
+
+**2. The real ladder.** The page builds it from the decided games under the NRL's rules:
+
+- 2 points a win, 1 a draw and 0 a loss.
+- 2 points a bye. A bye is a round with no game for the team.
+- Points difference: points scored minus points conceded.
+- Regular season only.
+- Sorted on points, then points difference, then wins, as nrl.com's did. Teams level on all three
+  are listed alphabetically.
+
+This is the same function as the tipping comp's ladder auto-tip (`nrlLadderBefore`), so the two always agree.
+
+**3. Picking games.** The remaining games are listed round by round, starting at the next one. For each game:
+
+- Tap the winner, or "Draw".
+- Then a margin step: 1, 2, 4, 8, 12, 18, 24, 30, 38 or 48. The default is 12.
+
+Each round shows how many games are left to pick ("3 of 8 picked"). Rounds with byes list the teams
+on a bye, so it's clear why a team is missing. A game that's under way can't be picked; once it's decided, its real result counts. A postponed game keeps its round, as in `matches`, and can be picked again once it has a new kickoff.
+
+**4. The predicted ladder.** It's the real ladder plus every pick, recalculated on each tap:
+
+- A picked win adds 2 points to the winner, and the margin to its points difference (taking the
+  same off the loser's).
+- A picked draw adds 1 point to each team and nothing to points difference.
+- Byes in the remaining rounds add 2 points each.
+
+**The table.** Its columns are position, team, played, points, W-D-L, byes and points difference.
+Beside each team:
+
+- an arrow and number for how far it has moved from the real ladder;
+- the run-home chance of making the top 8.
+
+A line marks the top 8, and a lighter one the top 4. A switch flips between the predicted ladder
+and the real one. The viewer's favourite team is highlighted, and can be pinned at the top of the
+table on a phone.
+
+**5. Auto fill.** It picks every game not yet picked, and leaves the viewer's own picks alone:
+
+- Round in play: the Model's tip and its margin rounded to the nearest step, from `predictions`.
+- Later rounds: the team Elo favours, with the Elo margin (the mean of the simulation's margin for
+  that game) rounded to the nearest step.
+
+"Reset" clears every pick, and asks first ("Are you sure you want to reset all of your predictions?").
+A smaller "Reset round" clears one round.
+
+**6. The finals bracket.** Once every regular-season game is picked, the predicted top 8 goes into
+the NRL's finals system:
+
+| Week | Games | Who goes on |
+|---|---|---|
+| 1 | Qualifying finals 1v4 and 2v3; elimination finals 5v8 and 6v7 | Qualifying-final winners skip a week. The losers get a second chance. The elimination-final losers are out |
+| 2 | Semi-finals: each qualifying-final loser at home against an elimination-final winner | The winners go through. The losers are out |
+| 3 | Preliminary finals: each qualifying-final winner at home against a semi-final winner | The winners go through |
+| 4 | Grand Final | The premiers |
+
+The team that finished higher hosts each game. Finals have no draws: picking a winner is all there
+is, and finals margins don't matter. Auto fill works here too, from Elo. The page ends with "Your
+2027 premiers: …".
+
+**7. Saving and sharing.**
+
+- Saving: picks are kept in this browser's `localStorage`, keyed by season. They survive a reload,
+  but not a different device. Nothing goes to the database, so there's no sign-in, and the tipping
+  comp can't be affected. If storage is blocked (a private window), the page still works and simply
+  forgets on reload.
+- Sharing: "Share" makes a link with the picks packed into the address. Opening it shows that ladder,
+  and offers to copy the picks into your own.
+
+**8. The run home, beside it.** The chances come from the pipeline, not from the viewer's picks:
+
+- They're the Model's view, the same for everyone, and updated each Monday after the results.
+- The page says which round they're as of ("Model's chances after Round 12").
+- They don't change as you pick.
+
+Re-running 10,000 seasons on every tap in a phone's browser would be possible, but it would muddle
+two different things: the Model's view of the season, and your own.
+
+**9. When the draw changes.** The pipeline refreshes `fixtures` from nrl.com on every run. Picks are
+matched to games on round, home team and away team:
+
+- A moved kickoff keeps its pick.
+- A game moved to another round, or dropped from the draw, loses its pick. The round's "picked" count
+  shows it's missing.
+
 ### What it needs
 
 #### 1. The rest of the season's draw in the database
