@@ -89,6 +89,22 @@ export function profitCurve(bets: SeasonBet[] = SEASON_BETS) {
 }
 
 /**
+ * The stake suggested for every paper bet: a flat 1% of the bankroll. Out of sample (2026, head to head,
+ * 2% edge) flat 1% stakes ended 29% up with a 1% chance of ending below the start; half Kelly ended 79% up
+ * but fell 29% on the way, with a 12% chance of ending below (docs/IMPROVEMENTS.md item 43). Bigger edges
+ * paid only a little more per bet (+27% ROI from 2%, +34% from 10%), so every bet gets the same stake.
+ */
+export const STAKE_SHARE = 0.01;
+
+/** The coming games' paper bets, biggest edge first (the earlier kickoff on a tie): the first is the
+ * best bet. */
+export function rankedBets(edges: Edge[]): Edge[] {
+  return edges
+    .filter((e) => e.bet)
+    .sort((a, b) => b.bet!.edge - a.bet!.edge || a.kickoff.localeCompare(b.kickoff) || a.matchId.localeCompare(b.matchId));
+}
+
+/**
  * A value underdog: paper trading backs the team the Model tips to lose, because the price pays more
  * than its chance (chance x price - 1 is at least 2%). The tip doesn't change: it's still the
  * Model's favourite. Out of sample, at the opening price with a 2% edge, these bets made about half the

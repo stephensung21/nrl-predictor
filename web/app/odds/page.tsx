@@ -5,7 +5,7 @@ import { LocalTime } from "@/components/local-time";
 import { BIG_GAP, EdgeRow, gapOf, OddsGameRow, TrackKey } from "@/components/odds-sections";
 import { SampleNote } from "@/components/sample-note";
 import { Calibration, ProfitChart, TipsVsMarketChart } from "@/components/season-charts";
-import { calibration, profitCurve, SERIES, tipsCorrect, tipsVsMarket, underdogBets, valueUnderdog } from "@/lib/odds";
+import { calibration, profitCurve, rankedBets, SERIES, STAKE_SHARE, tipsCorrect, tipsVsMarket, underdogBets, valueUnderdog } from "@/lib/odds";
 import { oddsSource, type OddsSource } from "@/lib/source";
 import type { Edge } from "@/lib/types";
 
@@ -142,8 +142,10 @@ function RoundTab({ q, src }: { q: Record<string, string | undefined>; src: Odds
 function ComingGames({ edges }: { edges: Edge[] }) {
   const rounds = [...new Set(edges.map((e) => e.round))];
   const latest = edges.map((e) => e.priceAt).filter((t): t is string => t != null).sort().at(-1);
-  const bets = edges.filter((e) => e.bet).length;
+  const ranked = rankedBets(edges);
+  const bets = ranked.length;
   const dogs = edges.filter((e) => valueUnderdog(e)).length;
+  const best = ranked[0];
   return (
     <section aria-labelledby="coming" className="pt-4">
       <h2 id="coming" className="font-display text-[24px] leading-none font-bold uppercase">
@@ -166,9 +168,19 @@ function ComingGames({ edges }: { edges: Edge[] }) {
             : `Paper trading would back ${bets} of ${edges.length} games${dogs ? `, ${dogs} of them a value underdog` : ""}.`}{" "}
         <span className="font-normal text-ink-2">Paper bets are tracked, not placed.</span>
       </p>
+      {best?.bet && (
+        <p className="mt-2 max-w-[60ch] text-[15px] leading-snug text-ink-2">
+          <span className="font-semibold text-ink">Best bet: {best.bet.team}</span> at{" "}
+          {(best.bet.side === "home" ? best.homeOdds : best.awayOdds)!.toFixed(2)}, +{Math.round(best.bet.edge * 100)}% edge.{" "}
+          <span className="text-ink-3">
+            Stake the same {STAKE_SHARE * 100}% of your bankroll on every bet, not more on the best one: bigger edges paid
+            only a little more per bet out of sample, and flat stakes rode out the losing runs.
+          </span>
+        </p>
+      )}
       <ul className="mt-1 divide-y divide-line-soft md:grid md:grid-cols-2 md:gap-x-10 md:divide-y-0 md:[&>li]:border-b md:[&>li]:border-line-soft">
         {edges.map((e) => (
-          <EdgeRow key={e.matchId} e={e} />
+          <EdgeRow key={e.matchId} e={e} rank={e.bet ? { n: ranked.indexOf(e) + 1, of: bets } : undefined} />
         ))}
       </ul>
     </section>
