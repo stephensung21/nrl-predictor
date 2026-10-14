@@ -479,6 +479,19 @@ A paid plan would only be needed to:
 
 To stay safe, the pipeline reads the remaining credits from the response headers (`x-requests-remaining`) after each call, logs them, and skips the odds step with a warning if fewer than 50 are left.
 
+#### Possible improvement: move the database to Neon ⬜
+
+*Noted 14 October 2026; not decided.* Supabase's free plan allows two active projects (paused ones don't count), and the real project and the trial (TRIAL.md) use both. The cheaper ways round it come first: pause a project when it's not in use (it can be restored for about 90 days), or move to Supabase Pro (about $25 a month plus about $10 per extra project, with no pausing and daily backups), which is worth having anyway once the 2027 comp has real tips. Neon (plain Postgres, more free projects, idle projects sleep) would mean:
+
+- **Easy:** the pipeline (`psycopg`, so only `SUPABASE_DB_URL` and `TRIAL_DB_URL` change), the model-data pages (`lib/db.ts` already reads plain Postgres), most of the migrations, and the data (`pg_dump` and restore).
+- **Sign-in:** replace Supabase Auth (Google sign-in, session cookies) with Neon Auth or Auth.js: `lib/auth.ts`, the sign-in, callback, join and account pages, `middleware.ts`, and the two deletion routes (they use Supabase's admin API).
+- **Security, the risky part:** the 27 row-level security policies use `auth.uid()`, which would read the user from a token or a session setting instead; the triggers on `auth.users` and `auth.identities` that drop Google's name and photo move to the new auth. These hide tips before kickoff and keep admin actions to admins, so they need tests before anything else moves.
+- **The tipping code:** about 50 Supabase client calls (`tip-store.ts`, `admin.ts`, the tipping pages) become server-side SQL that sets the user on each query, or Neon's Data API.
+- **Tests:** `web/tests/supabase_stub.sql` (Supabase's auth set-up for the PGlite tests) is replaced by the new auth's.
+- **Accounts:** profiles are keyed by Supabase user ids, so everyone signs in again and is matched to their profile.
+
+A few days' work. If it's done, do it after the trial and before the February trials, on its own branch, in this order: the security policies with tests, then sign-in, then a dry run against a Neon copy of the trial database.
+
 ---
 
 ## 2. Database
