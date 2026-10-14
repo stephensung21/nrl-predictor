@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { underdogBets, valueUnderdog } from "../lib/odds";
+import { rankedBets, underdogBets, valueUnderdog } from "../lib/odds";
 import type { Edge, SeasonBet } from "../lib/types";
 
 const edge = (homeProb: number, bet: Edge["bet"]): Edge => ({
@@ -25,5 +25,22 @@ describe("value underdogs", () => {
   it("picks the season's bets on a team the Model tipped to lose", () => {
     const bet = (prob: number): SeasonBet => ({ matchId: "1", side: "home", prob, odds: 2.5, won: true, profit: 1.5 });
     expect(underdogBets([bet(0.4), bet(0.5), bet(0.62), bet(0.3)])).toEqual([bet(0.4), bet(0.3)]);
+  });
+});
+
+describe("ranked bets", () => {
+  const game = (matchId: string, kickoff: string, betEdge: number | null): Edge => ({
+    ...edge(0.35, betEdge == null ? null : { side: "home", team: "Broncos", edge: betEdge }), matchId, kickoff,
+  });
+
+  it("puts the biggest edge first and leaves out games with no bet", () => {
+    const games = [game("1", "2027-03-12T09:00:00Z", 0.04), game("2", "2027-03-13T05:00:00Z", null), game("3", "2027-03-13T08:00:00Z", 0.15)];
+    expect(rankedBets(games).map((e) => e.matchId)).toEqual(["3", "1"]);
+  });
+
+  it("breaks a tie with the earlier kickoff, and leaves the input in kickoff order", () => {
+    const games = [game("1", "2027-03-13T08:00:00Z", 0.06), game("2", "2027-03-12T09:00:00Z", 0.06)];
+    expect(rankedBets(games).map((e) => e.matchId)).toEqual(["2", "1"]);
+    expect(games.map((e) => e.matchId)).toEqual(["1", "2"]);
   });
 });

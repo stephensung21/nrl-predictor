@@ -1,6 +1,7 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Check, X } from "lucide-react";
-import { SERIES, valueUnderdog } from "@/lib/odds";
+import { SERIES, STAKE_SHARE, valueUnderdog } from "@/lib/odds";
 import { team, type TeamName } from "@/lib/teams";
 import type { Edge, OddsGame } from "@/lib/types";
 import { LocalTime } from "./local-time";
@@ -265,8 +266,18 @@ function EdgeSide({ e, side }: { e: Edge; side: "home" | "away" }) {
   );
 }
 
-export function EdgeRow({ e }: { e: Edge }) {
+const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+
+const Tag = ({ children }: { children: ReactNode }) => (
+  <span className="mr-1.5 rounded-sm border border-line px-1.5 py-[3px] align-[1px] text-[10px] leading-none font-semibold tracking-[0.06em] text-ink-3 uppercase">
+    {children}
+  </span>
+);
+
+/** `rank`: this game's paper bet among the coming bets, biggest edge first (lib/odds.ts rankedBets). */
+export function EdgeRow({ e, rank }: { e: Edge; rank?: { n: number; of: number } }) {
   const dog = valueUnderdog(e);
+  const best = rank?.n === 1;
   return (
     <li className="py-4">
       <Link href={`/match/${e.matchId}`} className="group flex items-center gap-2 text-[14px]">
@@ -296,11 +307,10 @@ export function EdgeRow({ e }: { e: Edge }) {
       )}
       {e.priceAt != null && (
         <p className="mt-2 text-[13px] text-ink-2">
+          {best && <Tag>Best bet</Tag>}
           {dog ? (
             <>
-              <span className="mr-1.5 rounded-sm border border-line px-1.5 py-[3px] align-[1px] text-[10px] leading-none font-semibold tracking-[0.06em] text-ink-3 uppercase">
-                Value underdog
-              </span>
+              <Tag>Value underdog</Tag>
               Tip <span className="font-semibold text-ink">{dog.tip.team}</span> ({pct(dog.tip.prob)}%), but back{" "}
               <span className="font-semibold text-ink">{dog.team}</span> at {odds(dog.price)}: the Model gives them {pct(dog.prob)}%, a
               fair price of {odds(dog.fair)}, so {signedPct(dog.edge)} edge.
@@ -312,6 +322,11 @@ export function EdgeRow({ e }: { e: Edge }) {
             </>
           ) : (
             <span className="text-ink-3">No paper bet: neither side is 2% better than the price.</span>
+          )}
+          {e.bet && rank && (
+            <span className="mt-0.5 block text-ink-3">
+              {best ? "Biggest edge" : `${ordinal(rank.n)} biggest edge`} of {rank.of} bets. Stake: {STAKE_SHARE * 100}% of your bankroll.
+            </span>
           )}
         </p>
       )}
