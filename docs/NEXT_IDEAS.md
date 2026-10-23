@@ -1,7 +1,8 @@
 # NRL Predictor: Next Ideas
 
 A review of the architecture and every experiment so far (IMPROVEMENTS.md items 1–47; item 48, upsets, came after), written
-12 October 2026. It records what is still worth trying and what isn't.
+12 October 2026. It records what is still worth trying and what isn't. The last section, added
+23 October 2026, lists site features beyond the tipping comp and the ladder predictor.
 
 ## Where the ceiling is
 
@@ -120,3 +121,57 @@ late-mail) during the week, picks out news that could matter, and checks it by r
 The 2023–25 backtest has been used for about 50 or more comparisons, and 2026 has been seen once.
 Under the adoption rule (a meaningful backtest gain, otherwise "Already tried"), decide each test
 and its pass criteria **before** running it, and treat 2027 paper trading as the real verdict.
+
+## Site features: what else fans and punters do
+
+The site has the tipping comp, and the ladder predictor is planned (`docs/LADDER_PREDICTOR.md`).
+These are the other things NRL fans and punters do each week, and how each could use what the
+project already has. None is built.
+
+### Betting
+
+- **Line and winning-margin bets** ⬜: the handicap line and margin bands ("1–12", "13+") are a
+  signature NRL market. The Model already predicts a margin, so `/odds` could show its margin
+  against the bookmaker's line and its chance of each band.
+- **Totals (over/under)** ⬜: the Model already predicts the total, so the same view works for the
+  total against the bookmaker's over/under.
+- **Tryscorer markets** ⬜: first and anytime tryscorer bets are hugely popular and drive most
+  same-game multis. They need a player-level try model, which is a much bigger build.
+- **Futures** ⬜: premiers, top 8, minor premiership, wooden spoon. The ladder predictor's run-home
+  simulation gives top-8, top-4 and minor-premiership chances to set against bookmaker prices.
+- **Team List Tuesday** ⬜: punters watch the Tuesday lists and the late changes up to an hour
+  before kickoff. A note on what each change did to the Model's chance fits the planned
+  "Updated: Hughes out" badge and the news agent above.
+
+### Fantasy
+
+- **SuperCoach NRL and NRL Fantasy**: a salary-cap squad, weekly trades, captain picks and
+  break-evens. Probably the biggest weekly habit after tipping, but it's a whole player-level
+  product. Out of scope unless the project goes deep on players.
+
+### Comps among friends
+
+- **Last man standing** ⬜: tip one team each week, never the same team twice, and one loss puts you
+  out. A small add-on to the tipping comp.
+- **Confidence tipping** ⬜: rank your tips each round, and a right tip ranked higher scores more.
+- **Joker rounds** ⬜: a round where the scoring changes, such as double points or a margin bonus.
+- **3-2-1 votes** ⬜: friends give 3, 2 and 1 votes to the best players in each game, Dally M style.
+
+### Following the season
+
+- **Power rankings and strength of draw** ⬜: Elo already gives the rankings. The strength of
+  each team's remaining draw falls out of the run-home simulation.
+- **What's at stake** ⬜: each team's top-8 chance if it wins and if it loses. Covered in
+  `docs/LADDER_PREDICTOR.md`.
+- **State of Origin** ⬜: team picks, Origin-period form and the effect of players being away on
+  Origin duty.
+- **Injuries and the judiciary** ⬜: who's out, for how long, and the match review committee's
+  charges, on the round and match pages.
+
+### Best fits, from least effort to most
+
+1. Last man standing in the tipping comp.
+2. The Model's margin against the line, and the margin bands, on `/odds`.
+3. Run-home chances against bookmaker futures prices, once the ladder predictor's simulation exists.
+4. Notes on team-list changes and their effect.
+5. Tryscorer and fantasy tools, which need player-level data and are a different scale of project.
