@@ -136,12 +136,65 @@ project already has. None is built.
 - **Totals (over/under)** ⬜: the Model already predicts the total, so the same view works for the
   total against the bookmaker's over/under.
 - **Tryscorer markets** ⬜: first and anytime tryscorer bets are hugely popular and drive most
-  same-game multis. They need a player-level try model, which is a much bigger build.
+  same-game multis. They need a player-level try model, which is a much bigger build. Whether the
+  data is enough is covered below.
 - **Futures** ⬜: premiers, top 8, minor premiership, wooden spoon. The ladder predictor's run-home
   simulation gives top-8, top-4 and minor-premiership chances to set against bookmaker prices.
 - **Team List Tuesday** ⬜: punters watch the Tuesday lists and the late changes up to an hour
   before kickoff. A note on what each change did to the Model's chance fits the planned
   "Updated: Hughes out" badge and the news agent above.
+
+### Tryscorer model: is there enough data?
+
+Checked 23 October 2026. There's enough to build a first tryscorer model, but not to test it on
+actual first tries or against the bookmakers.
+
+**What there is.** `data/processed/player_match_stats.csv` has every player's tries in each game,
+2020–2026:
+
+- **1,423 games** and **11,252 tries**, about 8 a game. Only 4 games had no try.
+- **389 players** with 50 or more games and **199** with 100 or more, enough to estimate a
+  regular's try rate. The typical 50-game player scores about 0.17 tries a game.
+- Each player's **position and jersey number**. Wingers scored 2,560 of the tries, centres 1,621
+  and second-rowers 1,154, so position gives a strong starting estimate for players with few games.
+- **Tuesday and pre-kickoff team lists** (`pre_kickoff_teamlists.csv`), so it's known who is named
+  before kickoff.
+- The Model's predicted **margin and total**, which give each team's expected points and so its
+  expected tries.
+
+**What's missing:**
+
+1. **Who scored first.** The data counts each player's tries but not when they were scored, and
+   nothing in `src/scrape.py` reads try times. nrl.com's match-centre pages probably carry a
+   scoring timeline, and the scraper already downloads those pages for every game, so the times
+   could likely be added. Not checked: the session that wrote this couldn't reach nrl.com. The
+   downloaded pages (`data/raw/`) aren't in the repo either, so it means re-downloading them and
+   reading the timeline from them.
+2. **Tryscorer odds.** `data/nrl_betting_odds.xlsx` only has head-to-head, line and total odds.
+   Without past first-tryscorer prices there's no test of whether the model would beat the
+   bookmakers, which matters a lot here: they take a big cut on these markets, with the prices
+   across all players often adding up to about 120–140% instead of 100%.
+
+**What the current data allows.** A standard model doesn't need try times:
+
+- Each player's expected tries come from their own rate, their position, how many points the Model
+  expects their team to score, and the opponent.
+- A player's chance of scoring first is roughly their expected tries divided by all players'
+  expected tries across both teams. That's about right if tries arrive at an even rate through the
+  game.
+
+That gives an **anytime tryscorer** chance (much easier to test, and every number it needs is
+there) and a reasonable **first tryscorer** estimate. The try times would test the even-rate
+assumption, for example whether outside backs or the favourite score early more often than their
+overall rate suggests.
+
+**Order:**
+
+1. Build and backtest anytime tryscorer chances on the data already here ⬜.
+2. Get the try times from the match-centre timeline (needs network access to nrl.com), and check
+   the first-try estimate against them ⬜.
+3. Only make betting claims once there are tryscorer odds to compare against, perhaps collected
+   going forward through the odds job ⬜.
 
 ### Fantasy
 
