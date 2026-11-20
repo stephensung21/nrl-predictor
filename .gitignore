@@ -46,3 +46,6 @@ supabase/.temp/
 .agents/
 .claude/skills/
 skills-lock.json
+
+# Brainstorm mockups (superpowers visual companion)
+.superpowers/
