@@ -99,7 +99,9 @@ def fingerprints(fixtures, lists, neutral, odds, live_odds=None):
     if live_odds is not None and len(live_odds):
         unpriced = prices["p_open"].isna() & prices.index.isin(live_odds.index)
         prices.loc[unpriced] = live_odds.loc[prices.index[unpriced], predict.LIVE_ODDS_COLS].to_numpy(float)
-    prices = prices.round(6).astype(str).agg("|".join, axis=1)
+    # map(str), not astype(str): pandas 3 keeps a missing price as NaN under astype(str), and the join
+    # fails on a game with no price yet; map(str) gives "nan" and the same text as before for the rest.
+    prices = prices.round(6).map(str).agg("|".join, axis=1)
     out = {}
     for mid in fixtures["match_id"]:
         text = f"{squads.get(mid, '')}#{prices.get(mid, '')}#{int(mid in neutral)}"
