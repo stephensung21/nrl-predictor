@@ -43,17 +43,16 @@ export const TOP_POSITION = 15;
 
 export type Ranked = { rank: number; tied: boolean; player: PlayerSeason; fantasyPerGame: number };
 
-/** The power rankings: by the Model's rating, overall or at one position; equal ratings (to the
- *  hundredth, as shown) share a rank. */
+/** The power rankings: by the Model's rating, overall or at one position. Ranks follow the exact
+ *  rating (shown to two decimals, so neighbours can look level); only equal ratings share a rank. */
 export function powerRankings(players: PlayerSeason[], position: Position | null): Ranked[] {
   const pool = players
     .filter((p) => p.rating != null && p.games >= MIN_GAMES && (position == null || p.position === position))
     .sort((a, b) => b.rating! - a.rating! || b.games - a.games || a.name.localeCompare(b.name))
     .slice(0, position == null ? TOP_OVERALL : TOP_POSITION);
-  const shown = (p: PlayerSeason) => Math.round(p.rating! * 100);
-  return pool.map((player, i) => {
-    const first = pool.findIndex((q) => shown(q) === shown(player));
-    const tied = pool.filter((q) => shown(q) === shown(player)).length > 1;
+  return pool.map((player) => {
+    const first = pool.findIndex((q) => q.rating === player.rating);
+    const tied = pool.filter((q) => q.rating === player.rating).length > 1;
     return { rank: first + 1, tied, player, fantasyPerGame: player.stats.fantasy_points / Math.max(1, player.games) };
   });
 }
