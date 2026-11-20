@@ -58,3 +58,28 @@ describe("rounds", () => {
     expect(openRound(rounds.slice(0, 2))).toBeUndefined();
   });
 });
+
+describe("the sample", async () => {
+  const { SAMPLE_DALLY_M_RAW: raw, SAMPLE_DALLY_M_OPEN: open } = await import("../lib/sample-dally-m");
+  const { SAMPLE_NOW } = await import("../lib/sample");
+
+  it("votes only for players who played that round, three different ones per tipper", () => {
+    for (const r of raw.rounds) {
+      const played = new Set(r.players.map(([id]) => id));
+      const votes = raw.votes.filter((v) => v.round === r.round);
+      expect(votes.every((v) => played.has(v.playerId))).toBe(true);
+      for (const who of new Set(votes.map((v) => v.userId))) {
+        const mine = votes.filter((v) => v.userId === who);
+        expect(new Set(mine.map((v) => v.playerId)).size).toBe(3);
+        expect(mine.map((v) => v.votes).sort()).toEqual([1, 2, 3]);
+      }
+    }
+  });
+
+  it("has the open round still open at the sample's tips-open instant, and no votes in it", () => {
+    const r = raw.rounds.find((x) => x.round === open)!;
+    expect(Date.parse(r.closes)).toBeGreaterThan(Date.parse(SAMPLE_NOW.open));
+    expect(raw.rounds.filter((x) => x.round < open).every((x) => Date.parse(x.closes) <= Date.parse(SAMPLE_NOW.open))).toBe(true);
+    expect(raw.votes.some((v) => v.round === open)).toBe(false);
+  });
+});

@@ -2,6 +2,7 @@
 // so each page can swap its sample module for these one at a time (PLAN_WEB.md step 9). Every
 // function takes the connection, so the tests can run them against a throwaway Postgres.
 
+import type { DallyMRound, RoundPlayer } from "./dally-m";
 import type { Sql } from "./db";
 import type { GradedGame } from "./model-record";
 import type {
@@ -439,5 +440,31 @@ export async function playerSeasons(sql: Sql, season: number): Promise<PlayerSea
     position: r.position as PlayerSeason["position"], games: r.games as number, image: (r.head_image as string | null) ?? null,
     rating: num(r.rating), attack: num(r.attack), defence: num(r.defence),
     stats: Object.fromEntries(STAT_KEYS.map((k) => [k, Number(r[k] ?? 0)])) as PlayerSeason["stats"],
+  }));
+}
+
+/* ---------- the community Dally M (/dally-m) ---------- */
+
+/** Seasons with a round open for votes so far, newest first. */
+export async function dallyMSeasons(sql: Sql): Promise<number[]> {
+  return (await sql`select distinct season from round_players order by season desc`).map((r) => r.season as number);
+}
+
+/** Every round of a season that has opened for votes, with when its voting closes. */
+export async function dallyMRounds(sql: Sql, season: number): Promise<DallyMRound[]> {
+  const rows = await sql`select round, closes, is_open, is_closed from dally_m_rounds(${season})`;
+  return rows.map((r) => ({
+    round: r.round as number, closes: new Date(r.closes as string).toISOString(),
+    isOpen: r.is_open as boolean, isClosed: r.is_closed as boolean,
+  }));
+}
+
+/** Everyone who took the field in a round: the candidates for its votes, by name. */
+export async function roundPlayers(sql: Sql, season: number, round: number): Promise<RoundPlayer[]> {
+  const rows = await sql`select player_id, player_name, team, position, head_image, match_id from round_players
+                         where season = ${season} and round = ${round} order by player_name, player_id`;
+  return rows.map((r) => ({
+    id: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName, position: r.position as string,
+    image: (r.head_image as string | null) ?? null, matchId: String(r.match_id),
   }));
 }

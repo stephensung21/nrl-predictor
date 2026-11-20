@@ -5,12 +5,19 @@
 import {
   currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
   oddsRounds, playerSeasonList, playerSeasons, roundData, seasonBets, seasonGames, summary, upcomingEdges,
+  dallyMRounds, dallyMSeasons, roundPlayers,
 } from "./data";
+import { tallyVotes, type DallyMRound, type RoundPlayer, type Tally } from "./dally-m";
+import { readVotes, type DallyMVotes } from "./dally-m-store";
 import { COMP_FIRST_SEASON, readRoundComp, type RoundComp } from "./comp";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
 import { buildRecord, type SeasonRecord } from "./model-record";
 import type { PlayerSeason } from "./players";
+import { SAMPLE_NOW, tippers as sampleTippers, YOU_ID } from "./sample";
+import {
+  SAMPLE_DALLY_M_OPEN, SAMPLE_DALLY_M_OPEN_VOTERS, SAMPLE_DALLY_M_RAW, SAMPLE_DALLY_M_SEASON,
+} from "./sample-dally-m";
 import { SAMPLE_PLAYER_SEASONS, SAMPLE_PLAYERS } from "./sample-players";
 import { ODDS_ROUNDS, SEASON_BETS, SEASON_GAMES } from "./sample-odds";
 import { serverClient } from "./supabase-server";
@@ -204,5 +211,78 @@ export async function playersSource(): Promise<PlayersSource & { missing?: boole
     return { live: true, seasons: await playerSeasonList(sql), season: (n) => playerSeasons(sql, n) };
   } catch {
     return { live: true, seasons: [], season: async () => [], missing: true };
+  }
+}
+
+export type DallyMSource = {
+  live: boolean;
+  /** The database is connected but the Dally M tables aren't there yet. */
+  missing?: boolean;
+  /** Seasons with rounds opened for votes, newest first. */
+  seasons: number[];
+  rounds: (season: number) => Promise<DallyMRound[]>;
+  players: (season: number, round: number) => Promise<RoundPlayer[]>;
+  /** The votes the viewer may see; null when they aren't a signed-in tipper. */
+  votes: (season: number, open: number | null) => Promise<DallyMVotes | null>;
+};
+
+function sampleDallyM(): DallyMSource {
+  const raw = SAMPLE_DALLY_M_RAW;
+  const now = Date.parse(SAMPLE_NOW.open);
+  const person = (id: number, position: string, matchId: string): RoundPlayer => {
+    const p = raw.people[String(id)];
+    return { id, name: p.name, team: p.team as TeamName, position, image: p.image, matchId };
+  };
+  const players = (round: number) => (raw.rounds.find((r) => r.round === round)?.players ?? []).map(([id, pos, m]) => person(id, pos, m));
+  const all = new Map<number, RoundPlayer>();
+  for (const r of raw.rounds) for (const p of players(r.round)) all.set(p.id, p);
+  const results: Record<number, Tally[]> = {};
+  for (const r of raw.rounds) results[r.round] = tallyVotes(raw.votes.filter((v) => v.round === r.round), all);
+  return {
+    live: false,
+    seasons: [SAMPLE_DALLY_M_SEASON],
+    rounds: async (season) =>
+      season !== SAMPLE_DALLY_M_SEASON
+        ? []
+        : raw.rounds.map((r) => ({ round: r.round, closes: r.closes, isOpen: r.round === SAMPLE_DALLY_M_OPEN, isClosed: Date.parse(r.closes) <= now })),
+    players: async (season, round) => (season === SAMPLE_DALLY_M_SEASON ? players(round) : []),
+    votes: async (season) =>
+      season !== SAMPLE_DALLY_M_SEASON
+        ? null
+        : {
+            you: YOU_ID,
+            tippers: sampleTippers.filter((t) => !t.isModel).map((t) => ({ id: t.id, name: t.name, favTeam: t.favTeam })),
+            rows: raw.votes,
+            results,
+            leaderboard: tallyVotes(raw.votes, all),
+            voters: SAMPLE_DALLY_M_OPEN_VOTERS,
+          },
+  };
+}
+
+/** The Dally M page's data: the database when the site has one (and the Dally M tables exist), the
+ *  sample otherwise. Votes are read as the signed-in tipper, so row-level security decides what shows. */
+export async function dallyMSource(): Promise<DallyMSource> {
+  const sql = siteDb();
+  if (!sql) return sampleDallyM();
+  try {
+    const seasons = await dallyMSeasons(sql);
+    return {
+      live: true,
+      seasons,
+      rounds: (season) => dallyMRounds(sql, season),
+      players: (season, round) => roundPlayers(sql, season, round),
+      votes: async (season, open) => {
+        const sb = await serverClient();
+        if (!sb) return null;
+        const { data } = await sb.auth.getUser();
+        if (!data.user) return null;
+        const { data: me } = await sb.from("profiles").select("id").eq("id", data.user.id).maybeSingle();
+        if (!me) return null;
+        return readVotes(sb, data.user.id, season, open);
+      },
+    };
+  } catch {
+    return { live: true, missing: true, seasons: [], rounds: async () => [], players: async () => [], votes: async () => null };
   }
 }
