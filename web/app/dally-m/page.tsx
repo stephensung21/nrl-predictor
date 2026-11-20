@@ -54,7 +54,7 @@ export default async function DallyMPage({ searchParams }: Props) {
         off, then everyone&rsquo;s are revealed.
       </p>
 
-      <YourVotes season={season} open={open} players={openPlayers} votes={votes} nextRound={(rounds.at(-1)?.round ?? 0) + 1} />
+      <YourVotes season={season} now={src.now} open={open} players={openPlayers} votes={votes} nextRound={(rounds.at(-1)?.round ?? 0) + 1} />
 
       {shown && votes && (
         <Revealed
@@ -86,8 +86,8 @@ export default async function DallyMPage({ searchParams }: Props) {
 }
 
 function YourVotes({
-  season, open, players, votes, nextRound,
-}: { season: number; open?: { round: number; closes: string }; players: RoundPlayer[]; votes: DallyMVotes | null; nextRound: number }) {
+  season, now, open, players, votes, nextRound,
+}: { season: number; now: string; open?: { round: number; closes: string }; players: RoundPlayer[]; votes: DallyMVotes | null; nextRound: number }) {
   return (
     <section aria-labelledby="your-votes" className="mt-6">
       <h2 id="your-votes" className="font-display text-[24px] leading-none font-bold uppercase">
@@ -115,7 +115,7 @@ function YourVotes({
               </>
             )}
           </p>
-          <DallyMBallot season={season} round={open.round} closes={open.closes} players={players} />
+          <DallyMBallot season={season} round={open.round} closes={open.closes} now={now} players={players} />
         </>
       )}
     </section>

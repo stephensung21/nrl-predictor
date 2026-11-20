@@ -10,13 +10,19 @@ import { PlayerPhoto } from "@/components/player-photo";
 import { ballotProblem, EMPTY_BALLOT, VOTE_SLOTS, type Ballot, type RoundPlayer, type VoteSlot } from "@/lib/dally-m";
 import { createVoteStore } from "@/lib/dally-m-store";
 import { LockedError } from "@/lib/tip-store";
+import { clockFrom } from "@/lib/time";
 
 type Status = "loading" | "idle" | "saving" | "saved" | "error" | "closed";
 
 const label = (p: RoundPlayer) => `${p.name} (${p.team})`;
 
-export function DallyMBallot({ season, round, closes, players }: { season: number; round: number; closes: string; players: RoundPlayer[] }) {
-  const store = useMemo(() => createVoteStore(() => Date.now() >= Date.parse(closes)), [closes]);
+export function DallyMBallot({
+  season, round, closes, now, players,
+}: { season: number; round: number; closes: string; now: string; players: RoundPlayer[] }) {
+  const store = useMemo(() => {
+    const clock = clockFrom(now);
+    return createVoteStore(() => clock() >= Date.parse(closes));
+  }, [closes, now]);
   const [ballot, setBallot] = useState<Ballot>(EMPTY_BALLOT);
   const [saved, setSaved] = useState<Ballot>(EMPTY_BALLOT);
   const [status, setStatus] = useState<Status>("loading");
@@ -162,18 +168,19 @@ function Slot({
 }
 
 /** The tipping page's reminder: shown while a round is open and the viewer hasn't voted. */
-export function DallyMNudge({ season, round, closes }: { season: number; round: number; closes: string }) {
+export function DallyMNudge({ season, round, closes, now }: { season: number; round: number; closes: string; now: string }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
     let live = true;
-    createVoteStore(() => Date.now() >= Date.parse(closes))
+    const clock = clockFrom(now);
+    createVoteStore(() => clock() >= Date.parse(closes))
       .load(season, round)
       .then((b) => live && setShow(VOTE_SLOTS.every((s) => b[s] == null)))
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [season, round, closes]);
+  }, [season, round, closes, now]);
   if (!show) return null;
   return (
     <p className="mt-4 text-[14px] text-ink-2">

@@ -180,5 +180,5 @@ async function DallyMReminder() {
   const season = src.seasons[0];
   if (src.missing || season == null) return null;
   const open = openRound(await src.rounds(season));
-  return open ? <DallyMNudge season={season} round={open.round} closes={open.closes} /> : null;
+  return open ? <DallyMNudge season={season} round={open.round} closes={open.closes} now={src.now} /> : null;
 }

@@ -223,6 +223,8 @@ export type DallyMSource = {
   missing?: boolean;
   /** Seasons with rounds opened for votes, newest first. */
   seasons: number[];
+  /** The instant the page is viewed at (the sample's tips-open moment, or now). */
+  now: string;
   rounds: (season: number) => Promise<DallyMRound[]>;
   players: (season: number, round: number) => Promise<RoundPlayer[]>;
   /** The votes the viewer may see; null when they aren't a signed-in tipper. */
@@ -244,6 +246,7 @@ function sampleDallyM(): DallyMSource {
   return {
     live: false,
     seasons: [SAMPLE_DALLY_M_SEASON],
+    now: SAMPLE_NOW.open,
     rounds: async (season) =>
       season !== SAMPLE_DALLY_M_SEASON
         ? []
@@ -273,6 +276,7 @@ export async function dallyMSource(): Promise<DallyMSource> {
     return {
       live: true,
       seasons,
+      now: new Date().toISOString(),
       rounds: (season) => dallyMRounds(sql, season),
       players: (season, round) => roundPlayers(sql, season, round),
       votes: async (season, open) => {
@@ -286,7 +290,7 @@ export async function dallyMSource(): Promise<DallyMSource> {
       },
     };
   } catch {
-    return { live: true, missing: true, seasons: [], rounds: async () => [], players: async () => [], votes: async () => null };
+    return { live: true, missing: true, seasons: [], now: new Date().toISOString(), rounds: async () => [], players: async () => [], votes: async () => null };
   }
 }
 
