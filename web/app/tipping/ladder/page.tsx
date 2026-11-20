@@ -372,7 +372,7 @@ function Stats({ stats }: { stats: LadderView["stats"] }) {
       detail:
         perfect.length === 0
           ? "Nobody yet."
-          : perfect.map((p) => `${p.tipper.name} (${p.rounds.join(", ")})`).join(", "),
+          : perfect.map((p) => `${p.tipper.name} (round${p.rounds.length > 1 ? "s" : ""} ${p.rounds.join(", ")})`).join(", "),
     },
   ];
   return (
