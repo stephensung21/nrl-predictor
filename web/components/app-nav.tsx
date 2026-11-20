@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CalendarRange, ChartLine, Ellipsis, ListChecks, Trophy, type LucideIcon } from "lucide-react";
+import { CalendarRange, Ellipsis, ListChecks, Medal, Trophy, type LucideIcon } from "lucide-react";
 import { createAuthStore } from "@/lib/auth";
 
 type Item = { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean };
@@ -12,10 +12,12 @@ const ITEMS: Item[] = [
   { href: "/", label: "Round", icon: CalendarRange, match: (p) => p === "/" || p.startsWith("/round") || p.startsWith("/match") },
   { href: "/tipping", label: "Tips", icon: ListChecks, match: (p) => p === "/tipping" },
   { href: "/tipping/ladder", label: "Ladder", icon: Trophy, match: (p) => p.startsWith("/tipping/ladder") },
-  { href: "/elo", label: "Elo", icon: ChartLine, match: (p) => p.startsWith("/elo") },
+  { href: "/dally-m", label: "Dally M", icon: Medal, match: (p) => p.startsWith("/dally-m") },
 ];
 
+// Elo moved here to make room for the Dally M (a layout with room for more tabs: PLAN_WEB.md §3.1a).
 const MORE = [
+  { href: "/elo", label: "Elo" },
   { href: "/players", label: "Players" },
   { href: "/odds", label: "Model vs market" },
   { href: "/news", label: "News" },

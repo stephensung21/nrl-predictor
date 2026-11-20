@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DallyMNudge } from "@/components/dally-m-ballot";
 import { PageMessage } from "@/components/page-message";
 import { SampleNote } from "@/components/sample-note";
 import { TipList, type TipGame } from "@/components/tip-list";
@@ -6,7 +7,8 @@ import { ladderBefore, seasonAt, tipFor } from "@/lib/ladder";
 import { buildRound } from "@/lib/round";
 import { higherOnLadder, joinedAfter, nrlLadderBefore } from "@/lib/scoring";
 import { margins, round10, SAMPLE_NOW, tippers, tips, YOU_ID, YOUR_EARLY_TIP_COUNT } from "@/lib/sample";
-import { liveTipRound } from "@/lib/source";
+import { openRound } from "@/lib/dally-m";
+import { dallyMSource, liveTipRound } from "@/lib/source";
 import { tippingLive } from "@/lib/supabase";
 import { serverClient } from "@/lib/supabase-server";
 import type { TeamName } from "@/lib/teams";
@@ -74,6 +76,7 @@ export default async function TipsPage({ searchParams }: { searchParams: Promise
   return (
     <main>
       <TipList season={round10.season} round={round10.round} games={games} initialTips={initial} initialMargin={yourMargin} />
+      {state === "open" && <DallyMReminder />}
       <SampleNote
         states={[
           { href: "/tipping", label: "Tipping open · Tue 7:30pm", on: state === "open" },
@@ -166,6 +169,16 @@ async function LiveTipsPage({ round }: { round: RoundData | null }) {
         initialTips={initial}
         initialMargin={margin}
       />
+      <DallyMReminder />
     </main>
   );
+}
+
+/** A line pointing to the Dally M while a round is open for votes and the viewer hasn't voted. */
+async function DallyMReminder() {
+  const src = await dallyMSource();
+  const season = src.seasons[0];
+  if (src.missing || season == null) return null;
+  const open = openRound(await src.rounds(season));
+  return open ? <DallyMNudge season={season} round={open.round} closes={open.closes} /> : null;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-// The players page's controls (app/players/page.tsx). Every choice lives in the address, so the page
+// The players page's controls (app/players/page.tsx), also used by the Dally M page. Every choice lives in the address, so the page
 // stays a server component and each view can be linked to.
 
 import { useRouter } from "next/navigation";
@@ -11,8 +11,8 @@ const field =
 
 /** A select that sets one query parameter, keeping the others. */
 export function QuerySelect({
-  label, param, value, options, query,
-}: { label: string; param: string; value: string; options: { value: string; label: string }[]; query: Record<string, string> }) {
+  label, param, value, options, query, path = "/players",
+}: { label: string; param: string; value: string; options: { value: string; label: string }[]; query: Record<string, string>; path?: string }) {
   const router = useRouter();
   return (
     <label className="flex items-center gap-2 text-[13px] text-ink-3">
@@ -21,8 +21,11 @@ export function QuerySelect({
         value={value}
         onChange={(e) => {
           const q = new URLSearchParams({ ...query, [param]: e.target.value });
-          if (param === "season") q.delete("player"); // a player may not have played that season
-          router.push(`/players?${q}`, { scroll: false });
+          if (param === "season") {
+            q.delete("player"); // a player may not have played that season
+            q.delete("round");
+          }
+          router.push(`${path}?${q}`, { scroll: false });
         }}
         className={`${field} font-score text-[16px]`}
       >
