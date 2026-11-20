@@ -114,3 +114,26 @@ export function tagsFor(entries: LadderEntry[]): Map<string, string> {
   }
   return out;
 }
+
+/**
+ * Hot and Cold: form over each tipper's last three finished rounds (points = correct + bonus).
+ * The single best is Hot, the single worst Cold; a tie for either means no call-out for it.
+ * Needs three finished rounds and three tippers; the Model never gets one.
+ */
+export function formFor(entries: LadderEntry[]): Map<string, "hot" | "cold"> {
+  const out = new Map<string, "hot" | "cold">();
+  const humans = entries.filter((e) => !e.tipper.isModel);
+  if (humans.length < 3) return out;
+  const recent = humans.map((e) => {
+    const done = e.rounds.filter((r) => !r.partial).slice(-3);
+    return { id: e.tipper.id, n: done.length, pts: done.reduce((a, r) => a + r.correct + r.bonus, 0) };
+  });
+  if (recent.some((r) => r.n < 3)) return out;
+  const pts = recent.map((r) => r.pts);
+  const sole = (v: number) => recent.filter((r) => r.pts === v);
+  const top = sole(Math.max(...pts));
+  const bottom = sole(Math.min(...pts));
+  if (top.length === 1) out.set(top[0].id, "hot");
+  if (bottom.length === 1 && bottom[0] !== top[0]) out.set(bottom[0].id, "cold");
+  return out;
+}
