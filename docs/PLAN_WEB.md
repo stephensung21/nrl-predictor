@@ -568,6 +568,14 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/model` | The Model's own page: its record this season as a tipper (tips right against the bookies' favourite and Elo, its place among the tippers, round by round, best calls and worst misses) and a short tested record |
 | `/about` | How the model works, in plain words, and its limits, with a technical section and a link to `/model` |
 
+### 3.1a Menu layout: room for more tabs ⬜
+
+The main menu holds four tabs and More, the most that fits across a phone's bottom bar. When the
+Dally M page took a tab (November 2026, `docs/superpowers/specs/2026-11-21-dally-m-design.md`),
+Elo moved into More to make room, as a stopgap. A later redesign of the layout should fit more
+tabs, or group them (the comp: Round, Tips, Ladder, Dally M; the Model: Elo, Model vs market, The
+Model, Players), so pages don't have to be pushed into More each time one is added.
+
 ### 3.2 Predictions
 
 One card per game, ordered by kickoff:
