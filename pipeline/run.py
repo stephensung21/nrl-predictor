@@ -90,15 +90,18 @@ def fingerprints(fixtures, lists, neutral, odds, live_odds=None):
     and jersey), the opening prices (the sheet's, else the live ones, as predict.inputs_before) and the
     venue flag. A refresh re-predicts a game when this changes, e.g. when its first live price arrives."""
     named = predict.named_17(lists).sort_values(["match_id", "team", "jersey_number", "player_id"])
-    squads = named.groupby("match_id").apply(
-        lambda d: ";".join(f"{t}:{j}:{p}" for t, j, p in zip(d["team"], d["jersey_number"], d["player_id"])))
+    # A dict comprehension rather than groupby.apply, so no lists at all (pre-season) gives an empty Series.
+    squads = pd.Series({mid: ";".join(f"{t}:{j}:{p}" for t, j, p in zip(d["team"], d["jersey_number"], d["player_id"]))
+                        for mid, d in named.groupby("match_id")}, dtype=object)
     joined = join_odds_to_matches(fixtures[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
     prices = joined.merge(odds[["odds_id", *predict.LIVE_ODDS_COLS]], on="odds_id", how="left").set_index("match_id")
     prices = prices[predict.LIVE_ODDS_COLS]
     if live_odds is not None and len(live_odds):
         unpriced = prices["p_open"].isna() & prices.index.isin(live_odds.index)
         prices.loc[unpriced] = live_odds.loc[prices.index[unpriced], predict.LIVE_ODDS_COLS].to_numpy(float)
-    prices = prices.round(6).astype(str).agg("|".join, axis=1)
+    # map(str), not astype(str): pandas 3 keeps a missing price as NaN under astype(str), and the join
+    # fails on a game with no price yet; map(str) gives "nan" and the same text as before for the rest.
+    prices = prices.round(6).map(str).agg("|".join, axis=1)
     out = {}
     for mid in fixtures["match_id"]:
         text = f"{squads.get(mid, '')}#{prices.get(mid, '')}#{int(mid in neutral)}"

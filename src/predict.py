@@ -62,6 +62,12 @@ def live_round(season, rnd):
     return fetch_lists(season, urls, snapshot=f"round-{rnd}")
 
 
+FIXTURE_COLS = ["match_id", "season", "round", "round_title", "is_final", "start_time_utc", "venue", "venue_city",
+                "home_team", "away_team", "match_state", "url"]
+LIST_COLS = ["match_id", "season", "team", "player_id", "player_name", "jersey_number", "position",
+             "list_updated_utc", "fetched_utc"]
+
+
 def fetch_lists(season, urls, snapshot):
     """Fixtures and current team lists from each game's match centre, saved as a timestamped snapshot
     in data/raw/teamlists_live/<season>/<snapshot>/, so every version of a list is kept."""
@@ -90,7 +96,9 @@ def fetch_lists(season, urls, snapshot):
                              "player_id": p["playerId"], "player_name": f"{p['firstName']} {p['lastName']}",
                              "jersey_number": p["number"], "position": p["position"],
                              "list_updated_utc": m.get("updated"), "fetched_utc": fetched})
-    fixtures, lists = pd.DataFrame(fixtures), pd.DataFrame(rows)
+    # Fixed columns, so a round with no lists yet (pre-season: the draw is out, the lists aren't)
+    # gives empty tables the rest of the job can work with, not a KeyError.
+    fixtures, lists = pd.DataFrame(fixtures, columns=FIXTURE_COLS), pd.DataFrame(rows, columns=LIST_COLS)
     snap = LIVE_LISTS / str(season) / snapshot
     snap.mkdir(parents=True, exist_ok=True)
     lists.to_csv(snap / f"{fetched:%Y%m%dT%H%M%SZ}.csv", index=False)

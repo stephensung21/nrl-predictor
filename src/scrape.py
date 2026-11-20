@@ -84,16 +84,17 @@ def match_url(path):
 
 
 def fetch_fixtures(year, competition=COMPETITION_ID):
-    """Return all completed matches for a season, one dict per match."""
-    fixtures = []
+    """Every game in the season's draw, played or not, one dict per match (round number added)."""
+    fixtures, seen = [], set()
     for rnd in range(1, MAX_ROUNDS + 1):
         url = f"https://www.nrl.com/draw/?competition={competition}&round={rnd}&season={year}"
         data = get_q_data(url, "vue-draw", missing_ok=True)
         time.sleep(DELAY)
         matches = [f for f in (data or {}).get("fixtures", []) if f.get("type") == "Match"]
-        # Past the last round the site returns the final round again, so stop on a repeat.
-        if not matches or (fixtures and matches[0]["matchCentreUrl"] == fixtures[-1]["matchCentreUrl"]):
+        # Past the last round the site returns the final round again, so stop on a game already seen.
+        if not matches or any(m["matchCentreUrl"] in seen for m in matches):
             break
+        seen.update(m["matchCentreUrl"] for m in matches)
         fixtures.extend({**m, "roundNumber": rnd} for m in matches)
     return fixtures
 

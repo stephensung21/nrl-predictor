@@ -173,3 +173,60 @@ def test_the_predict_job_picks_up_games_finished_since_monday(monkeypatch):
     done.clear()
     run.catch_up(draw[draw["match_id"].notna()], 2027, {})
     assert done == {}
+
+
+def test_the_draw_stops_when_the_site_repeats_the_last_round(site):
+    """Past the last round nrl.com serves the final round again; the repeat isn't a new round (a full
+    repeated round used to be added as rounds 28-35, since only its first game was checked against the
+    previous round's last one)."""
+    pages, _ = site
+    url = "https://www.nrl.com/draw/?competition=111&round={}&season=2027"
+    rounds = {1: ["storm-v-broncos", "eels-v-panthers"], 2: ["broncos-v-eels", "panthers-v-storm"]}
+    for rnd in range(1, scrape.MAX_ROUNDS + 1):
+        games = rounds[min(rnd, 2)]
+        fixtures = [{"type": "Match", "matchCentreUrl": f"/draw/nrl-premiership/2027/round-{min(rnd, 2)}/{g}/"}
+                    for g in games]
+        pages[url.format(rnd)] = Resp(200, page("vue-draw", {"fixtures": fixtures}))
+    got = scrape.fetch_fixtures(2027)
+    assert [(f["roundNumber"], f["matchCentreUrl"].split("/")[-2]) for f in got] == [
+        (1, "storm-v-broncos"), (1, "eels-v-panthers"), (2, "broncos-v-eels"), (2, "panthers-v-storm")]
+
+
+def test_a_draw_without_team_lists_yet_is_nothing_to_do(monkeypatch, tmp_path):
+    """Pre-season: the draw is out but no club has named a team. Fetching the lists gives empty tables
+    with their columns, and predict and refresh both have nothing to do (they used to fail on a
+    KeyError, 'position', from a column-less table)."""
+    import draw
+    import predict
+    import run
+    paths = ["/draw/nrl-premiership/2027/round-1/storm-v-broncos/", "/draw/nrl-premiership/2027/round-1/eels-v-panthers/"]
+    teams = [("Storm", "Broncos"), ("Eels", "Panthers")]
+    kickoffs = ["2027-03-05T09:00:00Z", "2027-03-06T07:00:00Z"]
+    the_draw = pd.DataFrame({"match_id": float("nan"), "season": 2027, "round": 1, "round_title": "Round 1",
+                             "is_final": False, "start_time_utc": pd.to_datetime(kickoffs, utc=True),
+                             "venue": ["AAMI Park", "CommBank Stadium"], "venue_city": ["Melbourne", "Sydney"],
+                             "home_team": [h for h, _ in teams], "away_team": [a for _, a in teams],
+                             "status": "scheduled", "url": paths})[draw.COLUMNS]
+    monkeypatch.setattr(draw, "live_draw", lambda season: the_draw)
+
+    def match_centre(url, element_id, missing_ok=False):
+        i = next(i for i, p in enumerate(paths) if url == scrape.match_url(p))
+        return {"match": {"matchId": 20271110110 + 10 * i, "roundNumber": 1, "roundTitle": "Round 1",
+                          "startTime": kickoffs[i], "venue": the_draw["venue"][i], "venueCity": the_draw["venue_city"][i],
+                          "homeTeam": {"nickName": teams[i][0]}, "awayTeam": {"nickName": teams[i][1]},
+                          "matchState": "Upcoming", "url": paths[i]}}  # no "players": not named yet
+    monkeypatch.setattr(scrape, "get_q_data", match_centre)
+    monkeypatch.setattr(predict, "LIVE_LISTS", tmp_path / "lists")
+    monkeypatch.setattr(predict, "load_bundle", lambda season: {"version": "2027.1"})
+    monkeypatch.setattr(run.fetch_odds, "api_key", lambda: None)
+    for step in ("weather_step", "edges_step"):  # no network
+        monkeypatch.setattr(run, step, lambda *a, **k: None)
+    monkeypatch.setattr(run.pd.Timestamp, "now", classmethod(lambda cls, tz=None: pd.Timestamp("2026-11-20", tz="UTC")))
+    records = Records(2027, replay=False, root=tmp_path)
+
+    for job in ("refresh", "predict"):
+        out = run.run_job(job, 2027, records=records)
+        assert out["status"] == "nothing to do", out
+        assert "both team lists" in out["notes"]
+    assert sorted(records.fixtures()["match_id"]) == [20271110110, 20271110120]
+    assert records.predictions().empty
