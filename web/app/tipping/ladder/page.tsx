@@ -4,7 +4,7 @@ import { PageMessage } from "@/components/page-message";
 import { SampleNote } from "@/components/sample-note";
 import { ModelBadge, TeamBadge } from "@/components/team-badge";
 import { compSeason, COMP_FIRST_SEASON, readLadder, type LadderView } from "@/lib/comp";
-import { seasonStats, tagsFor } from "@/lib/comp-stats";
+import { formFor, seasonStats, tagsFor } from "@/lib/comp-stats";
 import { ladder as buildLadder, seasonAt, statGames, type LadderEntry, type SampleState } from "@/lib/ladder";
 import { ordinal, roundName } from "@/lib/round";
 import { YOU_ID } from "@/lib/sample";
@@ -96,20 +96,35 @@ function Ladder({ view, youId }: { view: LadderView; youId: string }) {
         </p>
       </div>
 
-      <LadderTable ladder={ladder} tags={tags} round={latest.round} youId={youId} />
+      <LadderTable ladder={ladder} tags={tags} form={formFor(ladder)} round={latest.round} youId={youId} />
 
       {you && leader && (
-        <p className="mt-3 text-[14px] leading-snug text-ink-2">
-          You&rsquo;re {you.tied ? "equal " : ""}
-          {ordinal(you.position!)}
-          {leader.tipper.id === you.tipper.id ? ", top of the ladder" : `, ${gap(leader.points - you.points)} off the lead`}
-          {!model
-            ? "."
-            : model.points > you.points
-              ? ` and ${gap(model.points - you.points)} behind the Model.`
-              : model.points < you.points
-                ? ` and ${gap(you.points - model.points)} ahead of the Model.`
-                : " and level with the Model."}
+        <p className="mt-3 rounded-lg bg-raised px-3 py-2.5 text-[14px] leading-snug text-ink-2">
+          You&rsquo;re{" "}
+          <span className="font-semibold text-ink">
+            {you.tied ? "equal " : ""}
+            {ordinal(you.position!)}
+          </span>
+          {leader.tipper.id === you.tipper.id ? (
+            ", top of the ladder"
+          ) : (
+            <>
+              , <span className="font-semibold text-ink">{gap(leader.points - you.points)} off the lead</span>
+            </>
+          )}
+          {!model ? (
+            "."
+          ) : model.points > you.points ? (
+            <>
+              {" "}and <span className="font-semibold text-ink">{gap(model.points - you.points)} behind the Model</span>.
+            </>
+          ) : model.points < you.points ? (
+            <>
+              {" "}and <span className="font-semibold text-ink">{gap(you.points - model.points)} ahead of the Model</span>.
+            </>
+          ) : (
+            " and level with the Model."
+          )}
         </p>
       )}
 
@@ -121,17 +136,15 @@ function Ladder({ view, youId }: { view: LadderView; youId: string }) {
 
 const gap = (n: number) => `${n} pt${n === 1 ? "" : "s"}`;
 
+/** The Model's series colour (lib/odds.ts), for its divider's rules. */
+const MODEL_LINE = "#3987e5";
+
 function Movement({ n }: { n: number | null }) {
-  if (n == null) return <span className="w-6" aria-hidden />;
-  if (n === 0)
-    return (
-      <span className="w-6 text-[12px] font-semibold text-ink-3">
-        –<span className="sr-only">no change</span>
-      </span>
-    );
+  if (n == null || n === 0)
+    return n === 0 ? <span className="sr-only">, no change</span> : null;
   const Icon = n > 0 ? ArrowUp : ArrowDown;
   return (
-    <span className="flex w-6 items-center text-[12px] font-semibold text-ink-3">
+    <span className="ml-1 inline-flex items-center text-[11px] font-semibold text-ink-3">
       <Icon className="size-3" strokeWidth={2.5} aria-hidden />
       {Math.abs(n)}
       <span className="sr-only">{n > 0 ? " places up" : " places down"}</span>
@@ -139,72 +152,124 @@ function Movement({ n }: { n: number | null }) {
   );
 }
 
-function LadderTable({ ladder, tags, round, youId }: { ladder: LadderEntry[]; tags: Map<string, string>; round: number; youId: string }) {
+function FormTag({ form }: { form?: "hot" | "cold" }) {
+  if (!form) return null;
+  return (
+    <span
+      className={`ml-1.5 text-[11px] font-bold tracking-[0.06em] uppercase ${form === "hot" ? "text-lime-fg" : "text-miss"}`}
+    >
+      {form === "hot" ? "Hot" : "Cold"}
+      <span className="sr-only">: {form === "hot" ? "best" : "worst"} of the last three rounds</span>
+    </span>
+  );
+}
+
+/** The Model isn't ranked: it's a line across the ladder, placed by its points. */
+function ModelDivider({ model }: { model: LadderEntry }) {
+  return (
+    <tr>
+      <td colSpan={5} className="px-2 py-2">
+        <span className="flex items-center gap-2 text-[12px] font-semibold text-ink-2">
+          <span className="h-0 flex-1 border-t-[1.5px] border-dashed" style={{ borderColor: MODEL_LINE }} aria-hidden />
+          <ModelBadge size="sm" />
+          <span>
+            <span className="sr-only">Not ranked: </span>The Model ·{" "}
+            <span className="font-score text-[15px] text-ink">{model.points}</span>
+            <span className="sr-only"> points, margin</span>
+            <span aria-hidden> · </span>
+            <span className="font-score text-[15px]">{model.marginScore}</span>
+          </span>
+          <span className="h-0 flex-1 border-t-[1.5px] border-dashed" style={{ borderColor: MODEL_LINE }} aria-hidden />
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+function LadderTable({
+  ladder, tags, form, round, youId,
+}: { ladder: LadderEntry[]; tags: Map<string, string>; form: Map<string, "hot" | "cold">; round: number; youId: string }) {
+  const model = ladder.find((e) => e.tipper.isModel);
+  const humans = ladder.filter((e) => !e.tipper.isModel);
+  const top = humans[0]?.points ?? 0;
+  // The divider goes before the first tipper below the Model; a tipper level with it stays above.
+  const below = model ? humans.findIndex((e) => e.points < model.points) : -1;
+  const dividerAt = below === -1 ? humans.length : below;
+
   return (
     <table className="w-full border-collapse text-left">
       <caption className="sr-only">Tipping ladder, round {round}</caption>
       <thead>
         <tr className="border-b border-line text-[12px] font-semibold text-ink-3">
-          <th scope="col" className="w-12 py-2 pl-2 font-semibold">
+          <th scope="col" className="w-11 py-2 pl-2 font-semibold">
             <span className="sr-only">Position</span>
           </th>
           <th scope="col" className="py-2 font-semibold">
             Tipper
           </th>
-          <th scope="col" className="w-12 py-2 text-right font-semibold">
+          <th scope="col" className="w-11 py-2 text-right font-semibold">
             Pts
           </th>
-          <th scope="col" className="w-16 py-2 pr-2 text-right font-semibold">
+          <th scope="col" className="w-11 py-2 text-right font-semibold">
+            Gap
+          </th>
+          <th scope="col" className="w-14 py-2 pr-2 text-right font-semibold">
             Margin
           </th>
         </tr>
       </thead>
       <tbody>
-        {ladder.map((e) => {
+        {humans.flatMap((e, i) => {
           const you = e.tipper.id === youId;
           const tag = tags.get(e.tipper.id);
-          return (
-            <tr
-              key={e.tipper.id}
-              // The Model is the line everyone measures against: tinted, ruled above and below, unranked.
-              className={`border-b ${you ? "border-line-soft bg-lime-wash" : e.tipper.isModel ? "border-y border-line bg-raised-2" : "border-line-soft"}`}
-            >
-              <td className="py-3 pl-2 align-middle">
-                {e.tipper.isModel ? (
-                  <span className="font-score text-[17px] text-ink-3">
-                    –<span className="sr-only">Not ranked</span>
-                  </span>
-                ) : (
-                  <span className="font-score text-[17px] font-semibold text-ink-2">
-                    {e.tied ? "=" : ""}
-                    {ordinal(e.position!)}
-                  </span>
-                )}
+          const behind = top - e.points;
+          const row = (
+            <tr key={e.tipper.id} className={`border-b border-line-soft ${you ? "bg-lime-wash" : ""}`}>
+              <td className="py-3 pl-2 align-middle whitespace-nowrap">
+                <span className={`font-score text-[22px] font-bold ${e.position === 1 ? "text-lime-fg" : "text-ink-2"}`}>
+                  {e.tied ? "=" : ""}
+                  {e.position}
+                </span>
+                <Movement n={e.movement} />
               </td>
               <td className="py-3 align-middle">
                 <span className="flex items-center gap-2.5">
-                  {e.tipper.isModel ? <ModelBadge size="sm" /> : e.tipper.favTeam && <TeamBadge name={e.tipper.favTeam} size="sm" />}
+                  {e.tipper.favTeam && <TeamBadge name={e.tipper.favTeam} size="sm" />}
                   <span className="min-w-0">
-                    <span className={`text-[15px] ${you || e.tipper.isModel ? "font-semibold text-ink" : "text-ink"}`}>
-                      {e.tipper.isModel ? "The Model" : e.tipper.name}
-                    </span>
+                    <span className="text-[15px] font-semibold text-ink">{e.tipper.name}</span>
                     {you && <span className="ml-1.5 text-[11px] font-bold tracking-[0.06em] text-lime-fg uppercase">You</span>}
+                    <FormTag form={form.get(e.tipper.id)} />
                     {tag && <span className="block text-[12px] leading-tight text-ink-3">{tag}</span>}
-                  </span>
-                  <span className="ml-auto">
-                    <Movement n={e.movement} />
                   </span>
                 </span>
               </td>
-              <td className="py-3 text-right align-middle font-score text-[21px] font-bold text-ink">{e.points}</td>
-              <td className="py-3 pr-2 text-right align-middle font-score text-[17px] font-semibold text-ink-3">{e.marginScore}</td>
+              <td className="py-3 text-right align-middle font-score text-[26px] leading-none font-bold text-ink">{e.points}</td>
+              <td className="py-3 text-right align-middle font-score text-[16px] font-semibold text-ink-2">
+                {behind === 0 ? (
+                  <>
+                    –<span className="sr-only">level with the lead</span>
+                  </>
+                ) : (
+                  <>
+                    &minus;{behind}
+                    <span className="sr-only"> behind the lead</span>
+                  </>
+                )}
+              </td>
+              <td className="py-3 pr-2 text-right align-middle font-score text-[16px] text-ink-3">{e.marginScore}</td>
             </tr>
           );
+          return model && i === dividerAt ? [<ModelDivider key="model" model={model} />, row] : [row];
         })}
+        {model && dividerAt === humans.length && <ModelDivider model={model} />}
       </tbody>
     </table>
   );
 }
+
+/** A round cell's lime tint: brighter for more points, capped so ink text keeps its contrast in both themes. */
+const tint = (pts: number, games: number) =>
+  `color-mix(in oklch, var(--color-lime) ${Math.round(4 + 31 * Math.min(1, pts / Math.max(1, games)))}%, transparent)`;
 
 function RoundGrid({ ladder, youId }: { ladder: LadderEntry[]; youId: string }) {
   const rounds = ladder[0].rounds.map((r) => r.round);
@@ -218,18 +283,18 @@ function RoundGrid({ ladder, youId }: { ladder: LadderEntry[]; youId: string }) 
         Round by round
       </h2>
       <p className="mt-1.5 text-[13px] text-ink-3">
-        Points each round. Bold is the round&rsquo;s best among the tippers; + is a perfect-round bonus; * means an auto-tip
-        filled a forgotten game.
+        Points each round; brighter is a better round. Bold is the round&rsquo;s best among the tippers; + is a perfect-round
+        bonus; * means an auto-tip filled a forgotten game.
       </p>
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-max border-collapse text-center">
+        <table className="w-full min-w-max border-separate border-spacing-[3px] text-center">
           <thead>
-            <tr className="border-b border-line text-[12px] font-semibold text-ink-3">
-              <th scope="col" className="sticky left-0 bg-ground py-2 pr-2 text-left font-semibold">
+            <tr className="text-[12px] font-semibold text-ink-3">
+              <th scope="col" className="sticky left-0 z-10 bg-ground pr-2 text-left font-semibold">
                 <span className="sr-only">Tipper</span>
               </th>
               {rounds.map((r) => (
-                <th key={r} scope="col" className="w-7 py-2 font-semibold">
+                <th key={r} scope="col" className="min-w-8 pb-1 font-semibold">
                   <span className="sr-only">Round </span>
                   {r}
                 </th>
@@ -239,19 +304,13 @@ function RoundGrid({ ladder, youId }: { ladder: LadderEntry[]; youId: string }) 
           <tbody>
             {ladder.map((e) => {
               const you = e.tipper.id === youId;
-              const rowBg = you ? "bg-lime-wash" : e.tipper.isModel ? "bg-raised-2" : "";
               return (
-                <tr key={e.tipper.id} className={`border-b border-line-soft ${rowBg}`}>
+                <tr key={e.tipper.id}>
                   <th
                     scope="row"
-                    className={`sticky left-0 py-2 pr-3 text-left text-[14px] font-medium whitespace-nowrap ${
-                      // The sticky cell paints the same wash over the same ground as its row, so there's no seam.
-                      you
-                        ? "bg-ground [background-image:linear-gradient(var(--color-lime-wash),var(--color-lime-wash))]"
-                        : e.tipper.isModel
-                          ? "bg-raised-2"
-                          : "bg-ground"
-                    } ${you || e.tipper.isModel ? "text-ink" : "text-ink-2"}`}
+                    className={`sticky left-0 z-10 bg-ground pr-3 text-left text-[14px] whitespace-nowrap ${
+                      you ? "font-semibold text-lime-fg" : e.tipper.isModel ? "font-medium text-ink" : "font-medium text-ink-2"
+                    }`}
                   >
                     {e.tipper.isModel ? "Model" : e.tipper.name}
                   </th>
@@ -261,11 +320,14 @@ function RoundGrid({ ladder, youId }: { ladder: LadderEntry[]; youId: string }) 
                     return (
                       <td
                         key={s.round}
-                        className={`py-2 font-score text-[16px] ${top ? "font-bold text-ink" : "text-ink-3"}`}
+                        className={`h-8 rounded-[5px] font-score text-[16px] text-ink ${top ? "font-bold" : ""} ${
+                          e.tipper.isModel ? "bg-raised-2" : ""
+                        }`}
+                        style={e.tipper.isModel ? undefined : { background: tint(pts, s.games) }}
                       >
                         {s.correct}
                         {s.bonus > 0 && <span className="text-[12px]">+</span>}
-                        {s.autoTips > 0 && <span className="text-[12px] text-ink-3">*</span>}
+                        {s.autoTips > 0 && <span className="text-[12px]">*</span>}
                         <span className="sr-only">
                           {" "}
                           of {s.games}
@@ -289,46 +351,41 @@ function RoundGrid({ ladder, youId }: { ladder: LadderEntry[]; youId: string }) 
 function Stats({ stats }: { stats: LadderView["stats"] }) {
   const streak = stats.longestStreak[0];
   const upset = stats.biggestUpset;
-  const rows: [string, React.ReactNode][] = [
-    [
-      "Perfect rounds",
-      stats.perfectRounds.length === 0
-        ? "Nobody yet."
-        : stats.perfectRounds.map((p) => `${p.tipper.name} (round${p.rounds.length > 1 ? "s" : ""} ${p.rounds.join(", ")})`).join(", "),
-    ],
-    [
-      "Longest streak",
-      streak && streak.length > 0 ? (
-        <>
-          {streak.tipper.name}, <span className="font-score text-[17px] text-ink">{streak.length}</span> correct in a row
-          {streak.endedRound == null ? " and counting" : `, ended in round ${streak.endedRound}`}.
-        </>
-      ) : (
-        "Nobody yet."
-      ),
-    ],
-    [
-      "Biggest upset tipped",
-      upset ? (
-        <>
-          {upset.tipper.name} tipped the {upset.team} over the {upset.opponent} in round {upset.round}. The Model gave them{" "}
-          <span className="font-score text-[17px] text-ink">{Math.round(upset.modelChance * 100)}%</span>.
-        </>
-      ) : (
-        "Nobody's tipped an upset yet."
-      ),
-    ],
+  const perfect = stats.perfectRounds;
+  const tiles: { figure: string; label: string; detail: string }[] = [
+    {
+      figure: streak && streak.length > 0 ? String(streak.length) : "0",
+      label: "Longest streak",
+      detail:
+        streak && streak.length > 0
+          ? `${streak.tipper.name}, ${streak.endedRound == null ? "still going" : `ended round ${streak.endedRound}`}`
+          : "Nobody yet.",
+    },
+    {
+      figure: upset ? `${Math.round(upset.modelChance * 100)}%` : "–",
+      label: "Biggest upset",
+      detail: upset ? `${upset.tipper.name}: ${upset.team} over ${upset.opponent}, round ${upset.round}` : "Nobody yet.",
+    },
+    {
+      figure: String(perfect.reduce((n, p) => n + p.rounds.length, 0)),
+      label: "Perfect rounds",
+      detail:
+        perfect.length === 0
+          ? "Nobody yet."
+          : perfect.map((p) => `${p.tipper.name} (${p.rounds.join(", ")})`).join(", "),
+    },
   ];
   return (
     <section aria-labelledby="season-stats" className="mt-10">
       <h2 id="season-stats" className="font-display text-[24px] leading-none font-bold uppercase">
         Bragging rights
       </h2>
-      <dl className="mt-3 border-t border-line-soft">
-        {rows.map(([label, value]) => (
-          <div key={label} className="border-b border-line-soft py-3">
-            <dt className="text-[13px] font-semibold text-ink-3">{label}</dt>
-            <dd className="mt-0.5 text-[15px] leading-snug text-ink-2">{value}</dd>
+      <dl className="mt-3 grid grid-cols-3 gap-2">
+        {tiles.map((t) => (
+          <div key={t.label} className="flex flex-col rounded-lg bg-raised px-3 py-3">
+            <dt className="order-2 mt-1 text-[12px] font-semibold text-ink-3">{t.label}</dt>
+            <dd className="order-1 font-score text-[28px] leading-none font-bold text-ink">{t.figure}</dd>
+            <dd className="order-3 mt-1 text-[12px] leading-snug text-ink-2">{t.detail}</dd>
           </div>
         ))}
       </dl>
