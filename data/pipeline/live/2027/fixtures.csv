@@ -1,0 +1,10 @@
+match_id,season,round,round_title,is_final,start_time_utc,venue,venue_city,home_team,away_team,neutral,url
+20271110110,2027,1,Round 1,False,2027-02-27T13:00:00Z,Allegiant Stadium,Las Vegas,Eels,Titans,True,https://www.nrl.com/draw/nrl-premiership/2027/round-1/eels-v-titans/
+20271110120,2027,1,Round 1,False,2027-02-27T13:00:00Z,Allegiant Stadium,Las Vegas,Storm,Wests Tigers,True,https://www.nrl.com/draw/nrl-premiership/2027/round-1/storm-v-wests-tigers/
+20271110130,2027,1,Round 1,False,2027-03-04T09:00:00Z,Allianz Stadium,Sydney,Roosters,Broncos,False,https://www.nrl.com/draw/nrl-premiership/2027/round-1/roosters-v-broncos/
+20271110140,2027,1,Round 1,False,2027-03-05T07:00:00Z,Go Media Stadium,Auckland,Warriors,Bulldogs,False,https://www.nrl.com/draw/nrl-premiership/2027/round-1/warriors-v-bulldogs/
+20271110150,2027,1,Round 1,False,2027-03-05T09:00:00Z,St George Venues Jubilee Stadium,Kogarah,Dragons,Cowboys,False,https://www.nrl.com/draw/nrl-premiership/2027/round-1/dragons-v-cowboys/
+20271110160,2027,1,Round 1,False,2027-03-06T06:30:00Z,Kayo Stadium,Redcliffe,Dolphins,Sharks,True,https://www.nrl.com/draw/nrl-premiership/2027/round-1/dolphins-v-sharks/
+20271110170,2027,1,Round 1,False,2027-03-06T08:35:00Z,McDonald Jones Stadium,Newcastle,Knights,Panthers,False,https://www.nrl.com/draw/nrl-premiership/2027/round-1/knights-v-panthers/
+20271110180,2027,1,Round 1,False,2027-03-07T05:05:00Z,Optus Stadium,Perth,Bears,Sea Eagles,True,https://www.nrl.com/draw/nrl-premiership/2027/round-1/bears-v-sea-eagles/
+20271110190,2027,1,Round 1,False,2027-03-07T07:15:00Z,GIO Stadium,Canberra,Raiders,Rabbitohs,False,https://www.nrl.com/draw/nrl-premiership/2027/round-1/raiders-v-rabbitohs/
