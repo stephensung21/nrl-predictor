@@ -154,7 +154,7 @@ TEAM_BASE = {
 WARRIORS_BASES = [(pd.Timestamp("2022-01-01", tz="UTC"), "Gosford"), (pd.Timestamp("2022-07-01", tz="UTC"), "Redcliffe")]
 ORIGIN_REP_DAYS = 365         # an "Origin representative" played Origin within this many days
 # Ladder: regular-season rounds per season (from the published draw) and the clubs in each season.
-REGULAR_ROUNDS = {2020: 20, 2021: 25, 2022: 25, 2023: 27, 2024: 27, 2025: 27, 2026: 27}
+REGULAR_ROUNDS = {2020: 20, 2021: 25, 2022: 25, 2023: 27, 2024: 27, 2025: 27, 2026: 27, 2027: 27}
 FINALS_PLACES = 8
 
 SHORT_TURNAROUND_DAYS = 6   # under 6 days since the last game (e.g. Sunday -> Friday)

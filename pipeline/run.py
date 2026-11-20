@@ -90,8 +90,9 @@ def fingerprints(fixtures, lists, neutral, odds, live_odds=None):
     and jersey), the opening prices (the sheet's, else the live ones, as predict.inputs_before) and the
     venue flag. A refresh re-predicts a game when this changes, e.g. when its first live price arrives."""
     named = predict.named_17(lists).sort_values(["match_id", "team", "jersey_number", "player_id"])
-    squads = named.groupby("match_id").apply(
-        lambda d: ";".join(f"{t}:{j}:{p}" for t, j, p in zip(d["team"], d["jersey_number"], d["player_id"])))
+    # A dict comprehension rather than groupby.apply, so no lists at all (pre-season) gives an empty Series.
+    squads = pd.Series({mid: ";".join(f"{t}:{j}:{p}" for t, j, p in zip(d["team"], d["jersey_number"], d["player_id"]))
+                        for mid, d in named.groupby("match_id")}, dtype=object)
     joined = join_odds_to_matches(fixtures[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
     prices = joined.merge(odds[["odds_id", *predict.LIVE_ODDS_COLS]], on="odds_id", how="left").set_index("match_id")
     prices = prices[predict.LIVE_ODDS_COLS]
