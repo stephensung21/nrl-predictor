@@ -96,3 +96,38 @@ def test_headshot_links_prefer_the_season_then_the_nearest():
     assert got[7] == "https://www.nrl.com/a24" + IMAGE_SIZE  # equally near: the earlier season, not a future photo
     assert got[8] == "https://www.nrl.com/b25" + IMAGE_SIZE
     assert image_for(images.iloc[0:0], 2025).empty
+
+
+def _round_game(match_id, rnd, kickoff, is_final=False):
+    return {**_game(match_id, kickoff), "round": rnd, "is_final": is_final}
+
+
+def test_round_rows_only_players_who_played_in_regular_season():
+    from players import ROUND_PLAYER_COLS, round_rows
+    matches = pd.DataFrame([_round_game(1, 1, "2026-03-01T08:00:00Z"), _round_game(2, 2, "2026-03-08T08:00:00Z"),
+                            _round_game(3, 27, "2026-09-12T08:00:00Z", is_final=True)])
+    players = pd.DataFrame([
+        _row(1, 7, "Eels", "Centre"), _row(2, 7, "Storm", "Winger"),   # two rounds, two rows
+        _row(1, 8, "Eels", "Interchange", minutes=20),                   # off the bench
+        _row(1, 9, "Eels", "Interchange", minutes=0),                    # named, never took the field
+        _row(3, 7, "Storm", "Winger"),                                   # a final: no Dally M votes
+    ])
+    out = round_rows(players, matches, 2026, images=pd.DataFrame(columns=["season", "player_id", "head_image"]))
+    assert list(out.columns) == ROUND_PLAYER_COLS
+    got = sorted(out[["round", "player_id", "match_id", "team", "position"]].itertuples(index=False, name=None))
+    assert got == [(1, 7, 1, "Eels", "Centre"), (1, 8, 1, "Eels", "Interchange"), (2, 7, 2, "Storm", "Winger")]
+
+
+def test_round_rows_photo_link():
+    from players import IMAGE_SIZE, round_rows
+    matches = pd.DataFrame([_round_game(1, 1, "2026-03-01T08:00:00Z")])
+    images = pd.DataFrame({"season": [2026], "player_id": [7], "head_image": ["/x"]})
+    out = round_rows(pd.DataFrame([_row(1, 7, "Eels", "Centre"), _row(1, 8, "Eels", "Prop")]), matches, 2026, images=images)
+    out = out.set_index("player_id")
+    assert out.loc[7, "head_image"] == "https://www.nrl.com/x" + IMAGE_SIZE and pd.isna(out.loc[8, "head_image"])
+
+
+def test_round_rows_empty_season():
+    from players import ROUND_PLAYER_COLS, round_rows
+    out = round_rows(pd.DataFrame([_row(1, 7, "Eels", "Centre")]), pd.DataFrame([_round_game(1, 1, "2026-03-01T08:00:00Z")]), 2027)
+    assert out.empty and list(out.columns) == ROUND_PLAYER_COLS

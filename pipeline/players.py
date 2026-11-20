@@ -9,6 +9,8 @@ tables. publish.py writes them to the database.
   played for last.
 - player_ratings: features.player_ratings, as of the season's last decided game: the RAPM rating the
   model would give him for his next game, with its attack and defence split.
+- round_players: everyone who took the field in each regular-season round, the community Dally M's
+  candidates (a round opens for votes once its players are published).
 
 Usage:
     python pipeline/players.py --season 2026     # print the season's top 10 by rating
@@ -40,6 +42,7 @@ TOTALS = {
 }
 SEASON_COLS = ["season", "player_id", "player_name", "team", "position", "games", "head_image", *TOTALS]
 RATING_COLS = ["season", "player_id", "rating", "attack", "defence", "as_of"]
+ROUND_PLAYER_COLS = ["season", "round", "player_id", "match_id", "player_name", "team", "position", "head_image"]
 
 
 def load_players():
@@ -97,6 +100,24 @@ def season_rows(players, matches, season, images=None):
     return out[SEASON_COLS]
 
 
+def round_rows(players, matches, season, images=None):
+    """round_players rows: everyone who took the field in each regular-season round so far, the
+    community Dally M's candidates (docs/superpowers/specs/2026-11-21-dally-m-design.md)."""
+    p = appearances(players[players["season"] == season], matches)
+    m = matches.set_index("match_id")
+    final = m["is_final"].map(lambda v: str(v).strip().lower() == "true") if "is_final" in m else False
+    p = p.assign(round=p["match_id"].map(m["round"]), final=p["match_id"].map(final))
+    p = p[p["round"].notna() & ~p["final"].fillna(False).astype(bool)]
+    if p.empty:
+        return pd.DataFrame(columns=ROUND_PLAYER_COLS)
+    out = p.drop_duplicates(["round", "player_id"], keep="last").copy()  # two games in a round: the later
+    out["round"] = out["round"].astype(int)
+    out["position"] = out["position"].where(out["position"].isin(POSITIONS), "Interchange")
+    out["head_image"] = out["player_id"].map(image_for(load_images() if images is None else images, season))
+    out["season"] = season
+    return out[ROUND_PLAYER_COLS].reset_index(drop=True)
+
+
 def rating_rows(players, matches, season):
     """player_ratings rows for everyone who played that season, as of its last decided game."""
     m = matches.copy()
@@ -120,7 +141,8 @@ def tables(season, players=None, matches=None):
     matches = load_matches() if matches is None else matches
     players = players[~players["position"].isin(NOT_NAMED) | (players["minutesPlayed"].fillna(0) > 0)]
     return {"player_seasons": season_rows(players, matches, season),
-            "player_ratings": rating_rows(players, matches, season)}
+            "player_ratings": rating_rows(players, matches, season),
+            "round_players": round_rows(players, matches, season)}
 
 
 def main():

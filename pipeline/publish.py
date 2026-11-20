@@ -366,7 +366,8 @@ KEYS = {"model_versions": ["version"], "matches": ["id"], "odds_sheet": ["match_
         "summaries": ["kind", "season", "round", "match_id"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
         "prediction_drivers": ["run_id", "match_id", "feature"], "match_briefs": ["run_id", "match_id"],
         "graded_games": ["match_id"], "weather": ["match_id", "kind"],
-        "player_seasons": ["season", "player_id"], "player_ratings": ["season", "player_id"]}
+        "player_seasons": ["season", "player_id"], "player_ratings": ["season", "player_id"],
+        "round_players": ["season", "round", "player_id"]}
 
 
 def plain(v):
@@ -438,7 +439,7 @@ def publish_players(url, seasons, conn=None):
         if conn is None:
             with psycopg.connect(url, prepare_threshold=None) as conn:
                 return publish_players(url, seasons, conn)
-        counts = {"player_seasons": 0, "player_ratings": 0}
+        counts = {"player_seasons": 0, "player_ratings": 0, "round_players": 0}
         with conn.transaction(), conn.cursor() as cur:
             for season in seasons:
                 for table, rows in players.tables(season).items():

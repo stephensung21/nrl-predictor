@@ -393,14 +393,21 @@ def test_the_players_page_tables_publish_and_rerun(db_url, monkeypatch):
     import players
     small = {s: {t: rows.head(30) for t, rows in players.tables(s).items()} for s in (2025, 2026)}
     small = {s: {"player_seasons": t["player_seasons"],
-                 "player_ratings": t["player_ratings"][t["player_ratings"]["player_id"].isin(t["player_seasons"]["player_id"])]}
+                 "player_ratings": t["player_ratings"][t["player_ratings"]["player_id"].isin(t["player_seasons"]["player_id"])],
+                 "round_players": t["round_players"]}
              for s, t in small.items()}
     monkeypatch.setattr(players, "tables", lambda season: small[season])
     conn = connection(db_url)
+    # round_players names its game, which the main publish would have written.
+    games = {int(g) for t in small.values() for g in t["round_players"]["match_id"]}
+    m = load_matches().set_index("match_id").loc[sorted(games)]
+    conn.cursor().executemany("insert into matches (id, season, round, kickoff, home_team, away_team) values (%s, %s, %s, %s, %s, %s)",
+                     [(int(i), int(r["season"]), int(r["round"]), r["start_time_utc"], r["home_team"], r["away_team"]) for i, r in m.iterrows()])
     for _ in range(2):
         counts = publish.publish_players(db_url, [2025, 2026], conn=conn)
-    assert counts["player_seasons"] == 60
+    assert counts["player_seasons"] == 60 and counts["round_players"] == 60
     assert query(db_url, "select count(*) from player_seasons")[0][0] == 60
+    assert query(db_url, "select count(*) from round_players")[0][0] == 60
     n = query(db_url, "select count(*) from player_ratings r join player_seasons s using (season, player_id)")[0][0]
     assert n == sum(len(t["player_ratings"]) for t in small.values())
 
