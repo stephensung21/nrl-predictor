@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DallyMNudge } from "@/components/dally-m-ballot";
+import { LmsNudge } from "@/components/lms-picker";
 import { PageMessage } from "@/components/page-message";
 import { SampleNote } from "@/components/sample-note";
 import { TipList, type TipGame } from "@/components/tip-list";
@@ -8,7 +9,8 @@ import { buildRound } from "@/lib/round";
 import { higherOnLadder, joinedAfter, nrlLadderBefore } from "@/lib/scoring";
 import { margins, round10, SAMPLE_NOW, tippers, tips, YOU_ID, YOUR_EARLY_TIP_COUNT } from "@/lib/sample";
 import { openRound } from "@/lib/dally-m";
-import { dallyMSource, liveTipRound } from "@/lib/source";
+import { playSeason, yourTurn } from "@/lib/lms";
+import { dallyMSource, liveTipRound, lmsSource } from "@/lib/source";
 import { tippingLive } from "@/lib/supabase";
 import { serverClient } from "@/lib/supabase-server";
 import type { TeamName } from "@/lib/teams";
@@ -77,6 +79,7 @@ export default async function TipsPage({ searchParams }: { searchParams: Promise
     <main>
       <TipList season={round10.season} round={round10.round} games={games} initialTips={initial} initialMargin={yourMargin} />
       {state === "open" && <DallyMReminder />}
+      {state === "open" && <LmsReminder />}
       <SampleNote
         states={[
           { href: "/tipping", label: "Tipping open · Tue 7:30pm", on: state === "open" },
@@ -170,6 +173,7 @@ async function LiveTipsPage({ round }: { round: RoundData | null }) {
         initialMargin={margin}
       />
       <DallyMReminder />
+      <LmsReminder />
     </main>
   );
 }
@@ -181,4 +185,13 @@ async function DallyMReminder() {
   if (src.missing || season == null) return null;
   const open = openRound(await src.rounds(season));
   return open ? <DallyMNudge season={season} round={open.round} closes={open.closes} now={src.now} /> : null;
+}
+
+/** A line pointing to last man standing while the viewer is still in and hasn't picked for the open round. */
+async function LmsReminder() {
+  const src = await lmsSource();
+  if (src.missing || src.season == null || !src.view) return null;
+  const { you, tippers, picks } = src.view;
+  const turn = yourTurn(playSeason(tippers.map((t) => t.id), src.matches, picks, src.seasonOver), you);
+  return turn?.alive && !turn.pick ? <LmsNudge season={src.season} round={turn.round} /> : null;
 }

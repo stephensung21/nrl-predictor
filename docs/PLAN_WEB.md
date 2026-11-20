@@ -567,6 +567,7 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/news` | r/nrl feed |
 | `/players` | Player stats and the Model's power rankings, overall and by position |
 | `/dally-m` | The community Dally M: each tipper's 3-2-1 votes for the round's best players, hidden until the next round kicks off, then revealed, with a season leaderboard. Needs migration `20261122000000_dally_m.sql` (after the players migration); the results job's publish fills `round_players` |
+| `/last-man-standing` | Last man standing (in More): one team a round, never twice in a game, out on a loss, draw or no pick; the last one left wins and a new game starts the next round, with a season tally of game wins. Rules in `web/lib/lms.ts`; picks in `lms_picks` (migration `20261123000000_last_man_standing.sql`), locked at kickoff by row-level security. No pipeline change |
 | `/model` | The Model's own page: its record this season as a tipper (tips right against the bookies' favourite and Elo, its place among the tippers, round by round, best calls and worst misses) and a short tested record |
 | `/about` | How the model works, in plain words, and its limits, with a technical section and a link to `/model` |
 

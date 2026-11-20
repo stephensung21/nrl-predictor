@@ -18,6 +18,7 @@ const ITEMS: Item[] = [
 // Elo moved here to make room for the Dally M (a layout with room for more tabs: PLAN_WEB.md §3.1a).
 const MORE = [
   { href: "/elo", label: "Elo" },
+  { href: "/last-man-standing", label: "Last man standing" },
   { href: "/players", label: "Players" },
   { href: "/odds", label: "Model vs market" },
   { href: "/news", label: "News" },

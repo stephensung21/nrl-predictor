@@ -204,7 +204,7 @@ overall rate suggests.
 
 ### Comps among friends
 
-- **Last man standing** ⬜: tip one team each week, never the same team twice, and one loss puts you
+- **Last man standing** ✅ (restarting games with a season tally; `/last-man-standing`): tip one team each week, never the same team twice, and one loss puts you
   out. A small add-on to the tipping comp.
 - **Confidence tipping** ⬜: rank your tips each round, and a right tip ranked higher scores more.
 - **Joker rounds** ⬜: a round where the scoring changes, such as double points or a margin bonus.
