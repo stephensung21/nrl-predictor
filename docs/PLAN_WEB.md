@@ -565,6 +565,8 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/tipping/ladder` | The ladder and round-by-round results |
 | `/tipping/admin` | Invites (one use, 7 days), the tippers (remove one), this round's featured game and how it was drawn, and pipeline run status (admin only) |
 | `/news` | r/nrl feed |
+| `/players` | Player stats and the Model's power rankings, overall and by position |
+| `/dally-m` | The community Dally M: each tipper's 3-2-1 votes for the round's best players, hidden until the next round kicks off, then revealed, with a season leaderboard. Needs migration `20261122000000_dally_m.sql` (after the players migration); the results job's publish fills `round_players` |
 | `/model` | The Model's own page: its record this season as a tipper (tips right against the bookies' favourite and Elo, its place among the tippers, round by round, best calls and worst misses) and a short tested record |
 | `/about` | How the model works, in plain words, and its limits, with a technical section and a link to `/model` |
 

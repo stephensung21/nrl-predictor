@@ -208,7 +208,9 @@ overall rate suggests.
   out. A small add-on to the tipping comp.
 - **Confidence tipping** ⬜: rank your tips each round, and a right tip ranked higher scores more.
 - **Joker rounds** ⬜: a round where the scoring changes, such as double points or a margin bonus.
-- **3-2-1 votes** ⬜: friends give 3, 2 and 1 votes to the best players in each game, Dally M style.
+- **3-2-1 votes** ✅ (November 2026, `dally-m` branch): built as a community Dally M on `/dally-m`, one set of
+  3-2-1 votes for the whole round rather than each game, hidden until the next round kicks off
+  (`docs/superpowers/specs/2026-11-21-dally-m-design.md`).
 
 ### Following the season
 
