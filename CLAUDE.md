@@ -48,3 +48,20 @@ Website (`cd web`): `npm run dev` (runs on sample data with no env vars), `npm t
 - Every modelling change is judged on the 2023–2025 backtest and logged as a numbered item in `docs/IMPROVEMENTS.md` (adopted or rejected, with its result). Experiments write reports to `reports/experiments/` via `python src/experiments.py --only <name>`.
 - Design context for the site: `PRODUCT.md`, `DESIGN.md` and `docs/DESIGN_BRIEF.md`; `.impeccable/` holds the impeccable design skill's config and per-page surface notes. Plans and history: `docs/PLAN_WEB.md` (pipeline and site), `docs/MODELLING_PLAN.md`.
 - Module docstrings explain each file's role and usage in detail. Read them before changing a script.
+
+## Website Redesign Pipeline
+When redesigning pages in this repo, follow this sequence:
+1. Read `PRODUCT.md`, `DESIGN.md` and `design-system/MASTER.md` first. `DESIGN.md` is the design system of record (colours, type, components, used by impeccable and `.impeccable/`); where anything conflicts with it, `DESIGN.md` wins.
+2. If `design-system/MASTER.md` does not exist, generate and persist it via `ui-ux-pro-max` (`--design-system --persist`), seeded from `DESIGN.md`'s tokens and `PRODUCT.md`. It adds `ui-ux-pro-max`'s UX, accessibility and stack guidance; it must not introduce a new palette, typeface or component style.
+3. Use the `design-taste-frontend` skill (taste-skill) for visual direction, layout composition, and headless browser consistency checks (`1440px`, `768px`, `390px`) before moving to the next page.
+4. Run `/impeccable polish` and verify zero violations against Impeccable's 62-rule check before completing a task.
+
+The design skills are not in the repo (`.agents/`, `.claude/skills/` and `skills-lock.json` are gitignored). On a fresh machine, install them first, then restart Claude Code or run `/reload-plugins`:
+
+```bash
+claude plugin marketplace add pbakaus/impeccable
+claude plugin install impeccable@impeccable
+claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
+claude plugin install ui-ux-pro-max@ui-ux-pro-max-skill
+npx skills add https://github.com/Leonxlnx/taste-skill --skill design-taste-frontend -y   # project-local
+```
