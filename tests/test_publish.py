@@ -386,3 +386,27 @@ def test_drivers_and_briefs_are_published_with_their_predictions(db_url, records
         assert query(db_url, "select count(*) from record_briefs") == [(1,)]
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             connection(db_url).execute("insert into match_briefs values ('x', 99, '1', '{}', now())")
+
+
+def test_the_players_page_tables_publish_and_rerun(db_url, monkeypatch):
+    """pipeline/players.py's tables go in after the main publish, and re-running replaces nothing twice."""
+    import players
+    small = {s: {t: rows.head(30) for t, rows in players.tables(s).items()} for s in (2025, 2026)}
+    small = {s: {"player_seasons": t["player_seasons"],
+                 "player_ratings": t["player_ratings"][t["player_ratings"]["player_id"].isin(t["player_seasons"]["player_id"])]}
+             for s, t in small.items()}
+    monkeypatch.setattr(players, "tables", lambda season: small[season])
+    conn = connection(db_url)
+    for _ in range(2):
+        counts = publish.publish_players(db_url, [2025, 2026], conn=conn)
+    assert counts["player_seasons"] == 60
+    assert query(db_url, "select count(*) from player_seasons")[0][0] == 60
+    n = query(db_url, "select count(*) from player_ratings r join player_seasons s using (season, player_id)")[0][0]
+    assert n == sum(len(t["player_ratings"]) for t in small.values())
+
+
+def test_players_publishing_without_the_tables_is_a_warning(db_url, monkeypatch):
+    import players
+    monkeypatch.setattr(players, "tables", lambda season: {"player_seasons": pd.DataFrame({"season": [1]})})
+    connection(db_url).execute("drop table player_ratings; drop table player_seasons")
+    assert publish.publish_players(db_url, [2026], conn=connection(db_url)).startswith("players skipped")

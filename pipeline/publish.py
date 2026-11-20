@@ -26,6 +26,7 @@ Usage:
     python pipeline/publish.py                       # the current season's live records
     python pipeline/publish.py --backfill 2026
     python pipeline/publish.py --dry-run             # count the rows without connecting
+    python pipeline/publish.py --players 2020 2021 2022 2023 2024 2025 2026   # the players page, past seasons
 """
 
 import argparse
@@ -43,6 +44,7 @@ from common import ROOT, Records, load_matches, results_and_odds
 import config
 import fetch_odds
 import grade as gradelib
+import players
 import predict
 from elo import load_params, run_elo
 from ingest import join_odds_to_matches, load_odds
@@ -363,7 +365,8 @@ KEYS = {"model_versions": ["version"], "matches": ["id"], "odds_sheet": ["match_
         "elo_ratings": ["team", "played_on"], "rounds": ["season", "round"],
         "summaries": ["kind", "season", "round", "match_id"], "pipeline_runs": ["id"], "predictions": ["run_id", "match_id"],
         "prediction_drivers": ["run_id", "match_id", "feature"], "match_briefs": ["run_id", "match_id"],
-        "graded_games": ["match_id"], "weather": ["match_id", "kind"]}
+        "graded_games": ["match_id"], "weather": ["match_id", "kind"],
+        "player_seasons": ["season", "player_id"], "player_ratings": ["season", "player_id"]}
 
 
 def plain(v):
@@ -427,6 +430,24 @@ def publish(tables, url, season, backfill=False, conn=None):
     return counts
 
 
+def publish_players(url, seasons, conn=None):
+    """The players page's tables (pipeline/players.py) for each season, in their own transaction after
+    the main publish: a failure here (say, before the players migration is applied) is a warning that
+    leaves the rest published. Returns rows written per table, or the warning."""
+    try:
+        if conn is None:
+            with psycopg.connect(url, prepare_threshold=None) as conn:
+                return publish_players(url, seasons, conn)
+        counts = {"player_seasons": 0, "player_ratings": 0}
+        with conn.transaction(), conn.cursor() as cur:
+            for season in seasons:
+                for table, rows in players.tables(season).items():
+                    counts[table] += upsert(cur, table, rows)
+        return counts
+    except psycopg.Error as ex:
+        return f"players skipped: {type(ex).__name__}: {str(ex).splitlines()[0] if str(ex) else ''}"
+
+
 def revalidate():
     """Ask the website to refresh its cached pages (once it exists, step 12). A failure is only a warning."""
     url, secret = env("REVALIDATE_URL"), env("REVALIDATE_SECRET")
@@ -444,7 +465,16 @@ def main():
     parser.add_argument("--season", type=int, default=config.PREDICT_SEASON)
     parser.add_argument("--backfill", type=int, metavar="SEASON", help="publish a finished season's final test")
     parser.add_argument("--dry-run", action="store_true", help="count the rows without connecting")
+    parser.add_argument("--players", type=int, nargs="+", metavar="SEASON",
+                        help="publish only the players page's tables for these seasons (e.g. 2020 2021 ... 2026)")
     args = parser.parse_args()
+    if args.players:
+        if args.dry_run:
+            print({s: {t: len(r) for t, r in players.tables(s).items()} for s in args.players})
+            return
+        url = env("SUPABASE_DB_URL")
+        print(f"publish players: {publish_players(url, args.players) if url else 'skipped (no SUPABASE_DB_URL)'}")
+        return
     season = args.backfill or args.season
     tables = backfill_tables(season) if args.backfill else live_tables(season, Records(season, replay=False))
     if args.dry_run:
@@ -460,7 +490,8 @@ def main():
         # The message never includes the connection string (it holds the password).
         print(f"publish FAILED: {type(ex).__name__}: {str(ex).splitlines()[0] if str(ex) else ''}", file=sys.stderr)
         sys.exit(1)
-    print(f"publish: {counts}; revalidate: {revalidate()}")
+    player_counts = publish_players(url, [season])
+    print(f"publish: {counts}; players: {player_counts}; revalidate: {revalidate()}")
 
 
 if __name__ == "__main__":
