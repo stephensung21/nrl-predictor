@@ -11,7 +11,7 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
-  oddsRounds, playerSeasonList, playerSeasons, roundData, dallyMSeasons, dallyMRounds, roundPlayers, seasonGames, summary, upcomingEdges,
+  oddsRounds, playerSeasonList, playerSeasons, roundData, dallyMSeasons, dallyMRounds, roundPlayers, lmsMatches, lmsSeason, seasonGames, summary, upcomingEdges,
 } from "../lib/data";
 import { buildRecord } from "../lib/model-record";
 import type { Sql } from "../lib/db";
@@ -326,5 +326,19 @@ describe("Dally M (/dally-m)", () => {
       { id: 13, name: "Cy Bell", team: "Eels", position: "Prop", image: null, matchId: "2" },
     ]);
     expect(await roundPlayers(sql, 2027, 2)).toEqual([]);
+  });
+});
+
+describe("last man standing (/last-man-standing)", () => {
+  it("picks the latest season from the comp's first, and gives its regular-season games with results", async () => {
+    expect(await lmsSeason(sql, 2027)).toBe(2027);
+    expect(await lmsSeason(sql, 2028)).toBeNull();
+    const { matches, seasonOver } = await lmsMatches(sql, 2027);
+    expect(seasonOver).toBe(false);
+    expect(matches.map((m) => [m.id, m.round, m.home, m.away, m.result])).toEqual([
+      ["1", 1, "Storm", "Broncos", "home"], ["2", 1, "Eels", "Panthers", "draw"],
+      ["3", 2, "Broncos", "Storm", undefined], ["4", 2, "Panthers", "Eels", undefined],
+    ]);
+    expect(matches[0].kickoff).toBe("2027-03-06T08:00:00.000Z");
   });
 });

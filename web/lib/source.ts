@@ -5,10 +5,12 @@
 import {
   currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
   oddsRounds, playerSeasonList, playerSeasons, roundData, seasonBets, seasonGames, summary, upcomingEdges,
-  dallyMRounds, dallyMSeasons, roundPlayers,
+  dallyMRounds, dallyMSeasons, lmsMatches, lmsSeason, roundPlayers,
 } from "./data";
 import { tallyVotes, type DallyMRound, type RoundPlayer, type Tally } from "./dally-m";
 import { readVotes, type DallyMVotes } from "./dally-m-store";
+import type { LmsMatch, LmsPick } from "./lms";
+import { readPicks, type LmsTipper } from "./lms-store";
 import { COMP_FIRST_SEASON, readRoundComp, type RoundComp } from "./comp";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
@@ -18,6 +20,7 @@ import { SAMPLE_NOW, tippers as sampleTippers, YOU_ID } from "./sample";
 import {
   SAMPLE_DALLY_M_OPEN, SAMPLE_DALLY_M_OPEN_VOTERS, SAMPLE_DALLY_M_RAW, SAMPLE_DALLY_M_SEASON,
 } from "./sample-dally-m";
+import { SAMPLE_LMS_MATCHES, SAMPLE_LMS_PICKS, SAMPLE_LMS_SEASON, SAMPLE_LMS_TIPPERS } from "./sample-lms";
 import { SAMPLE_PLAYER_SEASONS, SAMPLE_PLAYERS } from "./sample-players";
 import { ODDS_ROUNDS, SEASON_BETS, SEASON_GAMES } from "./sample-odds";
 import { serverClient } from "./supabase-server";
@@ -284,5 +287,50 @@ export async function dallyMSource(): Promise<DallyMSource> {
     };
   } catch {
     return { live: true, missing: true, seasons: [], rounds: async () => [], players: async () => [], votes: async () => null };
+  }
+}
+
+export type LmsSource = {
+  live: boolean;
+  /** The database is connected but the last man standing table isn't there yet. */
+  missing?: boolean;
+  /** The season being played; null before the comp's first season has a draw. */
+  season: number | null;
+  /** The instant the page is viewed at (the sample's tips-open moment, or now). */
+  now: string;
+  matches: LmsMatch[];
+  seasonOver: boolean;
+  /** The tippers and the picks the viewer may see; null when they aren't a signed-in tipper. */
+  view: { you: string; tippers: LmsTipper[]; picks: LmsPick[] } | null;
+};
+
+/** Last man standing's data: the database when the site has one, the sample otherwise. Picks are
+ *  read as the signed-in tipper, so row-level security decides which show. */
+export async function lmsSource(): Promise<LmsSource> {
+  const sql = siteDb();
+  if (!sql) {
+    return {
+      live: false, season: SAMPLE_LMS_SEASON, now: SAMPLE_NOW.open, matches: SAMPLE_LMS_MATCHES, seasonOver: false,
+      view: {
+        you: YOU_ID,
+        tippers: SAMPLE_LMS_TIPPERS.map((t) => ({ id: t.id, name: t.name, favTeam: t.favTeam })),
+        picks: SAMPLE_LMS_PICKS,
+      },
+    };
+  }
+  const now = new Date().toISOString();
+  const season = await lmsSeason(sql, COMP_FIRST_SEASON);
+  const { matches, seasonOver } = season == null ? { matches: [], seasonOver: false } : await lmsMatches(sql, season);
+  const base = { live: true, season, now, matches, seasonOver };
+  try {
+    const sb = await serverClient();
+    if (!sb) return { ...base, view: null };
+    const { data } = await sb.auth.getUser();
+    const { data: me } = data.user ? await sb.from("profiles").select("id").eq("id", data.user.id).maybeSingle() : { data: null };
+    if (!data.user || !me) return { ...base, view: null };
+    if (season == null) return { ...base, view: null };
+    return { ...base, view: { you: data.user.id, ...(await readPicks(sb, season)) } };
+  } catch {
+    return { ...base, missing: true, view: null };
   }
 }

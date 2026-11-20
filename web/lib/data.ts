@@ -4,6 +4,7 @@
 
 import type { DallyMRound, RoundPlayer } from "./dally-m";
 import type { Sql } from "./db";
+import type { LmsMatch } from "./lms";
 import type { GradedGame } from "./model-record";
 import type {
   Drivers, Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsHistory, OddsRound,
@@ -467,4 +468,32 @@ export async function roundPlayers(sql: Sql, season: number, round: number): Pro
     id: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName, position: r.position as string,
     image: (r.head_image as string | null) ?? null, matchId: String(r.match_id),
   }));
+}
+
+/* ---------- Last man standing (/last-man-standing) ---------- */
+
+/** The season last man standing plays: the latest from `from` (the comp's first) with a regular-season game. */
+export async function lmsSeason(sql: Sql, from: number): Promise<number | null> {
+  const [r] = await sql`select max(season) as season from matches where season >= ${from} and not is_final`;
+  return (r?.season as number | null) ?? null;
+}
+
+/** A season's regular-season games with their results, and whether the regular season is over (its finals are drawn). */
+export async function lmsMatches(sql: Sql, season: number): Promise<{ matches: LmsMatch[]; seasonOver: boolean }> {
+  const rows = await sql`select id, round, kickoff, home_team, away_team, status, home_score, away_score, is_final
+                         from matches where season = ${season} order by kickoff, id`;
+  const result = (r: (typeof rows)[number]): LmsMatch["result"] =>
+    r.status === "cancelled" ? "cancelled"
+      : r.status !== "final" ? undefined
+        : r.home_score > r.away_score ? "home" : r.home_score < r.away_score ? "away" : "draw";
+  return {
+    matches: rows.filter((r) => !r.is_final).map((r) => {
+      const res = result(r);
+      return {
+        id: String(r.id), round: r.round as number, kickoff: new Date(r.kickoff as string).toISOString(),
+        home: r.home_team as TeamName, away: r.away_team as TeamName, ...(res ? { result: res } : {}),
+      };
+    }),
+    seasonOver: rows.some((r) => r.is_final),
+  };
 }
