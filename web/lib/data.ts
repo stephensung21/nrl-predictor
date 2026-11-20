@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import type { TeamName } from "./teams";
 import { paperBet } from "./odds";
+import { STAT_KEYS, type PlayerSeason } from "./players";
 
 const iso = (d: Date | string) => new Date(d).toISOString();
 const num = (v: unknown) => (v == null ? null : Number(v));
@@ -419,4 +420,24 @@ export async function summary(sql: Sql, kind: "match_preview" | "round_recap", s
     : await sql`select body, llm_model, created_at from summaries
                 where kind = ${kind} and season = ${season} and round = ${round} and match_id is null`;
   return r ? { body: r.body as string, model: r.llm_model as string, writtenAt: iso(r.created_at) } : null;
+}
+
+/* ---------- players (/players) ---------- */
+
+/** Seasons with published player rows, newest first. */
+export async function playerSeasonList(sql: Sql): Promise<number[]> {
+  return (await sql`select distinct season from player_seasons order by season desc`).map((r) => r.season as number);
+}
+
+/** Every player's season with the Model's rating (null when he has none). */
+export async function playerSeasons(sql: Sql, season: number): Promise<PlayerSeason[]> {
+  const rows = await sql`select s.*, r.rating, r.attack, r.defence
+                         from player_seasons s left join player_ratings r using (season, player_id)
+                         where s.season = ${season}`;
+  return rows.map((r) => ({
+    season: r.season as number, id: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName,
+    position: r.position as PlayerSeason["position"], games: r.games as number,
+    rating: num(r.rating), attack: num(r.attack), defence: num(r.defence),
+    stats: Object.fromEntries(STAT_KEYS.map((k) => [k, Number(r[k] ?? 0)])) as PlayerSeason["stats"],
+  }));
 }

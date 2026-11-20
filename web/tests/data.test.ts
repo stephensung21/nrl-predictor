@@ -11,7 +11,7 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
-  oddsRounds, roundData, seasonGames, summary, upcomingEdges,
+  oddsRounds, playerSeasonList, playerSeasons, roundData, seasonGames, summary, upcomingEdges,
 } from "../lib/data";
 import { buildRecord } from "../lib/model-record";
 import type { Sql } from "../lib/db";
@@ -74,6 +74,10 @@ const SEED = `
     ('wed', 3, 'with_odds', 'stars', 'diff_s2_stars_out_spine', -1, -1.1, -0.1, '[{"team": "Broncos", "name": "Reece Walsh"}]'),
     ('wed', 3, 'with_odds', 'stars', 'diff_s2_stars_out_other', 1, 1.1, 0.1,
      '[{"team": "Storm", "name": "Eli Katoa"}, {"team": "Storm", "name": "Harry Grant"}]');
+  insert into player_seasons (season, player_id, player_name, team, position, games, tries, tackles, missed_tackles, fantasy_points) values
+    (2026, 11, 'Ava Cole', 'Storm', 'Halfback', 20, 6, 300, 30, 1000.5),
+    (2026, 12, 'Ben Dane', 'Broncos', 'Interchange', 3, 0, 40, 4, 80);
+  insert into player_ratings (season, player_id, rating, attack, defence, as_of) values (2026, 11, 0.31, 0.2, -0.11, '2026-10-04');
 `;
 
 let db: PGlite;
@@ -293,5 +297,17 @@ describe.skipIf(!process.env.TEST_SITE_DATABASE_URL)("against a published season
     expect(buildRecord(await gradedGames(live, 2026))).toMatchObject({
       games: 213, model: totals.model, market: totals.market_open, elo: totals.elo,
     });
+  });
+});
+
+describe("players (/players)", () => {
+  it("lists seasons and reads each player's season with the Model's rating", async () => {
+    expect(await playerSeasonList(sql)).toEqual([2026]);
+    const rows = await playerSeasons(sql, 2026);
+    const ava = rows.find((p) => p.id === 11)!;
+    expect(ava).toMatchObject({ name: "Ava Cole", team: "Storm", position: "Halfback", games: 20, rating: 0.31, defence: -0.11 });
+    expect(ava.stats).toMatchObject({ tries: 6, tackles: 300, missed_tackles: 30, fantasy_points: 1000.5, kicks: 0 });
+    expect(rows.find((p) => p.id === 12)!.rating).toBeNull();
+    expect(await playerSeasons(sql, 2027)).toEqual([]);
   });
 });

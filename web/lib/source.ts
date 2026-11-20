@@ -4,12 +4,14 @@
 
 import {
   currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
-  oddsRounds, roundData, seasonBets, seasonGames, summary, upcomingEdges,
+  oddsRounds, playerSeasonList, playerSeasons, roundData, seasonBets, seasonGames, summary, upcomingEdges,
 } from "./data";
 import { COMP_FIRST_SEASON, readRoundComp, type RoundComp } from "./comp";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
 import { buildRecord, type SeasonRecord } from "./model-record";
+import type { PlayerSeason } from "./players";
+import { SAMPLE_PLAYER_SEASONS, SAMPLE_PLAYERS } from "./sample-players";
 import { ODDS_ROUNDS, SEASON_BETS, SEASON_GAMES } from "./sample-odds";
 import { serverClient } from "./supabase-server";
 import type { TeamName } from "./teams";
@@ -181,4 +183,26 @@ export async function viewerRoundComp(round: RoundData): Promise<RoundComp | nul
   const { data: me } = await sb.from("profiles").select("id").eq("id", data.user.id).maybeSingle();
   if (!me) return null;
   return readRoundComp(sb, data.user.id, round);
+}
+
+export type PlayersSource = {
+  live: boolean;
+  /** Seasons with player data, newest first. */
+  seasons: number[];
+  season: (n: number) => Promise<PlayerSeason[]>;
+};
+
+/** The players page's data: the database when the site has one (and its players tables exist), the
+ *  sample otherwise. `missing` says the database is connected but the players tables aren't there yet. */
+export async function playersSource(): Promise<PlayersSource & { missing?: boolean }> {
+  const sql = siteDb();
+  const sample: PlayersSource = {
+    live: false, seasons: SAMPLE_PLAYER_SEASONS, season: async (n) => SAMPLE_PLAYERS.filter((p) => p.season === n),
+  };
+  if (!sql) return sample;
+  try {
+    return { live: true, seasons: await playerSeasonList(sql), season: (n) => playerSeasons(sql, n) };
+  } catch {
+    return { live: true, seasons: [], season: async () => [], missing: true };
+  }
 }
