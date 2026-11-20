@@ -264,7 +264,7 @@ def build_tables(years, merge=False):
     """Rebuild the match, team and player tables from the cached raw JSON. With `merge`, only these
     seasons' rows are replaced and every other season is kept (the weekly run fetches one season;
     a fresh checkout has no raw pages for the earlier ones)."""
-    matches, team_rows, player_rows = [], [], []
+    matches, team_rows, player_rows, image_rows = [], [], [], []
     for year in years:
         for path in sorted((RAW_DIR / str(year)).glob("*_*.json")):
             if path.name == "fixtures.json":
@@ -308,6 +308,10 @@ def build_tables(years, merge=False):
                 })
 
                 names = {p["playerId"]: p for p in team.get("players", [])}
+                for p in names.values():
+                    if p.get("headImage"):
+                        image_rows.append({"season": year, "player_id": p["playerId"], "start_time_utc": m.get("startTime"),
+                                           "head_image": p["headImage"]})
                 for ps in m.get("stats", {}).get("players", {}).get(f"{side}Team", []):
                     info = names.get(ps["playerId"], {})
                     player_rows.append({
@@ -335,6 +339,23 @@ def build_tables(years, merge=False):
         df = df.sort_values(order, kind="stable")
         df.to_csv(OUT_DIR / f"{name}.csv", index=False)
         print(f"wrote {name}.csv: {len(df)} rows, {df.shape[1]} columns")
+    write_player_images(pd.DataFrame(image_rows, columns=["season", "player_id", "start_time_utc", "head_image"]))
+
+
+def write_player_images(new):
+    """Each player's headshot link for a season (the players page; nrl.com's `headImage`, from his
+    latest game that season), merged into player_images.csv: a rebuild only adds and updates, so a
+    season whose raw pages are gone keeps the links it had. Only the link is kept, never the image."""
+    path = OUT_DIR / "player_images.csv"
+    new = new.sort_values("start_time_utc").groupby(["season", "player_id"], as_index=False).last()
+    new = new[["season", "player_id", "head_image"]]
+    if path.exists():
+        old = pd.read_csv(path)
+        keep = ~old.set_index(["season", "player_id"]).index.isin(new.set_index(["season", "player_id"]).index)
+        new = pd.concat([old[keep], new], ignore_index=True)
+    if len(new):
+        new.sort_values(["season", "player_id"]).to_csv(path, index=False)
+        print(f"wrote player_images.csv: {len(new)} rows")
 
 
 def main():

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageMessage } from "@/components/page-message";
+import { PlayerPhoto } from "@/components/player-photo";
 import { PlayerSearch, QuerySelect } from "@/components/player-pickers";
 import { SampleNote } from "@/components/sample-note";
 import { TeamBadge } from "@/components/team-badge";
@@ -156,13 +157,13 @@ function Rankings({
                     href={`/players?${new URLSearchParams({ ...query, tab: "stats", player: String(player.id) })}`}
                     className="flex items-center gap-2.5 rounded-sm focus-visible:ring-2 focus-visible:ring-lime-fg focus-visible:outline-none"
                   >
-                    <TeamBadge name={player.team} size="sm" />
+                    <PlayerPhoto src={player.image} team={player.team} />
                     <span className="min-w-0">
                       <span className="block text-[15px] leading-tight font-semibold text-ink underline-offset-2 hover:underline">
                         {player.name}
                       </span>
                       <span className="text-[12px] text-ink-3">
-                        {player.position} · {player.games} games
+                        {player.position} · {player.team} · {player.games} games
                       </span>
                     </span>
                   </Link>
@@ -193,12 +194,13 @@ function Stats({ player, players, query }: { player: PlayerSeason; players: Play
       <PlayerSearch players={options} query={query} />
 
       <div className="mt-6 flex items-center gap-3">
-        <TeamBadge name={player.team} size="md" />
+        <PlayerPhoto src={player.image} team={player.team} size="lg" />
         <div className="min-w-0">
           <h2 id="player-name" className="font-display text-[30px] leading-none font-bold uppercase">
             {player.name}
           </h2>
-          <p className="mt-1 text-[14px] text-ink-2">
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[14px] text-ink-2">
+            <TeamBadge name={player.team} size="sm" />
             {player.position} · {player.team} · {player.games} game{player.games === 1 ? "" : "s"} ·{" "}
             {Math.round(player.stats.minutes / Math.max(1, player.games))} min a game
           </p>

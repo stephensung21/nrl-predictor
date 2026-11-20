@@ -38,12 +38,32 @@ TOTALS = {
     "errors": "errors", "penalties": "penalties", "sin_bins": "sinBins", "send_offs": "sendOffs",
     "fantasy_points": "fantasyPointsTotal",
 }
-SEASON_COLS = ["season", "player_id", "player_name", "team", "position", "games", *TOTALS]
+SEASON_COLS = ["season", "player_id", "player_name", "team", "position", "games", "head_image", *TOTALS]
 RATING_COLS = ["season", "player_id", "rating", "attack", "defence", "as_of"]
 
 
 def load_players():
     return pd.read_csv(PROCESSED / "player_match_stats.csv", low_memory=False)
+
+
+# nrl.com serves a headshot only at a requested size (without one the link is a 404): 2x a 56px circle.
+IMAGE_SIZE = "&width=112&height=112&mode=crop"
+
+
+def load_images():
+    """Headshot links per player and season (scrape.write_player_images); empty before the first scrape."""
+    path = PROCESSED / "player_images.csv"
+    return pd.read_csv(path) if path.exists() else pd.DataFrame(columns=["season", "player_id", "head_image"])
+
+
+def image_for(images, season):
+    """Each player's headshot link for a season: that season's, else his nearest season's (a photo a year
+    out is better than none), as a full nrl.com address at the page's size. Links only, never images."""
+    if images.empty:
+        return pd.Series(dtype=object)
+    i = images.assign(dist=(images["season"] - season).abs(), later=images["season"] > season)
+    best = i.sort_values(["dist", "later"]).groupby("player_id").first()["head_image"]
+    return "https://www.nrl.com" + best + IMAGE_SIZE
 
 
 def appearances(players, matches):
@@ -53,7 +73,7 @@ def appearances(players, matches):
     return p.assign(kickoff=p["match_id"].map(kick)).sort_values(["kickoff", "match_id"])
 
 
-def season_rows(players, matches, season):
+def season_rows(players, matches, season, images=None):
     """player_seasons rows for one season (empty when it has no games yet)."""
     p = appearances(players[players["season"] == season], matches)
     if p.empty:
@@ -69,6 +89,7 @@ def season_rows(players, matches, season):
     tally = starts.assign(n=1, at=range(len(starts))).groupby(["player_id", "position"]).agg(n=("n", "sum"), at=("at", "max"))
     main = tally.reset_index().sort_values(["n", "at"]).groupby("player_id").tail(1).set_index("player_id")["position"]
     out["position"] = main.reindex(out.index).fillna("Interchange")
+    out["head_image"] = image_for(load_images() if images is None else images, season).reindex(out.index)
     out["season"] = season
     out = out.reset_index()
     ints = [c for c in TOTALS if c != "fantasy_points"]

@@ -436,7 +436,7 @@ export async function playerSeasons(sql: Sql, season: number): Promise<PlayerSea
                          where s.season = ${season}`;
   return rows.map((r) => ({
     season: r.season as number, id: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName,
-    position: r.position as PlayerSeason["position"], games: r.games as number,
+    position: r.position as PlayerSeason["position"], games: r.games as number, image: (r.head_image as string | null) ?? null,
     rating: num(r.rating), attack: num(r.attack), defence: num(r.defence),
     stats: Object.fromEntries(STAT_KEYS.map((k) => [k, Number(r[k] ?? 0)])) as PlayerSeason["stats"],
   }));

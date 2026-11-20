@@ -6,7 +6,7 @@ import { SAMPLE_PLAYERS } from "../lib/sample-players";
 
 const zero = Object.fromEntries(STAT_KEYS.map((k) => [k, 0])) as PlayerSeason["stats"];
 const p = (id: number, rating: number | null, position: PlayerSeason["position"], games = 10, stats = {}): PlayerSeason => ({
-  season: 2026, id, name: `P${id}`, team: "Storm", position, games, rating, attack: null, defence: null,
+  season: 2026, id, name: `P${id}`, team: "Storm", position, games, image: null, rating, attack: null, defence: null,
   stats: { ...zero, ...stats },
 });
 

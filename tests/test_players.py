@@ -76,13 +76,23 @@ def test_season_rows_position_team_and_totals():
         _row(2, 8, "Eels", "Interchange", minutes=0),             # named, never took the field: not a game
         _row(1, 9, "Eels", "Prop"), _row(2, 9, "Eels", "Lock"),   # 1-1 tie: the latest start wins
     ])
-    out = season_rows(players, matches, 2026).set_index("player_id")
+    out = season_rows(players, matches, 2026, images=pd.DataFrame({"season": [2026], "player_id": [7], "head_image": ["/x"]})).set_index("player_id")
     assert out.loc[7, ["team", "position", "games", "tries", "points", "tackles"]].tolist() == ["Storm", "Winger", 3, 3, 12, 16]
     assert out.loc[8, ["position", "games", "errors"]].tolist() == ["Interchange", 1, 1]
     assert out.loc[9, "position"] == "Lock"
+    assert out.loc[7, "head_image"].startswith("https://www.nrl.com/x") and pd.isna(out.loc[8, "head_image"])
 
 
 def test_season_rows_empty_season():
     from players import SEASON_COLS, season_rows
     out = season_rows(pd.DataFrame([_row(1, 7, "Eels", "Centre")]), pd.DataFrame([_game(1, "2026-03-01T08:00:00Z")]), 2027)
     assert out.empty and list(out.columns) == SEASON_COLS
+
+
+def test_headshot_links_prefer_the_season_then_the_nearest():
+    from players import IMAGE_SIZE, image_for
+    images = pd.DataFrame({"season": [2024, 2026, 2025], "player_id": [7, 7, 8], "head_image": ["/a24", "/a26", "/b25"]})
+    got = image_for(images, 2025)
+    assert got[7] == "https://www.nrl.com/a24" + IMAGE_SIZE  # equally near: the earlier season, not a future photo
+    assert got[8] == "https://www.nrl.com/b25" + IMAGE_SIZE
+    assert image_for(images.iloc[0:0], 2025).empty

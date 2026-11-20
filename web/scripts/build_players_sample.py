@@ -30,6 +30,7 @@ for season in SEASONS:
         rows.append({
             "season": int(d["season"]), "id": int(d["player_id"]), "name": d["player_name"], "team": d["team"],
             "position": d["position"], "games": int(d["games"]),
+            "image": None if pd.isna(d["head_image"]) else d["head_image"],
             **{k: (None if pd.isna(d[k]) else round(float(d[k]), 4)) for k in ("rating", "attack", "defence")},
             "stats": {k: (round(float(d[k]), 1) if k == "fantasy_points" else int(d[k])) for k in players.TOTALS},
         })

@@ -10,6 +10,7 @@ create table player_seasons (
   position text not null check (position in ('Fullback', 'Winger', 'Centre', 'Five-Eighth', 'Halfback', 'Hooker',
                                             'Prop', '2nd Row', 'Lock', 'Interchange')),
   games int not null,
+  head_image text,                         -- nrl.com's headshot link (only the link is stored)
   minutes int not null default 0,
   tries int not null default 0,
   points int not null default 0,

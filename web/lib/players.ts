@@ -29,6 +29,8 @@ export type PlayerSeason = {
   team: TeamName;
   position: Position | "Interchange";
   games: number;
+  /** nrl.com's headshot link (loaded from nrl.com; never stored here). */
+  image: string | null;
   /** The Model's rating: points of margin he adds over a full game. Null if he has none. */
   rating: number | null;
   attack: number | null;
