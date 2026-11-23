@@ -9,7 +9,7 @@ import { calibration, profitCurve, rankedBets, SERIES, STAKE_SHARE, tipsCorrect,
 import { oddsSource, type OddsSource } from "@/lib/source";
 import type { Edge } from "@/lib/types";
 
-export const metadata: Metadata = { title: "Model vs market · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Model vs market · Full Credit" };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 

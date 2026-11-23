@@ -3,7 +3,7 @@ import { JoinFlow } from "@/components/auth-forms";
 import { SampleNote } from "@/components/sample-note";
 import { tippingLive } from "@/lib/supabase";
 
-export const metadata: Metadata = { title: "Join the comp · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Join the comp · Full Credit" };
 
 export default async function JoinPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;

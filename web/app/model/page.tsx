@@ -12,7 +12,7 @@ import { liveModelRecord } from "@/lib/source";
 import { tippingLive } from "@/lib/supabase";
 import { serverClient } from "@/lib/supabase-server";
 
-export const metadata: Metadata = { title: "The Model · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "The Model · Full Credit" };
 // Live, the comp line depends on who's signed in.
 export const dynamic = "force-dynamic";
 

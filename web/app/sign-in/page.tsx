@@ -4,7 +4,7 @@ import { SampleNote } from "@/components/sample-note";
 import { tippingLive } from "@/lib/supabase";
 import { Suspense } from "react";
 
-export const metadata: Metadata = { title: "Sign in · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Sign in · Full Credit" };
 
 export default function Page() {
   return (

@@ -5,7 +5,7 @@ import { SampleNote } from "@/components/sample-note";
 import { createNewsSource, domainLabel, flairLabel, flairsOf, type NewsFeed } from "@/lib/news";
 import { sydney } from "@/lib/time";
 
-export const metadata: Metadata = { title: "News · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "News · Full Credit" };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 

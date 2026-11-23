@@ -4,7 +4,7 @@ import { SampleNote } from "@/components/sample-note";
 import { tippingLive } from "@/lib/supabase";
 import { round10 } from "@/lib/sample";
 
-export const metadata: Metadata = { title: "Admin · rugbyleague-tipper", robots: { index: false } };
+export const metadata: Metadata = { title: "Admin · Full Credit", robots: { index: false } };
 
 export default function AdminPage() {
   return (

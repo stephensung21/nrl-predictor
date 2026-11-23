@@ -10,7 +10,7 @@ import { tippers, YOU_ID } from "@/lib/sample";
 import { eloSource } from "@/lib/source";
 import { TEAMS, type TeamName } from "@/lib/teams";
 
-export const metadata: Metadata = { title: "Elo ratings · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Elo ratings · Full Credit" };
 
 /** Data pages get a wider column on desktop (DESIGN.md, wide data pages). */
 const WIDE = "md:relative md:left-1/2 md:w-[min(60rem,calc(100vw-4rem))] md:-translate-x-1/2";

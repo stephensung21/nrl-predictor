@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await params;
   const [season, round] = [Number(p.season), Number(p.round)];
   const live = Number.isInteger(season) && Number.isInteger(round) ? await liveRoundTitle(season, round) : null;
-  return { title: `${live ?? `Round ${p.round}`} · rugbyleague-tipper` };
+  return { title: `${live ?? `Round ${p.round}`} · Full Credit` };
 }
 
 /** Rounds with a page worth stepping to: the sample rounds, then the next one (not predicted yet). */

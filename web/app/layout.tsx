@@ -17,7 +17,7 @@ const sofia = Sofia_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "rugbyleague-tipper",
+  title: "Full Credit",
   description: "Tipping comp and NRL predictor for a few mates.",
   robots: { index: false, follow: false },
 };

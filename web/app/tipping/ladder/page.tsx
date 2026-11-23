@@ -11,7 +11,7 @@ import { YOU_ID } from "@/lib/sample";
 import { tippingLive } from "@/lib/supabase";
 import { serverClient } from "@/lib/supabase-server";
 
-export const metadata: Metadata = { title: "Ladder · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Ladder · Full Credit" };
 
 const STATES: { state: SampleState; label: string }[] = [
   { state: "recap", label: "Recap · Mon noon" },

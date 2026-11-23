@@ -16,7 +16,7 @@ import { serverClient } from "@/lib/supabase-server";
 import type { TeamName } from "@/lib/teams";
 import type { RoundData } from "@/lib/types";
 
-export const metadata: Metadata = { title: "Tips · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Tips · Full Credit" };
 // Each visitor's own tips: render on every request. Live, the page reads the database before
 // anything that would mark it dynamic, so without this the build prerenders it from the database.
 export const dynamic = "force-dynamic";

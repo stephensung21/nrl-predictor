@@ -14,7 +14,7 @@ import { tippingLive } from "@/lib/supabase";
 import { serverClient } from "@/lib/supabase-server";
 import type { TeamName } from "@/lib/teams";
 
-export const metadata: Metadata = { title: "Players · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Players · Full Credit" };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 

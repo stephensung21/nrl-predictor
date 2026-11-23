@@ -10,7 +10,7 @@ import { ballotOf, lastClosed, openRound, rankTallies, VOTE_SLOTS, type RankedTa
 import type { DallyMVotes } from "@/lib/dally-m-store";
 import { dallyMSource } from "@/lib/source";
 
-export const metadata: Metadata = { title: "Dally M · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Dally M · Full Credit" };
 // Each tipper sees their own votes, and everyone's only once a round closes: render per request.
 export const dynamic = "force-dynamic";
 

@@ -133,6 +133,75 @@
   animation: live-pulse 1.6s ease-in-out infinite;
 }
 
+/* The Full Credit symbol (components/app-nav.tsx): the bar fills from the halfway post out to both
+   try lines, the post drops in, then the bar lights once. Hover replays it (a second set of
+   keyframes, so the animation restarts). The resting state is the full bar. */
+@keyframes fc-fill {
+  from {
+    transform: scaleX(0.06);
+  }
+}
+@keyframes fc-fill-again {
+  from {
+    transform: scaleX(0.06);
+  }
+}
+@keyframes fc-post {
+  0% {
+    transform: scaleY(0);
+  }
+  70% {
+    transform: scaleY(1.12);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+@keyframes fc-post-again {
+  0% {
+    transform: scaleY(0);
+  }
+  70% {
+    transform: scaleY(1.12);
+  }
+}
+@keyframes fc-glow {
+  50% {
+    filter: brightness(1.25) drop-shadow(0 0 3px oklch(0.91 0.2 126 / 0.7));
+  }
+}
+@keyframes fc-lines {
+  from {
+    opacity: 0;
+  }
+}
+.fc-logo .fc-fill,
+.fc-logo .fc-post {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.fc-logo .fc-fill {
+  animation:
+    fc-fill 900ms var(--ease-out-expo) 150ms both,
+    fc-glow 700ms ease-out 1000ms both;
+}
+.fc-logo .fc-lines {
+  animation: fc-lines 300ms ease-out 700ms both;
+}
+.fc-logo .fc-post {
+  animation: fc-post 420ms var(--ease-out-expo) both;
+}
+@media (hover: hover) {
+  .fc-logo:hover .fc-fill {
+    animation:
+      fc-fill-again 900ms var(--ease-out-expo) both,
+      fc-glow 700ms ease-out 850ms both;
+  }
+  .fc-logo:hover .fc-post {
+    animation: fc-post-again 420ms var(--ease-out-expo) both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -94,15 +94,33 @@ function MoreMenu({ placement }: { placement: "up" | "down" }) {
   );
 }
 
+/**
+ * The Full Credit symbol: a pitch bar filled end to end, full credit. On load the lime fill slides
+ * out from the halfway post to both try lines, the post drops in, and the bar lights once; hovering
+ * the logo plays it again. At rest (and under reduced motion) it shows the full bar.
+ */
+function FullCreditMark() {
+  return (
+    <svg viewBox="0 0 32 32" className="size-8 shrink-0" aria-hidden>
+      <rect width="32" height="32" rx="7" className="fill-pitch" />
+      <rect x="3.5" y="11" width="25" height="10" rx="2" className="fc-fill fill-lime" />
+      <path d="M9.75 11v10M22.25 11v10" className="fc-lines stroke-pitch-line" strokeWidth="1" />
+      <rect x="14.75" y="6" width="2.5" height="20" rx="1.25" className="fc-post fill-ink stroke-ground" strokeWidth="1.5" paintOrder="stroke" />
+    </svg>
+  );
+}
+
 export function AppNav() {
   const pathname = usePathname();
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-line-soft bg-ground/92 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-[34rem] items-center justify-between px-4 md:max-w-5xl">
-          <Link href="/" className="flex items-baseline" aria-label="rugbyleague-tipper, home">
-            <span className="font-display text-[23px] leading-none font-bold tracking-[0.01em] text-ink">
-              rugbyleague<span className="text-lime-fg">-</span>tipper
+          <Link href="/" className="fc-logo flex items-center gap-2.5" aria-label="Full Credit, home">
+            <FullCreditMark />
+            <span className="flex flex-col">
+              <span className="font-display text-[22px] leading-[0.9] font-bold tracking-[0.02em] text-ink uppercase">Full Credit</span>
+              <span className="mt-0.5 text-[11px] leading-none font-semibold tracking-[0.06em] text-ink-3">to the boys</span>
             </span>
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">

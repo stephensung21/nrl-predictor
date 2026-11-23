@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { ModelBadge } from "@/components/team-badge";
 import { SERIES } from "@/lib/odds";
 
-export const metadata: Metadata = { title: "How the Model works · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "How the Model works · Full Credit" };
 
 // Every figure on this page comes from the project's reports: reports/final_2026.md (the 2026
 // test season, all 213 games) and reports/backtest.md (2023-25). Nothing here is sample data.

@@ -9,7 +9,7 @@ import { playSeason, yourTurn, type LmsEntry, type LmsGame, type LmsMatch, type 
 import type { LmsTipper } from "@/lib/lms-store";
 import { lmsSource } from "@/lib/source";
 
-export const metadata: Metadata = { title: "Last man standing · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Last man standing · Full Credit" };
 // Each tipper sees their own pick, and others' only once their game kicks off: render per request.
 export const dynamic = "force-dynamic";
 

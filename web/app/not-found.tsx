@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 // Empty and error states are one of the four places the site is allowed some banter (DESIGN_BRIEF.md).
-export const metadata: Metadata = { title: "Not found · rugbyleague-tipper" };
+export const metadata: Metadata = { title: "Not found · Full Credit" };
 
 export default function NotFound() {
   return (

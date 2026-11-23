@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const live = await liveMatch(id);
   const m = (live === undefined ? findSampleMatch(id)?.round.data : live?.round)?.matches.find((x) => x.id === id);
-  return { title: m ? `${m.home} v ${m.away} · rugbyleague-tipper` : "Match · rugbyleague-tipper" };
+  return { title: m ? `${m.home} v ${m.away} · Full Credit` : "Match · Full Credit" };
 }
 
 export default async function MatchPage({ params, searchParams }: Props) {
