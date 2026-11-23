@@ -14,7 +14,7 @@ export default function Page() {
       </Suspense>
       {!tippingLive && (
       <SampleNote>
-        Sign-in is a stand-in until the real accounts exist. Join first with the sample invite at /join/MATES26.
+        Sign-in is a stand-in until the real accounts exist. Join first at /join, or with a sample group&rsquo;s link at /groups/join/BOYS2026.
       </SampleNote>
       )}
     </main>

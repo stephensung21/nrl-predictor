@@ -12,9 +12,11 @@ import {
   EMAIL_SIGN_IN,
   type Intent,
   type Invite,
+  type JoinWith,
   type Profile,
   type Session,
 } from "@/lib/auth";
+import { CLEAR_GROUP_COOKIE, createGroupStore, groupCookie } from "@/lib/groups";
 import { LATE_JOIN_MAX_POINTS, type AutoTip } from "@/lib/rules";
 import { TEAMS, type TeamName } from "@/lib/teams";
 import { TeamBadge } from "./team-badge";
@@ -267,15 +269,12 @@ function ProfileFields({
 
 const complete = (d: Partial<Profile>): d is Profile => !!d.name && !nameProblem(d.name) && !!d.favTeam && !!d.autoTip;
 
-/* ---------- Join: invite → sign in → three answers ---------- */
+/* ---------- Join: sign in → three answers (with a group's link, or an old invite) ---------- */
 
-const INVALID_INVITE: Record<Exclude<Invite["status"], "valid">, { title: string; body: string }> = {
-  used: { title: "This invite’s been used.", body: "Each invite works once. Ask whoever runs the comp for a fresh link." },
-  expired: { title: "This invite has expired.", body: "Invites last 7 days. Ask whoever runs the comp for a fresh link." },
-  unknown: { title: "That invite link doesn’t work.", body: "Check you copied the whole link, or ask whoever runs the comp for a new one." },
-};
+/** A group the joining page was opened for, as check_group() describes it. */
+export type JoiningGroup = { code: string; name: string; members: number };
 
-function JoinForm({ code, session }: { code: string; session: Session }) {
+function JoinForm({ session, join }: { session: Session; join: JoinWith }) {
   const store = useMemo(() => createAuthStore(), []);
   const router = useRouter();
   const [draft, setDraft] = useState<Partial<Profile>>({ autoTip: "home" });
@@ -293,7 +292,9 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
         setError(null);
         if (!complete(draft)) return setError("Fill in all three to join: a name, a team and an auto-tip.");
         try {
-          await store.saveProfile(draft, code);
+          await store.saveProfile(draft, join);
+          // With no choice saved, pages show the group joined most recently: this one (lib/groups.ts).
+          if (join.group) document.cookie = CLEAR_GROUP_COOKIE;
           router.push("/tipping");
         } catch (err) {
           setError(err instanceof Error ? err.message : "Couldn’t save. Try again.");
@@ -308,7 +309,7 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
             type="button"
             className="font-semibold text-ink underline decoration-line"
             onClick={async () => {
-              // Wrong account: sign out and come back here to pick another. The invite stays unused.
+              // Wrong account: sign out and come back here to pick another.
               await store.signOut();
               window.location.reload();
             }}
@@ -338,64 +339,105 @@ function JoinForm({ code, session }: { code: string; session: Session }) {
   );
 }
 
-export function JoinFlow({ code }: { code: string }) {
+/** Someone already in the comp, joining a group from its link: one button. */
+function JoinGroupButton({ group }: { group: JoiningGroup }) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className={`${pill} mt-6`}
+        onClick={async () => {
+          setError(null);
+          try {
+            const id = await createGroupStore().join(group.code);
+            document.cookie = groupCookie(id);
+            router.push("/tipping/ladder");
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Couldn’t join. Try again.");
+          }
+        }}
+      >
+        Join {group.name} <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden />
+      </button>
+      {error && (
+        <p role="alert" className="mt-3 text-[14px] text-miss">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
+
+/**
+ * Joining the comp: everyone can, straight into the global comp. Opened from a group's link it joins
+ * that group too; from an old single-use invite it uses the invite up (and a used one is no barrier).
+ */
+export function JoinFlow({ invite: inviteCode, group }: { invite?: string; group?: JoiningGroup }) {
   const store = useMemo(() => createAuthStore(), []);
-  const [invite, setInvite] = useState<Invite | null>(null);
+  const [invite, setInvite] = useState<Invite | null | undefined>(inviteCode ? undefined : null);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [hasProfile, setHasProfile] = useState(false);
 
   useEffect(() => {
-    store.checkInvite(code).then(setInvite);
+    if (inviteCode) store.checkInvite(inviteCode).then(setInvite);
     store.session().then(setSession);
     store.profile().then((p) => setHasProfile(!!p));
-  }, [store, code]);
+  }, [store, inviteCode]);
 
-  if (!invite || session === undefined) return <p className="pt-10 text-[15px] text-ink-3">Checking your invite…</p>;
-
-  if (invite.status !== "valid") {
-    const c = INVALID_INVITE[invite.status];
-    return (
-      <section className="pt-12">
-        <h1 className="font-display text-[40px] leading-[0.92] font-bold uppercase">{c.title}</h1>
-        <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-ink-2">
-          {c.body} Already in?{" "}
-          <Link href="/sign-in" className="font-semibold text-ink underline decoration-line">
-            Sign in
-          </Link>
-          .
-        </p>
-      </section>
-    );
-  }
+  if (invite === undefined || session === undefined) return <p className="pt-10 text-[15px] text-ink-3">Checking&hellip;</p>;
+  const validInvite = invite?.status === "valid" ? invite : null;
+  const returnTo = group ? `/groups/join/${encodeURIComponent(group.code)}` : inviteCode ? `/join/${encodeURIComponent(inviteCode)}` : "/join";
 
   if (session && hasProfile) {
     return (
       <section className="pt-12">
-        <h1 className="font-display text-[40px] leading-[0.92] font-bold uppercase">You&rsquo;re already in.</h1>
-        <Link href="/tipping" className={`${pill} mt-6`}>
-          Go to your tips <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden />
-        </Link>
+        <h1 className="font-display text-[40px] leading-[0.92] font-bold uppercase">
+          {group ? `Join ${group.name}.` : "You’re already in."}
+        </h1>
+        {group ? (
+          <>
+            <p className="mt-4 max-w-[38ch] text-[16px] leading-relaxed text-ink-2">
+              {tippersIn(group.members)}. Your tips count there as they are: nothing to tip twice.
+            </p>
+            <JoinGroupButton group={group} />
+          </>
+        ) : (
+          <Link href="/tipping" className={`${pill} mt-6`}>
+            Go to your tips <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden />
+          </Link>
+        )}
       </section>
     );
   }
 
+  const title = group
+    ? `Join ${group.name}.`
+    : validInvite
+      ? `${validInvite.invitedBy}’s invited you to the comp.`
+      : "Join the comp.";
   return (
     <section className="pt-6">
-      <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">{invite.invitedBy}&rsquo;s invited you to the comp.</h1>
+      <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">{title}</h1>
       <p className="mt-3 max-w-[40ch] text-[15px] leading-relaxed text-ink-2">
-        Tip every NRL game, climb the ladder, and see if you can beat the Model.
+        {group ? `${tippersIn(group.members)}. ` : ""}
+        Tip every NRL game, climb the ladder, and see if you can beat the Model. Everyone&rsquo;s on the global ladder; start
+        or join a group for a ladder of your own mates.
       </p>
       {!session ? (
         <>
-          <SignInPanel intent="join" returnTo={`/join/${encodeURIComponent(code)}`} />
+          <SignInPanel intent="join" returnTo={returnTo} />
           <p className="mt-5 text-[13px] text-ink-3">No passwords. We keep your email, what you pick here, and your tips.</p>
         </>
       ) : (
-        <JoinForm code={code} session={session} />
+        <JoinForm session={session} join={{ ...(validInvite ? { invite: validInvite.code } : {}), ...(group ? { group: group.code } : {}) }} />
       )}
     </section>
   );
 }
+
+const tippersIn = (n: number) => (n === 1 ? "1 tipper so far" : `${n} tippers so far`);
 
 /* ---------- The way back in from Google or an email link ---------- */
 
@@ -444,11 +486,18 @@ export function SignInPage() {
             No account for that one.
           </p>
           <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">
-            The comp is invite-only. Try the address you joined with, or ask whoever runs it for an invite link.
+            Try the address you joined with, or join the comp now: it&rsquo;s open to everyone.
           </p>
         </div>
       )}
       <SignInPanel intent="sign-in" returnTo="/tipping" />
+      <p className="mt-6 text-[14px] text-ink-2">
+        New here?{" "}
+        <Link href="/join" className="font-semibold text-ink underline decoration-line">
+          Join the comp
+        </Link>
+        : it&rsquo;s open to everyone.
+      </p>
     </section>
   );
 }
@@ -514,7 +563,10 @@ export function AccountPanel() {
     return (
       <section className="pt-12">
         <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">Signed in, but not in the comp.</h1>
-        <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-ink-2">Joining needs an invite link from whoever runs the comp.</p>
+        <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-ink-2">Three quick things and you&rsquo;re in.</p>
+        <Link href="/join" className={`${pill} mt-6`}>
+          Join the comp <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden />
+        </Link>
       </section>
     );
   }

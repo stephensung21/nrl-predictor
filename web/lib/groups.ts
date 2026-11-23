@@ -20,6 +20,8 @@ export const MAX_GROUPS = 10;
 
 /** A year, so the choice outlives the session. */
 export const groupCookie = (value: string) => `${GROUP_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=31536000; samesite=lax`;
+/** No choice saved: pages show the group joined most recently. */
+export const CLEAR_GROUP_COOKIE = `${GROUP_COOKIE}=; path=/; max-age=0; samesite=lax`;
 
 /**
  * The group a page shows: the one asked for (null for "global"); with nothing asked for, the group

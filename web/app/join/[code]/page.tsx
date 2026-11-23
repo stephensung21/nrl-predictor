@@ -9,7 +9,7 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
   const { code } = await params;
   return (
     <main>
-      <JoinFlow code={decodeURIComponent(code)} />
+      <JoinFlow invite={decodeURIComponent(code)} />
       {!tippingLive && (
       <SampleNote
         states={[

@@ -5,16 +5,17 @@
 // The flow is Supabase's: starting a sign-in leaves the page (Google) or sends an email;
 // either way the browser comes back through /auth/callback, which completes it and returns
 // to where the visitor started. How the live store keeps to the comp's rules:
-// - Joining is the only way into the comp: `join_comp()` checks and redeems the invite and
-//   makes the profile in one transaction. An email sign-in (not a join) never creates a
-//   sign-in (`shouldCreateUser: false`). Google always creates one, but without an invite
-//   there's no profile, so it's signed straight back out and can do nothing.
-// - `checkInvite` is the security-definer `check_invite()`: only the status and who sent it.
+// - Anyone can join the global comp (docs/superpowers/specs/2026-11-24-tipping-groups-design.md):
+//   `create_profile()` makes the profile and, given a group's code, joins that group, in one
+//   transaction. A sign-in with no profile yet goes to /join to make one.
+// - Old invite links still work: `join_comp()` checks and redeems the invite and makes the profile.
+//   `checkInvite` is the security-definer `check_invite()`: only the status and who sent it.
 // - Deleting an account goes through a server route holding the service key (/api/account).
 // - Still to do: strip the name and avatar Google writes into the sign-in's metadata, since we
 //   keep only what PRODUCT.md lists (a trigger on auth.users in the live project).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { BrowserGroupStore } from "./groups";
 import { inviteStatus, readInvites, redeemInvite, SAMPLE_CLOCK } from "./invites";
 import { browserClient, tippingLive } from "./supabase";
 import type { AutoTip } from "./rules";
@@ -28,8 +29,11 @@ export type Invite =
   | { status: "valid"; code: string; invitedBy: string }
   | { status: "used" | "expired" | "unknown"; code: string };
 
-/** Joining creates an account (needs an invite); signing in never does. */
+/** Joining starts with making a profile; signing in goes straight to where you were (or to /join without a profile). */
 export type Intent = "join" | "sign-in";
+
+/** What a new profile joins with: an old single-use invite, or a group's code. */
+export type JoinWith = { invite?: string; group?: string };
 
 export type SignInMethod = { provider: "google" } | { provider: "email"; email: string };
 
@@ -42,14 +46,14 @@ export interface AuthStore {
    */
   startSignIn(method: SignInMethod, opts: { intent: Intent; returnTo: string }): Promise<"redirecting" | "sent">;
   /**
-   * Completes a sign-in on /auth/callback. Returns where to go next. A sign-in (not a
-   * join) for someone with no account signs straight back out: no dangling session.
+   * Completes a sign-in on /auth/callback. Returns where to go next: a sign-in (not a join)
+   * for someone with no profile yet goes to /join to make one.
    */
   completeSignIn(params: URLSearchParams): Promise<{ next: string }>;
   signOut(): Promise<void>;
   profile(): Promise<Profile | null>;
-  /** Creating a profile needs a valid invite; changing one doesn't. */
-  saveProfile(p: Profile, inviteCode?: string): Promise<void>;
+  /** Creates or changes the profile. Creating one may redeem an old invite, or join a group by its code. */
+  saveProfile(p: Profile, join?: JoinWith): Promise<void>;
   /** Deletes the account and every tip (PRODUCT.md). */
   deleteAccount(): Promise<void>;
   /** The admin flag on `profiles`: shows the admin page and its menu item. */
@@ -133,10 +137,7 @@ export class BrowserAuthStore implements AuthStore {
     const email = provider === "email" ? (params.get("email") ?? "") : "you@gmail.com";
     write(KEYS.session, { userId: `sample-${email.toLowerCase()}`, email, provider } satisfies Session);
     const next = safeNext(params.get("next"));
-    if (params.get("intent") === "sign-in" && !read<Profile>(KEYS.profile)) {
-      await this.signOut();
-      return { next: "/sign-in?no-account=1" };
-    }
+    if (params.get("intent") === "sign-in" && !read<Profile>(KEYS.profile)) return { next: "/join" };
     return { next };
   }
 
@@ -148,17 +149,18 @@ export class BrowserAuthStore implements AuthStore {
     return (await this.session()) ? read<Profile>(KEYS.profile) : null;
   }
 
-  async saveProfile(p: Profile, inviteCode?: string) {
+  async saveProfile(p: Profile, join?: JoinWith) {
     if (!(await this.session())) throw new Error("Sign in first.");
     const problem = nameProblem(p.name);
     if (problem) throw new Error(problem);
     const existing = read<Profile>(KEYS.profile);
-    if (!existing) {
-      const invite = inviteCode ? await this.checkInvite(inviteCode) : null;
-      if (invite?.status !== "valid") throw new Error("Joining needs a valid invite link.");
+    if (!existing && join?.invite) {
+      const invite = await this.checkInvite(join.invite);
+      if (invite.status !== "valid") throw new Error("That invite link doesn’t work any more. Join without it.");
       // Joining uses the invite up (Supabase: check and redeem in one transaction).
       redeemInvite(invite.code, p.name.trim());
     }
+    if (!existing && join?.group) await new BrowserGroupStore().join(join.group);
     write(KEYS.profile, { ...p, name: p.name.trim() });
   }
 
@@ -178,6 +180,8 @@ function joinProblem(message: string): string {
   if (message.includes("invite already used")) return "That invite’s been used. Ask for a fresh link.";
   if (message.includes("invite expired")) return "That invite has expired. Ask for a fresh link.";
   if (message.includes("unknown invite")) return "That invite link doesn’t work. Ask for a fresh one.";
+  if (message.includes("unknown group")) return "That group link doesn’t work. Ask for a fresh one.";
+  if (message.includes("at most")) return "You’re in the most groups you can be. Leave one first.";
   if (message.includes("already in the comp")) return "You’re already in the comp.";
   if (message.includes("sign in first")) return "Sign in first.";
   if (message.includes("auto-tip choice is locked")) return "The auto-tip choice is locked for this season.";
@@ -221,13 +225,10 @@ export class SupabaseAuthStore implements AuthStore {
     if (problem) throw new Error(problem);
     const { error } = await this.sb.auth.signInWithOtp({
       email: method.email.trim(),
-      // Only joining (with an invite) may create an account.
-      options: { shouldCreateUser: opts.intent === "join", emailRedirectTo: redirectTo },
+      // Anyone can join, so a sign-in may make the account too; /join then makes the profile.
+      options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
     });
     if (error) {
-      if (opts.intent === "sign-in" && /signups? not allowed|user not found/i.test(error.message)) {
-        throw new Error("No account for that email. The comp is invite-only: use the address you joined with.");
-      }
       if (error.status === 429) throw new Error("Too many emails just now. Wait a minute and try again.");
       throw new Error("Couldn’t send the email. Try again.");
     }
@@ -245,10 +246,7 @@ export class SupabaseAuthStore implements AuthStore {
       const { error } = await this.sb.auth.exchangeCodeForSession(code);
       if (error && !(await this.session())) return { next: "/sign-in?link-failed=1" };
     }
-    if (params.get("intent") === "sign-in" && !(await this.profile())) {
-      await this.signOut();
-      return { next: "/sign-in?no-account=1" };
-    }
+    if (params.get("intent") === "sign-in" && !(await this.profile())) return { next: "/join" };
     return { next };
   }
 
@@ -264,18 +262,22 @@ export class SupabaseAuthStore implements AuthStore {
     return data ? { name: data.display_name, favTeam: data.fav_team as TeamName, autoTip: data.auto_tip as AutoTip } : null;
   }
 
-  async saveProfile(p: Profile, inviteCode?: string) {
+  async saveProfile(p: Profile, join?: JoinWith) {
     const s = await this.session();
     if (!s) throw new Error("Sign in first.");
     const problem = nameProblem(p.name);
     if (problem) throw new Error(problem);
     const existing = await this.profile();
     if (!existing) {
-      if (!inviteCode) throw new Error("Joining needs a valid invite link.");
-      const { error } = await this.sb.rpc("join_comp", {
-        p_code: inviteCode, p_display_name: p.name.trim(), p_fav_team: p.favTeam, p_auto_tip: p.autoTip,
-      });
+      const fields = { p_display_name: p.name.trim(), p_fav_team: p.favTeam, p_auto_tip: p.autoTip };
+      const { error } = join?.invite
+        ? await this.sb.rpc("join_comp", { p_code: join.invite, ...fields })
+        : await this.sb.rpc("create_profile", { ...fields, p_group_code: join?.group ?? null });
       if (error) throw new Error(joinProblem(error.message));
+      if (join?.invite && join.group) {
+        const joined = await this.sb.rpc("join_group", { p_code: join.group });
+        if (joined.error) throw new Error(joinProblem(joined.error.message));
+      }
       return;
     }
     // The auto-tip is sent only when it changes: once the season starts the database refuses any change.
@@ -323,6 +325,6 @@ export const SEASON_UNDER_WAY_SAMPLE = true;
 
 export const AUTO_TIP_OPTIONS: { value: AutoTip; label: string; explain: string }[] = [
   { value: "home", label: "Home team", explain: "The home team in the draw, even at a neutral ground." },
-  { value: "crowd", label: "The crowd", explain: "Whoever most of the comp tipped. A tie goes to the home team." },
+  { value: "crowd", label: "The crowd", explain: "Whoever most tippers on the site tipped. A tie goes to the home team." },
   { value: "ladder", label: "Ladder", explain: "The team higher on the NRL ladder. Level goes to the home team." },
 ];
