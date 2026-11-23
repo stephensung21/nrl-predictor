@@ -95,17 +95,20 @@ function MoreMenu({ placement }: { placement: "up" | "down" }) {
 }
 
 /**
- * The Full Credit symbol: a pitch bar filled end to end, full credit. On load the lime fill slides
- * out from the halfway post to both try lines, the post drops in, and the bar lights once; hovering
- * the logo plays it again. At rest (and under reduced motion) it shows the full bar.
+ * The Full Credit symbol: a goal kick sailing between the posts. On load the ball is kicked from
+ * close up, turns end over end as it climbs away, and comes to rest between the uprights above the
+ * crossbar; the posts light once for the goal. Hovering the logo kicks it again. At rest (and under
+ * reduced motion) it shows the ball through the posts.
  */
 function FullCreditMark() {
   return (
-    <svg viewBox="0 0 32 32" className="size-8 shrink-0" aria-hidden>
+    <svg viewBox="0 0 32 32" className="size-8 shrink-0 overflow-visible" aria-hidden>
       <rect width="32" height="32" rx="7" className="fill-pitch" />
-      <rect x="3.5" y="11" width="25" height="10" rx="2" className="fc-fill fill-lime" />
-      <path d="M9.75 11v10M22.25 11v10" className="fc-lines stroke-pitch-line" strokeWidth="1" />
-      <rect x="14.75" y="6" width="2.5" height="20" rx="1.25" className="fc-post fill-ink stroke-ground" strokeWidth="1.5" paintOrder="stroke" />
+      <path d="M10 4.5v23M22 4.5v23M10 18.5h12" className="fc-posts stroke-ink" strokeWidth="2" strokeLinecap="round" fill="none" />
+      <g className="fc-ball">
+        <ellipse cx="16" cy="11" rx="5" ry="3.2" transform="rotate(-30 16 11)" className="fill-lime stroke-lime-ink" strokeWidth="0.8" />
+        <path d="M13.8 12.3 18.2 9.7" className="stroke-lime-ink" strokeWidth="0.8" strokeLinecap="round" />
+      </g>
     </svg>
   );
 }

@@ -133,72 +133,60 @@
   animation: live-pulse 1.6s ease-in-out infinite;
 }
 
-/* The Full Credit symbol (components/app-nav.tsx): the bar fills from the halfway post out to both
-   try lines, the post drops in, then the bar lights once. Hover replays it (a second set of
-   keyframes, so the animation restarts). The resting state is the full bar. */
-@keyframes fc-fill {
-  from {
-    transform: scaleX(0.06);
-  }
-}
-@keyframes fc-fill-again {
-  from {
-    transform: scaleX(0.06);
-  }
-}
-@keyframes fc-post {
+/* The Full Credit symbol (components/app-nav.tsx): a goal kick. The ball starts big and low (close
+   to the kicker), climbs and shrinks away turning end over end, and settles between the uprights;
+   then the posts light once. Hover replays it (a second set of keyframes, so the animation
+   restarts). The resting state is the ball through the posts. */
+@keyframes fc-kick {
   0% {
-    transform: scaleY(0);
-  }
-  70% {
-    transform: scaleY(1.12);
-  }
-  100% {
-    transform: scaleY(1);
-  }
-}
-@keyframes fc-post-again {
-  0% {
-    transform: scaleY(0);
-  }
-  70% {
-    transform: scaleY(1.12);
-  }
-}
-@keyframes fc-glow {
-  50% {
-    filter: brightness(1.25) drop-shadow(0 0 3px oklch(0.91 0.2 126 / 0.7));
-  }
-}
-@keyframes fc-lines {
-  from {
+    transform: translate(-3px, 17px) scale(1.9) rotate(-160deg);
     opacity: 0;
   }
+  12% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(-1px, 4px) scale(1.25) rotate(-50deg);
+  }
 }
-.fc-logo .fc-fill,
-.fc-logo .fc-post {
+@keyframes fc-kick-again {
+  0% {
+    transform: translate(-3px, 17px) scale(1.9) rotate(-160deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(-1px, 4px) scale(1.25) rotate(-50deg);
+  }
+}
+@keyframes fc-goal {
+  50% {
+    stroke: var(--color-lime-fg);
+    filter: drop-shadow(0 0 2px oklch(0.91 0.2 126 / 0.7));
+  }
+}
+@keyframes fc-goal-again {
+  50% {
+    stroke: var(--color-lime-fg);
+    filter: drop-shadow(0 0 2px oklch(0.91 0.2 126 / 0.7));
+  }
+}
+.fc-logo .fc-ball {
   transform-box: fill-box;
   transform-origin: center;
+  animation: fc-kick 1000ms cubic-bezier(0.25, 0.6, 0.3, 1) 150ms both;
 }
-.fc-logo .fc-fill {
-  animation:
-    fc-fill 900ms var(--ease-out-expo) 150ms both,
-    fc-glow 700ms ease-out 1000ms both;
-}
-.fc-logo .fc-lines {
-  animation: fc-lines 300ms ease-out 700ms both;
-}
-.fc-logo .fc-post {
-  animation: fc-post 420ms var(--ease-out-expo) both;
+.fc-logo .fc-posts {
+  animation: fc-goal 600ms ease-out 1050ms both;
 }
 @media (hover: hover) {
-  .fc-logo:hover .fc-fill {
-    animation:
-      fc-fill-again 900ms var(--ease-out-expo) both,
-      fc-glow 700ms ease-out 850ms both;
+  .fc-logo:hover .fc-ball {
+    animation: fc-kick-again 1000ms cubic-bezier(0.25, 0.6, 0.3, 1) both;
   }
-  .fc-logo:hover .fc-post {
-    animation: fc-post-again 420ms var(--ease-out-expo) both;
+  .fc-logo:hover .fc-posts {
+    animation: fc-goal-again 600ms ease-out 900ms both;
   }
 }
 
