@@ -100,10 +100,10 @@ async function LiveTipsPage({ round }: { round: RoundData | null }) {
   const { data: auth } = await sb.auth.getUser();
   const user = auth.user;
   if (!user) {
-    return <PageMessage title="Sign in to tip." body="The comp is invite-only. Sign in with the Google account you joined with." action={{ href: "/sign-in", label: "Sign in" }} />;
+    return <PageMessage title="Sign in to tip." body="Sign in with the Google account you joined with. New here? Joining is open to everyone." action={{ href: "/sign-in", label: "Sign in" }} />;
   }
   const { data: me } = await sb.from("profiles").select("id, created_at").eq("id", user.id).maybeSingle();
-  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Joining needs an invite link from whoever runs the comp." />;
+  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Three quick things and you’re in." action={{ href: "/join", label: "Join the comp" }} />;
   if (!round) {
     return <PageMessage title="No round to tip." body="It's the off-season. Tipping opens when the Model's first predictions for next season are out." />;
   }

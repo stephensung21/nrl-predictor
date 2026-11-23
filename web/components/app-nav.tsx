@@ -19,6 +19,7 @@ const ITEMS: Item[] = [
 const MORE = [
   { href: "/elo", label: "Elo" },
   { href: "/last-man-standing", label: "Last man standing" },
+  { href: "/groups", label: "Groups" },
   { href: "/players", label: "Players" },
   { href: "/odds", label: "Model vs market" },
   { href: "/news", label: "News" },

@@ -55,13 +55,13 @@ async function LiveLadder() {
     return (
       <PageMessage
         title="Sign in to see the ladder."
-        body="The comp is invite-only. Sign in with the Google account you joined with."
+        body="Sign in with the Google account you joined with. New here? Joining is open to everyone."
         action={{ href: "/sign-in", label: "Sign in" }}
       />
     );
   }
   const { data: me } = await sb.from("profiles").select("id").eq("id", user.id).maybeSingle();
-  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Joining needs an invite link from whoever runs the comp." />;
+  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Three quick things and you’re in." action={{ href: "/join", label: "Join the comp" }} />;
   const season = await compSeason(sb);
   const view = season == null ? null : await readLadder(sb, season);
   if (!view) {
