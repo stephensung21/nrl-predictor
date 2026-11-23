@@ -5,7 +5,9 @@ import { SampleNote } from "@/components/sample-note";
 import { ModelBadge, TeamBadge } from "@/components/team-badge";
 import { compSeason, COMP_FIRST_SEASON, readLadder, type LadderView } from "@/lib/comp";
 import { formFor, seasonStats, tagsFor } from "@/lib/comp-stats";
-import { ladder as buildLadder, seasonAt, statGames, type LadderEntry, type SampleState } from "@/lib/ladder";
+import { GroupSwitcher } from "@/components/group-switcher";
+import { choiceOf, sampleGroups, viewerGroups, type GroupView } from "@/lib/groups-server";
+import { groupLadder, ladder as buildLadder, seasonAt, statGames, type LadderEntry, type SampleState } from "@/lib/ladder";
 import { ordinal, roundName } from "@/lib/round";
 import { YOU_ID } from "@/lib/sample";
 import { tippingLive } from "@/lib/supabase";
@@ -20,24 +22,26 @@ const STATES: { state: SampleState; label: string }[] = [
 ];
 
 export default async function LadderPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  if (tippingLive) return <LiveLadder />;
+  const params = await searchParams;
+  if (tippingLive) return <LiveLadder group={params.group} />;
   // Same sample week as the home and tips pages, so the numbers agree everywhere.
-  const q = (await searchParams).state;
+  const q = params.state;
   const state: SampleState = q === "recap" || q === "live" ? q : "open";
   const rounds = seasonAt(state);
   const latest = rounds.at(-1)!;
-  const ladder = buildLadder(rounds);
+  const groups = await sampleGroups(params.group);
+  const ladder = groups.memberIds ? groupLadder(rounds, groups.memberIds) : buildLadder(rounds);
   const view: LadderView = {
     season: 2026,
     ladder,
     tags: tagsFor(ladder),
-    stats: seasonStats(ladder, statGames(rounds)),
+    stats: seasonStats(ladder, statGames(rounds, groups.memberIds)),
     latest: { round: latest.round, title: roundName(latest.round), partial: !!latest.partial, games: latest.games.length },
   };
 
   return (
     <main>
-      <Ladder view={view} youId={YOU_ID} />
+      <Ladder view={view} youId={YOU_ID} groups={groups} />
       <SampleNote states={STATES.map((s) => ({ href: `/tipping/ladder?state=${s.state}`, label: s.label, on: s.state === state }))}>
         Real 2026 games, results and the Model&rsquo;s tips for rounds 1&ndash;{latest.round}. The other tippers, their tips, margins
         and forgotten tips are made up.
@@ -47,7 +51,7 @@ export default async function LadderPage({ searchParams }: { searchParams: Promi
 }
 
 /** The live comp's ladder, read as the signed-in tipper (lib/comp.ts). */
-async function LiveLadder() {
+async function LiveLadder({ group }: { group?: string }) {
   const sb = (await serverClient())!;
   const { data: auth } = await sb.auth.getUser();
   const user = auth.user;
@@ -63,7 +67,8 @@ async function LiveLadder() {
   const { data: me } = await sb.from("profiles").select("id").eq("id", user.id).maybeSingle();
   if (!me) return <PageMessage title="Signed in, but not in the comp." body="Three quick things and you’re in." action={{ href: "/join", label: "Join the comp" }} />;
   const season = await compSeason(sb);
-  const view = season == null ? null : await readLadder(sb, season);
+  const groups = await viewerGroups(sb, user.id, group);
+  const view = season == null ? null : await readLadder(sb, season, groups.current?.id);
   if (!view) {
     return (
       <PageMessage
@@ -74,12 +79,12 @@ async function LiveLadder() {
   }
   return (
     <main>
-      <Ladder view={view} youId={user.id} />
+      <Ladder view={view} youId={user.id} groups={groups} />
     </main>
   );
 }
 
-function Ladder({ view, youId }: { view: LadderView; youId: string }) {
+function Ladder({ view, youId, groups }: { view: LadderView; youId: string; groups: GroupView }) {
   const { ladder, tags, stats, latest } = view;
   const you = ladder.find((e) => e.tipper.id === youId);
   const model = ladder.find((e) => e.tipper.isModel);
@@ -88,13 +93,17 @@ function Ladder({ view, youId }: { view: LadderView; youId: string }) {
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-4 pb-3">
-        <h1 className="font-display text-[26px] leading-none font-bold uppercase">Ladder</h1>
+        <h1 className="font-display text-[26px] leading-none font-bold uppercase">
+          Ladder{groups.current ? <span className="text-ink-3"> · {groups.current.name}</span> : null}
+        </h1>
         <p className="text-[13px] font-medium text-ink-3">
           {latest.partial
             ? `${latest.title} in progress · ${latest.games} game${latest.games === 1 ? "" : "s"} in`
             : `After ${latest.title}`}
         </p>
       </div>
+
+      <GroupSwitcher choice={choiceOf(groups)} />
 
       <LadderTable ladder={ladder} tags={tags} form={formFor(ladder)} round={latest.round} youId={youId} />
 

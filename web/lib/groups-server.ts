@@ -3,7 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { GROUP_COOKIE, pickGroup, readGroups, SAMPLE_GROUPS, type Group } from "./groups";
+import { GROUP_COOKIE, pickGroup, readGroups, SAMPLE_GROUPS, type Group, type GroupChoice } from "./groups";
 import { YOU_ID } from "./sample";
 
 export type GroupView = {
@@ -14,6 +14,12 @@ export type GroupView = {
   /** The shown group's members, or null for the global comp (everyone). */
   memberIds: Set<string> | null;
 };
+
+/** The switcher's part of a view. */
+export const choiceOf = (v: GroupView): GroupChoice => ({
+  options: v.groups.map(({ id, name }) => ({ id, name })),
+  current: v.current ? { id: v.current.id, name: v.current.name } : null,
+});
 
 const view = (groups: Group[], current: Group | null): GroupView => ({
   groups,

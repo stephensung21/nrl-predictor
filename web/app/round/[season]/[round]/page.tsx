@@ -8,6 +8,7 @@ import { CURRENT_ROUND, SAMPLE_ROUNDS, sampleRoundView } from "@/lib/match";
 import { buildRound } from "@/lib/round";
 import { YOU_ID } from "@/lib/sample";
 import type { RoundComp } from "@/lib/comp";
+import { GroupSwitcher } from "@/components/group-switcher";
 import { liveRound, liveRoundTitle, viewerRoundComp, type LiveRound } from "@/lib/source";
 
 const SEASON = 2026;
@@ -108,7 +109,10 @@ function LiveRoundPage({ live, comp }: { live: LiveRound; comp: RoundComp | null
     <main>
       <RoundHeading view={view} prev={prev} next={next} />
       {comp && view.phase === "recap" ? (
-        <RecapPanel view={view} signedIn youId={comp.youId} tipsBy={tipsBy} heading={false} />
+        <>
+          {comp.groups && <GroupSwitcher choice={comp.groups} />}
+          <RecapPanel view={view} signedIn youId={comp.youId} tipsBy={tipsBy} heading={false} />
+        </>
       ) : (
         done.length > 0 && (
           <p className="mt-1 text-[15px] text-ink-2">

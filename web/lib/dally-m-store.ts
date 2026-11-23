@@ -4,7 +4,8 @@
 // revealed votes, tallies and leaderboard through `readVotes`, as the signed-in tipper.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ballotOf, ballotRows, EMPTY_BALLOT, type Ballot, type Tally, type VoteRow, type VoteSlot } from "./dally-m";
+import { ballotOf, ballotRows, EMPTY_BALLOT, tallyVotes, type Ballot, type RoundPlayer, type Tally, type VoteRow, type VoteSlot } from "./dally-m";
+import type { GroupChoice } from "./groups";
 import { browserClient, RLS_DENIED, tippingLive } from "./supabase";
 import type { TeamName } from "./teams";
 import { LockedError } from "./tip-store";
@@ -98,7 +99,38 @@ export type DallyMVotes = {
   leaderboard: Tally[];
   /** How many tippers have voted in the open round, if there is one. */
   voters: number | null;
+  /** The viewer's groups and the one shown, for the switcher. */
+  groups?: GroupChoice;
 };
+
+/**
+ * A group's Dally M (lib/groups.ts): its tippers' ballots only, with each closed round's tally and the
+ * season's summed from them. Closed rounds are the ones with results; open ballots stay hidden as
+ * before. The open round's voter count is the whole comp's, so a group doesn't show it.
+ */
+export function forGroup(v: DallyMVotes, members: Set<string>): DallyMVotes {
+  const rows = v.rows.filter((r) => members.has(r.userId));
+  const rounds = Object.keys(v.results).map(Number).sort((a, b) => a - b);
+  // Each player as the round's results name him; the season's board uses his latest round.
+  const asPlayer = (t: Tally): RoundPlayer => ({ id: t.playerId, name: t.name, team: t.team, image: t.image, position: "", matchId: "" });
+  const latest = new Map<number, RoundPlayer>();
+  const results: Record<number, Tally[]> = {};
+  for (const round of rounds) {
+    const players = new Map(v.results[round].map((t) => [t.playerId, asPlayer(t)]));
+    for (const [id, p] of players) latest.set(id, p);
+    const tallies = tallyVotes(rows.filter((r) => r.round === round), players);
+    if (tallies.length) results[round] = tallies;
+  }
+  const closed = new Set(rounds);
+  return {
+    ...v,
+    tippers: v.tippers.filter((t) => members.has(t.id)),
+    rows,
+    results,
+    leaderboard: tallyVotes(rows.filter((r) => closed.has(r.round)), latest),
+    voters: null,
+  };
+}
 
 const tally = (r: Record<string, unknown>): Tally => ({
   playerId: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName, image: (r.head_image as string | null) ?? null,

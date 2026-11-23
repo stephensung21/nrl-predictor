@@ -54,6 +54,33 @@ export const scoreRound = (r: ScoredRound, tipper: Tipper) => rules.scoreRound(c
 export const ladder = (rounds: ScoredRound[]) => rules.ladder(comp, rounds);
 const standings = (rounds: ScoredRound[]) => rules.standings(comp, rounds);
 
+/**
+ * A group's ladder: the same scores (the crowd auto-tip stays the whole comp's), kept to its members
+ * and the Model and placed among themselves, as ladder() does in the database for a group.
+ */
+export function groupLadder(rounds: ScoredRound[], members: Set<string>): LadderEntry[] {
+  const keep = (rows: LadderEntry[]) => place(rows.filter((e) => e.tipper.isModel || members.has(e.tipper.id)));
+  const now = keep(ladder(rounds));
+  if (rounds.length <= 1) return now;
+  const before = keep(ladder(rounds.slice(0, -1)));
+  return now.map((row) => {
+    const was = before.find((b) => b.tipper.id === row.tipper.id);
+    return { ...row, movement: row.position != null && was?.position != null ? was.position - row.position : null };
+  });
+}
+
+/** Places among the tippers (not the Model): ahead on points, then the lower margin score; level ones share. */
+function place(rows: LadderEntry[]): LadderEntry[] {
+  const field = rows.filter((e) => !e.tipper.isModel);
+  const ahead = (a: LadderEntry, b: LadderEntry) => a.points > b.points || (a.points === b.points && a.marginScore < b.marginScore);
+  const level = (a: LadderEntry, b: LadderEntry) => a.points === b.points && a.marginScore === b.marginScore;
+  return rows.map((e) =>
+    e.tipper.isModel
+      ? e
+      : { ...e, position: 1 + field.filter((o) => ahead(o, e)).length, tied: field.some((o) => o !== e && level(o, e)) },
+  );
+}
+
 /** The ladder going into a round, in the shape the round view expects. */
 export function ladderBefore(round: number): LadderRow[] {
   return standings(seasonAt("recap").filter((r) => r.round < round)).map((r) => ({
@@ -66,7 +93,8 @@ export function ladderBefore(round: number): LadderRow[] {
 /* ---------- The ladder page's extras ---------- */
 
 /** Every game in the sample rounds with each tipper's tip, for bragging rights (./comp-stats). */
-export function statGames(rounds: ScoredRound[]): StatGame[] {
+export function statGames(rounds: ScoredRound[], members?: Set<string> | null): StatGame[] {
+  const field = members ? tippers.filter((t) => t.isModel || members.has(t.id)) : tippers;
   return rounds.flatMap((r) =>
     r.games.map((g) => ({
       round: r.round,
@@ -74,7 +102,7 @@ export function statGames(rounds: ScoredRound[]): StatGame[] {
       away: g.away,
       winners: winners(g),
       modelHomeProb: g.modelHomeProb,
-      tips: Object.fromEntries(tippers.map((t) => [t.id, tipFor(r, g, t)])),
+      tips: Object.fromEntries(field.map((t) => [t.id, tipFor(r, g, t)])),
     })),
   );
 }

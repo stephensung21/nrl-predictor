@@ -1,3 +1,4 @@
+import { GroupSwitcher } from "@/components/group-switcher";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DallyMBallot } from "@/components/dally-m-ballot";
@@ -21,7 +22,7 @@ type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
 export default async function DallyMPage({ searchParams }: Props) {
   const q = await searchParams;
-  const src = await dallyMSource();
+  const src = await dallyMSource(q.group);
   if (src.missing) return <PageMessage title="The Dally M is on its way." body="Its votes and players haven't been set up yet." />;
   if (!src.seasons.length) {
     return <PageMessage title="No Dally M votes yet." body="Voting opens after the first round of the season is played." />;
@@ -37,7 +38,9 @@ export default async function DallyMPage({ searchParams }: Props) {
   return (
     <main>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-4 pb-3">
-        <h1 className="font-display text-[26px] leading-none font-bold uppercase">Dally M</h1>
+        <h1 className="font-display text-[26px] leading-none font-bold uppercase">
+          Dally M{votes?.groups?.current ? <span className="text-ink-3"> · {votes.groups.current.name}</span> : null}
+        </h1>
         {src.seasons.length > 1 && (
           <QuerySelect
             path="/dally-m"
@@ -49,6 +52,7 @@ export default async function DallyMPage({ searchParams }: Props) {
           />
         )}
       </div>
+      {votes?.groups && <GroupSwitcher choice={votes.groups} />}
       <p className="max-w-prose text-[15px] leading-snug text-ink-2">
         Each round, give 3, 2 and 1 votes to the best players of the whole round. Votes stay hidden until the next round kicks
         off, then everyone&rsquo;s are revealed.

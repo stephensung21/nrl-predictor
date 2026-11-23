@@ -8,10 +8,12 @@ import {
   dallyMRounds, dallyMSeasons, lmsMatches, lmsSeason, roundPlayers,
 } from "./data";
 import { tallyVotes, type DallyMRound, type RoundPlayer, type Tally } from "./dally-m";
-import { readVotes, type DallyMVotes } from "./dally-m-store";
+import { forGroup, readVotes, type DallyMVotes } from "./dally-m-store";
 import type { LmsMatch, LmsPick } from "./lms";
 import { readPicks, type LmsTipper } from "./lms-store";
 import { COMP_FIRST_SEASON, readRoundComp, type RoundComp } from "./comp";
+import { choiceOf, sampleGroups, viewerGroups } from "./groups-server";
+import type { GroupChoice } from "./groups";
 import { siteDb } from "./db";
 import { LATEST, matchEloFrom, SEASONS, seasonOf, teamView, type MatchElo } from "./elo";
 import { buildRecord, type SeasonRecord } from "./model-record";
@@ -192,7 +194,11 @@ export async function viewerRoundComp(round: RoundData): Promise<RoundComp | nul
   if (!data.user) return null;
   const { data: me } = await sb.from("profiles").select("id").eq("id", data.user.id).maybeSingle();
   if (!me) return null;
-  return readRoundComp(sb, data.user.id, round);
+  const g = await viewerGroups(sb, data.user.id);
+  return {
+    ...(await readRoundComp(sb, data.user.id, round, g.memberIds)),
+    groups: choiceOf(g),
+  };
 }
 
 export type PlayersSource = {
@@ -231,7 +237,7 @@ export type DallyMSource = {
   votes: (season: number, open: number | null) => Promise<DallyMVotes | null>;
 };
 
-function sampleDallyM(): DallyMSource {
+function sampleDallyM(group?: string): DallyMSource {
   const raw = SAMPLE_DALLY_M_RAW;
   const now = Date.parse(SAMPLE_NOW.open);
   const person = (id: number, position: string, matchId: string): RoundPlayer => {
@@ -252,25 +258,27 @@ function sampleDallyM(): DallyMSource {
         ? []
         : raw.rounds.map((r) => ({ round: r.round, closes: r.closes, isOpen: r.round === SAMPLE_DALLY_M_OPEN, isClosed: Date.parse(r.closes) <= now })),
     players: async (season, round) => (season === SAMPLE_DALLY_M_SEASON ? players(round) : []),
-    votes: async (season) =>
-      season !== SAMPLE_DALLY_M_SEASON
-        ? null
-        : {
+    votes: async (season) => {
+      if (season !== SAMPLE_DALLY_M_SEASON) return null;
+      const g = await sampleGroups(group);
+      const votes: DallyMVotes = {
             you: YOU_ID,
             tippers: sampleTippers.filter((t) => !t.isModel).map((t) => ({ id: t.id, name: t.name, favTeam: t.favTeam })),
             rows: raw.votes,
             results,
             leaderboard: tallyVotes(raw.votes, all),
             voters: SAMPLE_DALLY_M_OPEN_VOTERS,
-          },
+          };
+      return { ...(g.memberIds ? forGroup(votes, g.memberIds) : votes), groups: choiceOf(g) };
+    },
   };
 }
 
 /** The Dally M page's data: the database when the site has one (and the Dally M tables exist), the
  *  sample otherwise. Votes are read as the signed-in tipper, so row-level security decides what shows. */
-export async function dallyMSource(): Promise<DallyMSource> {
+export async function dallyMSource(group?: string): Promise<DallyMSource> {
   const sql = siteDb();
-  if (!sql) return sampleDallyM();
+  if (!sql) return sampleDallyM(group);
   try {
     const seasons = await dallyMSeasons(sql);
     return {
@@ -286,7 +294,8 @@ export async function dallyMSource(): Promise<DallyMSource> {
         if (!data.user) return null;
         const { data: me } = await sb.from("profiles").select("id").eq("id", data.user.id).maybeSingle();
         if (!me) return null;
-        return readVotes(sb, data.user.id, season, open);
+        const [votes, g] = await Promise.all([readVotes(sb, data.user.id, season, open), viewerGroups(sb, data.user.id, group)]);
+        return { ...(g.memberIds ? forGroup(votes, g.memberIds) : votes), groups: choiceOf(g) };
       },
     };
   } catch {
@@ -304,21 +313,34 @@ export type LmsSource = {
   now: string;
   matches: LmsMatch[];
   seasonOver: boolean;
-  /** The tippers and the picks the viewer may see; null when they aren't a signed-in tipper. */
-  view: { you: string; tippers: LmsTipper[]; picks: LmsPick[] } | null;
+  /** The tippers (the shown group's, or everyone) and the picks the viewer may see; null when they aren't a signed-in tipper. */
+  view: {
+    you: string; tippers: LmsTipper[]; picks: LmsPick[]; groups: GroupChoice;
+    /** Every game the viewer plays in (the global comp's and each group's): one pick counts in all of them. */
+    fields: string[][];
+  } | null;
 };
+
+/** The global comp's field, then each group's (in the comp's order, so the games play the same). */
+const lmsFields = (everyone: string[], groups: { members: { id: string }[] }[]) => [
+  everyone,
+  ...groups.map((grp) => everyone.filter((id) => grp.members.some((m) => m.id === id))),
+];
 
 /** Last man standing's data: the database when the site has one, the sample otherwise. Picks are
  *  read as the signed-in tipper, so row-level security decides which show. */
-export async function lmsSource(): Promise<LmsSource> {
+export async function lmsSource(group?: string): Promise<LmsSource> {
   const sql = siteDb();
   if (!sql) {
+    const g = await sampleGroups(group);
     return {
       live: false, season: SAMPLE_LMS_SEASON, now: SAMPLE_NOW.open, matches: SAMPLE_LMS_MATCHES, seasonOver: false,
       view: {
         you: YOU_ID,
-        tippers: SAMPLE_LMS_TIPPERS.map((t) => ({ id: t.id, name: t.name, favTeam: t.favTeam })),
+        tippers: SAMPLE_LMS_TIPPERS.filter((t) => !g.memberIds || g.memberIds.has(t.id)).map((t) => ({ id: t.id, name: t.name, favTeam: t.favTeam })),
         picks: SAMPLE_LMS_PICKS,
+        groups: choiceOf(g),
+        fields: lmsFields(SAMPLE_LMS_TIPPERS.map((t) => t.id), g.groups),
       },
     };
   }
@@ -333,7 +355,10 @@ export async function lmsSource(): Promise<LmsSource> {
     const { data: me } = data.user ? await sb.from("profiles").select("id").eq("id", data.user.id).maybeSingle() : { data: null };
     if (!data.user || !me) return { ...base, view: null };
     if (season == null) return { ...base, view: null };
-    return { ...base, view: { you: data.user.id, ...(await readPicks(sb, season)) } };
+    const [{ tippers, picks }, g] = await Promise.all([readPicks(sb, season), viewerGroups(sb, data.user.id, group)]);
+    // A group plays its own games: only its members are in them (lib/lms.ts plays any field).
+    const field = g.memberIds ? tippers.filter((t) => g.memberIds!.has(t.id)) : tippers;
+    return { ...base, view: { you: data.user.id, tippers: field, picks, groups: choiceOf(g), fields: lmsFields(tippers.map((t) => t.id), g.groups) } };
   } catch {
     return { ...base, missing: true, view: null };
   }

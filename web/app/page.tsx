@@ -11,6 +11,7 @@ import { SampleBar, type SampleState } from "@/components/sample-bar";
 import { ladderBefore } from "@/lib/ladder";
 import { buildRound } from "@/lib/round";
 import type { RoundComp } from "@/lib/comp";
+import { GroupSwitcher } from "@/components/group-switcher";
 import { liveHome, viewerRoundComp, type LiveHome } from "@/lib/source";
 import {
   margins,
@@ -115,6 +116,7 @@ function LiveHomePage({ live, comp }: { live: LiveHome; comp: RoundComp | null }
     const tipsBy = (id: string) => view.games.map((g) => comp.tips.find((t) => t.tipperId === id && t.matchId === g.match.id)?.team);
     return (
       <main>
+        {comp.groups && <GroupSwitcher choice={comp.groups} />}
         <RecapPanel view={view} signedIn youId={comp.youId} tipsBy={tipsBy} />
         {recap}
         <h2 className="mt-9 mb-1 font-display text-[24px] leading-none font-bold uppercase">Results</h2>

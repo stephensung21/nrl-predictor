@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Check, X } from "lucide-react";
+import { GroupSwitcher } from "@/components/group-switcher";
 import { LmsPicker } from "@/components/lms-picker";
 import { PageMessage } from "@/components/page-message";
 import { SampleNote } from "@/components/sample-note";
@@ -13,8 +14,8 @@ export const metadata: Metadata = { title: "Last man standing · Full Credit" };
 // Each tipper sees their own pick, and others' only once their game kicks off: render per request.
 export const dynamic = "force-dynamic";
 
-export default async function LastManStandingPage() {
-  const src = await lmsSource();
+export default async function LastManStandingPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const src = await lmsSource((await searchParams).group);
   if (src.missing) return <PageMessage title="Last man standing is on its way." body="Its picks haven't been set up yet." />;
   if (src.season == null) {
     return <PageMessage title="No last man standing yet." body={`The first game starts with Round 1 of ${COMP_FIRST_SEASON}, once the draw is out.`} />;
@@ -28,22 +29,31 @@ export default async function LastManStandingPage() {
       />
     );
   }
-  const { you, tippers, picks } = src.view;
+  const { you, tippers, picks, groups, fields } = src.view;
   const season = playSeason(tippers.map((t) => t.id), src.matches, picks, src.seasonOver);
-  const turn = yourTurn(season, you);
+  const shown = yourTurn(season, you);
+  // One pick counts in every game you're in: out of this one, you may still be in another.
+  const elsewhere =
+    shown && !shown.alive
+      ? fields.map((f) => yourTurn(playSeason(f, src.matches, picks, src.seasonOver), you)).find((t) => t?.alive && t.round === shown.round)
+      : undefined;
+  const turn = elsewhere ?? shown;
   const game = season.games.at(-1);
   const names = new Map(tippers.map((t) => [t.id, t.id === you ? `${t.name} (you)` : t.name]));
 
   return (
     <main>
-      <h1 className="pt-4 pb-3 font-display text-[26px] leading-none font-bold uppercase">Last man standing</h1>
+      <h1 className="pt-4 pb-3 font-display text-[26px] leading-none font-bold uppercase">
+        Last man standing{groups.current ? <span className="text-ink-3"> · {groups.current.name}</span> : null}
+      </h1>
+      <GroupSwitcher choice={groups} />
       <p className="max-w-prose text-[15px] leading-snug text-ink-2">
         Pick one team to win each round, never the same team twice in a game. A loss, a draw or no pick and you&rsquo;re out,
         unless everyone still in goes out that round: then it doesn&rsquo;t count. The last one left wins, then a new game starts
         the next round with everyone back in.
       </p>
 
-      <YourPick season={src.season} now={src.now} turn={turn} matches={src.matches} />
+      <YourPick season={src.season} now={src.now} turn={turn} matches={src.matches} elsewhere={!!elsewhere} />
 
       {game && <ThisGame game={game} names={names} tippers={tippers} you={you} />}
 
@@ -56,7 +66,9 @@ export default async function LastManStandingPage() {
   );
 }
 
-function YourPick({ season, now, turn, matches }: { season: number; now: string; turn: Turn | null; matches: LmsMatch[] }) {
+function YourPick({
+  season, now, turn, matches, elsewhere,
+}: { season: number; now: string; turn: Turn | null; matches: LmsMatch[]; elsewhere: boolean }) {
   return (
     <section aria-labelledby="your-pick" className="mt-6">
       <h2 id="your-pick" className="font-display text-[24px] leading-none font-bold uppercase">
@@ -69,13 +81,18 @@ function YourPick({ season, now, turn, matches }: { season: number; now: string;
           You&rsquo;re out of game {turn.game}. Everyone&rsquo;s back in for the next game, the round after this one ends.
         </p>
       ) : (
-        <LmsPicker
-          season={season}
-          round={turn.round}
-          now={now}
-          used={turn.used}
-          games={matches.filter((m) => m.round === turn.round).map((m) => ({ id: m.id, kickoff: m.kickoff, home: m.home, away: m.away }))}
-        />
+        <>
+          {elsewhere && (
+            <p className="mt-2 text-[14px] text-ink-2">You&rsquo;re out of this game, but still in another of yours: your pick counts there.</p>
+          )}
+          <LmsPicker
+            season={season}
+            round={turn.round}
+            now={now}
+            used={turn.used}
+            games={matches.filter((m) => m.round === turn.round).map((m) => ({ id: m.id, kickoff: m.kickoff, home: m.home, away: m.away }))}
+          />
+        </>
       )}
     </section>
   );

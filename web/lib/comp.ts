@@ -5,6 +5,7 @@
 // the rows into what the pages already show for the sample. Server code only.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { GroupChoice } from "./groups";
 import { seasonStats, tagsFor, type SeasonStats } from "./comp-stats";
 import { roundName } from "./round";
 import type { LadderEntry, RoundScore } from "./scoring";
@@ -48,6 +49,10 @@ export type LadderView = {
 
 /** The rows as the ladder page shows them. Null before any game of the season is decided. */
 export function ladderView(season: number, rows: LadderRows): LadderView | null {
+  // A group's ladder (ladder() with a group) lists only its members: keep everything else to them too,
+  // so the season stats (the crowd, upsets) are the group's.
+  const field = new Set(rows.ladder.map((l) => l.user_id));
+  rows = { ...rows, scores: rows.scores.filter((s) => field.has(s.user_id)), tips: rows.tips.filter((t) => field.has(t.user_id)) };
   const rounds = [...new Set(rows.scores.map((s) => s.round))].sort((a, b) => a - b);
   if (!rounds.length) return null;
   const partial = new Set(rows.scores.filter((s) => s.partial).map((s) => s.round));
@@ -159,9 +164,21 @@ export type RoundComp = {
   ladderBefore: LadderRow[];
   /** The viewer's margin for the round's margin game, if they entered one. */
   yourMargin?: number;
+  /** The viewer's groups and the one shown, for the switcher. */
+  groups?: GroupChoice;
 };
 
-export function roundComp(youId: string, featuredMatchId: string, rows: RoundCompRows): RoundComp {
+export function roundComp(youId: string, featuredMatchId: string, rows: RoundCompRows, members?: Set<string> | null): RoundComp {
+  if (members) {
+    // A group: its members and the Model.
+    const keep = new Set(rows.profiles.filter((p) => p.is_model || members.has(p.id)).map((p) => p.id));
+    rows = {
+      profiles: rows.profiles.filter((p) => keep.has(p.id)),
+      before: rows.before.filter((s) => keep.has(s.user_id)),
+      tips: rows.tips.filter((t) => keep.has(t.user_id)),
+      results: rows.results.filter((t) => keep.has(t.user_id)),
+    };
+  }
   const tippers: Tipper[] = rows.profiles.map((p) => ({
     id: p.id, name: p.display_name, ...(p.is_model ? { isModel: true } : {}), ...(p.fav_team ? { favTeam: p.fav_team as TeamName } : {}),
   }));
@@ -183,7 +200,7 @@ export function roundComp(youId: string, featuredMatchId: string, rows: RoundCom
 }
 
 /** A round's comp as the signed-in tipper sees it (row-level security decides which tips). */
-export async function readRoundComp(sb: SupabaseClient, youId: string, round: RoundData): Promise<RoundComp> {
+export async function readRoundComp(sb: SupabaseClient, youId: string, round: RoundData, members?: Set<string> | null): Promise<RoundComp> {
   const ids = round.matches.map((m) => Number(m.id));
   const [profiles, before, tips, results] = await Promise.all([
     every<RoundCompRows["profiles"][number]>((a, b) =>
@@ -196,13 +213,13 @@ export async function readRoundComp(sb: SupabaseClient, youId: string, round: Ro
     every<RoundCompRows["results"][number]>((a, b) =>
       sb.from("tip_results").select("user_id, match_id, team").in("match_id", ids).order("match_id").order("user_id").range(a, b)),
   ]);
-  return roundComp(youId, round.featuredMatchId, { profiles, before, tips, results });
+  return roundComp(youId, round.featuredMatchId, { profiles, before, tips, results }, members);
 }
 
-/** The season's ladder as the signed-in tipper sees it. */
-export async function readLadder(sb: SupabaseClient, season: number): Promise<LadderView | null> {
+/** The season's ladder as the signed-in tipper sees it: the global comp, or one of their groups. */
+export async function readLadder(sb: SupabaseClient, season: number, group?: string | null): Promise<LadderView | null> {
   const [ladder, profiles, scores, tips, games] = await Promise.all([
-    sb.rpc("ladder", { p_season: season }).then(({ data, error }) => {
+    sb.rpc("ladder", { p_season: season, p_group: group ?? null }).then(({ data, error }) => {
       if (error) throw new Error(`ladder: ${error.message}`);
       return (data ?? []) as LadderRows["ladder"];
     }),

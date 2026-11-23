@@ -15,6 +15,9 @@ export type GroupMember = { id: string; name: string; joinedAt: string };
 export type Group = { id: string; name: string; code: string; owner: string | null; members: GroupMember[] };
 
 export const GROUP_COOKIE = "fc-group";
+
+/** What a page's switcher needs: the viewer's groups and the one shown (null: the global comp). */
+export type GroupChoice = { options: { id: string; name: string }[]; current: { id: string; name: string } | null };
 export const GLOBAL = "global";
 export const MAX_GROUPS = 10;
 
@@ -159,7 +162,12 @@ const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 /** The sample's store: changes stay in this browser (the sample pages keep to SAMPLE_GROUPS). */
 export class BrowserGroupStore implements GroupStore {
-  constructor(private readonly storage: Pick<Storage, "getItem" | "setItem"> = window.localStorage) {}
+  constructor(private readonly given?: Pick<Storage, "getItem" | "setItem">) {}
+
+  /** Looked up when used, not when made: pages make the store while rendering on the server too. */
+  private get storage() {
+    return this.given ?? window.localStorage;
+  }
 
   private read(): Group[] {
     try {
