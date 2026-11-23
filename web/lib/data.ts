@@ -2,7 +2,9 @@
 // so each page can swap its sample module for these one at a time (PLAN_WEB.md step 9). Every
 // function takes the connection, so the tests can run them against a throwaway Postgres.
 
+import type { DallyMRound, RoundPlayer } from "./dally-m";
 import type { Sql } from "./db";
+import type { LmsMatch } from "./lms";
 import type { GradedGame } from "./model-record";
 import type {
   Drivers, Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsHistory, OddsRound,
@@ -10,6 +12,7 @@ import type {
 } from "./types";
 import type { TeamName } from "./teams";
 import { paperBet } from "./odds";
+import { STAT_KEYS, type PlayerSeason } from "./players";
 
 const iso = (d: Date | string) => new Date(d).toISOString();
 const num = (v: unknown) => (v == null ? null : Number(v));
@@ -419,4 +422,78 @@ export async function summary(sql: Sql, kind: "match_preview" | "round_recap", s
     : await sql`select body, llm_model, created_at from summaries
                 where kind = ${kind} and season = ${season} and round = ${round} and match_id is null`;
   return r ? { body: r.body as string, model: r.llm_model as string, writtenAt: iso(r.created_at) } : null;
+}
+
+/* ---------- players (/players) ---------- */
+
+/** Seasons with published player rows, newest first. */
+export async function playerSeasonList(sql: Sql): Promise<number[]> {
+  return (await sql`select distinct season from player_seasons order by season desc`).map((r) => r.season as number);
+}
+
+/** Every player's season with the Model's rating (null when he has none). */
+export async function playerSeasons(sql: Sql, season: number): Promise<PlayerSeason[]> {
+  const rows = await sql`select s.*, r.rating, r.attack, r.defence
+                         from player_seasons s left join player_ratings r using (season, player_id)
+                         where s.season = ${season}`;
+  return rows.map((r) => ({
+    season: r.season as number, id: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName,
+    position: r.position as PlayerSeason["position"], games: r.games as number, image: (r.head_image as string | null) ?? null,
+    rating: num(r.rating), attack: num(r.attack), defence: num(r.defence),
+    stats: Object.fromEntries(STAT_KEYS.map((k) => [k, Number(r[k] ?? 0)])) as PlayerSeason["stats"],
+  }));
+}
+
+/* ---------- the community Dally M (/dally-m) ---------- */
+
+/** Seasons with a round open for votes so far, newest first. */
+export async function dallyMSeasons(sql: Sql): Promise<number[]> {
+  return (await sql`select distinct season from round_players order by season desc`).map((r) => r.season as number);
+}
+
+/** Every round of a season that has opened for votes, with when its voting closes. */
+export async function dallyMRounds(sql: Sql, season: number): Promise<DallyMRound[]> {
+  const rows = await sql`select round, closes, is_open, is_closed from dally_m_rounds(${season})`;
+  return rows.map((r) => ({
+    round: r.round as number, closes: new Date(r.closes as string).toISOString(),
+    isOpen: r.is_open as boolean, isClosed: r.is_closed as boolean,
+  }));
+}
+
+/** Everyone who took the field in a round: the candidates for its votes, by name. */
+export async function roundPlayers(sql: Sql, season: number, round: number): Promise<RoundPlayer[]> {
+  const rows = await sql`select player_id, player_name, team, position, head_image, match_id from round_players
+                         where season = ${season} and round = ${round} order by player_name, player_id`;
+  return rows.map((r) => ({
+    id: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName, position: r.position as string,
+    image: (r.head_image as string | null) ?? null, matchId: String(r.match_id),
+  }));
+}
+
+/* ---------- Last man standing (/last-man-standing) ---------- */
+
+/** The season last man standing plays: the latest from `from` (the comp's first) with a regular-season game. */
+export async function lmsSeason(sql: Sql, from: number): Promise<number | null> {
+  const [r] = await sql`select max(season) as season from matches where season >= ${from} and not is_final`;
+  return (r?.season as number | null) ?? null;
+}
+
+/** A season's regular-season games with their results, and whether the regular season is over (its finals are drawn). */
+export async function lmsMatches(sql: Sql, season: number): Promise<{ matches: LmsMatch[]; seasonOver: boolean }> {
+  const rows = await sql`select id, round, kickoff, home_team, away_team, status, home_score, away_score, is_final
+                         from matches where season = ${season} order by kickoff, id`;
+  const result = (r: (typeof rows)[number]): LmsMatch["result"] =>
+    r.status === "cancelled" ? "cancelled"
+      : r.status !== "final" ? undefined
+        : r.home_score > r.away_score ? "home" : r.home_score < r.away_score ? "away" : "draw";
+  return {
+    matches: rows.filter((r) => !r.is_final).map((r) => {
+      const res = result(r);
+      return {
+        id: String(r.id), round: r.round as number, kickoff: new Date(r.kickoff as string).toISOString(),
+        home: r.home_team as TeamName, away: r.away_team as TeamName, ...(res ? { result: res } : {}),
+      };
+    }),
+    seasonOver: rows.some((r) => r.is_final),
+  };
 }

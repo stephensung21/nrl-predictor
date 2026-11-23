@@ -24,3 +24,13 @@ export function formatTime(iso: string, format: TimeFormat, timeZone?: string) {
 
 /** Sydney time, the comp's clock (admin and run logs are read against it). */
 export const sydney = (iso: string, format: TimeFormat = "dayTime") => formatTime(iso, format, "Australia/Sydney");
+
+/**
+ * The page's clock, in ms, running on from `nowIso`: real time on the live site, the sample's fixed
+ * instant on the sample site (where real time is long past its kickoffs). Client components use it to
+ * decide what has locked, so the sample stays open however long after its round it's viewed.
+ */
+export function clockFrom(nowIso: string): () => number {
+  const skew = Date.parse(nowIso) - Date.now();
+  return () => Date.now() + skew;
+}

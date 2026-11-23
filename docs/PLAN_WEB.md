@@ -565,8 +565,19 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/tipping/ladder` | The ladder and round-by-round results |
 | `/tipping/admin` | Invites (one use, 7 days), the tippers (remove one), this round's featured game and how it was drawn, and pipeline run status (admin only) |
 | `/news` | r/nrl feed |
+| `/players` | Player stats and the Model's power rankings, overall and by position |
+| `/dally-m` | The community Dally M: each tipper's 3-2-1 votes for the round's best players, hidden until the next round kicks off, then revealed, with a season leaderboard. Needs migration `20261122000000_dally_m.sql` (after the players migration); the results job's publish fills `round_players` |
+| `/last-man-standing` | Last man standing (in More): one team a round, never twice in a game, out on a loss, draw or no pick; the last one left wins and a new game starts the next round, with a season tally of game wins. Rules in `web/lib/lms.ts`; picks in `lms_picks` (migration `20261123000000_last_man_standing.sql`), locked at kickoff by row-level security. No pipeline change |
 | `/model` | The Model's own page: its record this season as a tipper (tips right against the bookies' favourite and Elo, its place among the tippers, round by round, best calls and worst misses) and a short tested record |
 | `/about` | How the model works, in plain words, and its limits, with a technical section and a link to `/model` |
+
+### 3.1a Menu layout: room for more tabs ⬜
+
+The main menu holds four tabs and More, the most that fits across a phone's bottom bar. When the
+Dally M page took a tab (November 2026, `docs/superpowers/specs/2026-11-21-dally-m-design.md`),
+Elo moved into More to make room, as a stopgap. A later redesign of the layout should fit more
+tabs, or group them (the comp: Round, Tips, Ladder, Dally M; the Model: Elo, Model vs market, The
+Model, Players), so pages don't have to be pushed into More each time one is added.
 
 ### 3.2 Predictions
 

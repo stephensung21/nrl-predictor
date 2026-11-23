@@ -377,37 +377,8 @@ def weighted_ridge(X, y, w, penalty):
     return cho_solve(cho_factor(A), XtW @ y)
 
 
-def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=None, stats_prior=None,
-                  current=None):
-    """Regularised plus-minus ratings, refitted before each round on earlier games only.
-
-    Two ridge regressions over earlier games, one row per game, older games down-weighted:
-    - margin: +share for each home player, -share for each away player, a home-advantage
-      column, and the capped margin as the target;
-    - total: +share for every player on either team, and the match total as the target.
-    A player's attack rating is (margin + total) / 2 and defence rating (total - margin) / 2.
-    That is the same as one regression on points scored by each team with separate attack and
-    defence columns (rotating each game's two rows into their sum and difference), but solves
-    two small systems instead of one twice the size.
-    With bench_weight, `share` is a player's minutes / 80 in past games, and for the match being
-    predicted it is the typical share for his named role (starter or interchange) in earlier
-    games, so nothing from the match itself is used. Otherwise every named player counts 1.
-    With stats_prior, each player's pre-match fantasy-point rating (relative to his position
-    group's average) enters as a lightly penalised column, so a player's rating is a deviation
-    from what his stats suggest rather than from zero.
-
-    Returns per team and match: rapm_total (margin rating of the named 17), rapm_vs_usual (versus
-    the team's previous USUAL_WINDOW line-ups, valued with the same ratings), rapm_missing (usual
-    players not named), rapm_attack and rapm_defence (expected points scored / conceded relative
-    to average; lower defence is better).
-    With `current` (named-17 rows from pre-kickoff team lists), those line-ups replace the final
-    named 17 for the match being predicted; history still uses the line-ups that actually played.
-    """
-    alpha = RAPM_ALPHA if alpha is None else alpha
-    half_life = RAPM_HALF_LIFE_DAYS if half_life is None else half_life
-    bench_weight = RAPM_BENCH_WEIGHT if bench_weight is None else bench_weight
-    stats_prior = RAPM_STATS_PRIOR if stats_prior is None else stats_prior
-
+def _rapm_design(matches, players, alpha, bench_weight, stats_prior):
+    """The two RAPM regressions' design matrices, one row per game (rapm_features, player_ratings)."""
     games = matches.sort_values("start_time_utc").reset_index(drop=True)
     n_games = len(games)
     game_row = pd.Series(games.index, index=games["match_id"])
@@ -442,6 +413,44 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
                            shape=(n_games, n + 1))
     yt = (games["home_score"] + games["away_score"]).to_numpy(dtype=float)
     pen_t = np.r_[np.full(n, alpha), RAPM_PRIOR_PENALTY]
+    return {"games": games, "n_games": n_games, "game_row": game_row, "pids": pids, "n": n, "minutes_share": minutes_share, "is_named": is_named, "Xm": Xm, "ym": ym, "pen_m": pen_m, "Xt": Xt, "yt": yt, "pen_t": pen_t}
+
+
+def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=None, stats_prior=None,
+                  current=None):
+    """Regularised plus-minus ratings, refitted before each round on earlier games only.
+
+    Two ridge regressions over earlier games, one row per game, older games down-weighted:
+    - margin: +share for each home player, -share for each away player, a home-advantage
+      column, and the capped margin as the target;
+    - total: +share for every player on either team, and the match total as the target.
+    A player's attack rating is (margin + total) / 2 and defence rating (total - margin) / 2.
+    That is the same as one regression on points scored by each team with separate attack and
+    defence columns (rotating each game's two rows into their sum and difference), but solves
+    two small systems instead of one twice the size.
+    With bench_weight, `share` is a player's minutes / 80 in past games, and for the match being
+    predicted it is the typical share for his named role (starter or interchange) in earlier
+    games, so nothing from the match itself is used. Otherwise every named player counts 1.
+    With stats_prior, each player's pre-match fantasy-point rating (relative to his position
+    group's average) enters as a lightly penalised column, so a player's rating is a deviation
+    from what his stats suggest rather than from zero.
+
+    Returns per team and match: rapm_total (margin rating of the named 17), rapm_vs_usual (versus
+    the team's previous USUAL_WINDOW line-ups, valued with the same ratings), rapm_missing (usual
+    players not named), rapm_attack and rapm_defence (expected points scored / conceded relative
+    to average; lower defence is better).
+    With `current` (named-17 rows from pre-kickoff team lists), those line-ups replace the final
+    named 17 for the match being predicted; history still uses the line-ups that actually played.
+    """
+    alpha = RAPM_ALPHA if alpha is None else alpha
+    half_life = RAPM_HALF_LIFE_DAYS if half_life is None else half_life
+    bench_weight = RAPM_BENCH_WEIGHT if bench_weight is None else bench_weight
+    stats_prior = RAPM_STATS_PRIOR if stats_prior is None else stats_prior
+
+    d = _rapm_design(matches, players, alpha, bench_weight, stats_prior)
+    games, n_games, game_row, pids, n = d["games"], d["n_games"], d["game_row"], d["pids"], d["n"]
+    minutes_share, is_named = d["minutes_share"], d["is_named"]
+    Xm, ym, pen_m, Xt, yt, pen_t = d["Xm"], d["ym"], d["pen_m"], d["Xt"], d["yt"], d["pen_t"]
 
     # Named 17s for prediction: (player column, is starter, pre-match rating).
     named = players[is_named]
@@ -514,6 +523,36 @@ def rapm_features(matches, players, alpha=None, half_life=None, bench_weight=Non
             recent[team].append(lineups.get((g.match_id, team), []))
             appearances.update(e[0] for e in lineups.get((g.match_id, team), []))
     return pd.DataFrame(out).set_index(["match_id", "team"])
+
+
+def player_ratings(matches, players, as_of, alpha=None, half_life=None, bench_weight=None):
+    """Every player's RAPM rating as rapm_features would value him for a game kicking off at `as_of`:
+    the same regressions on the games before it, with the same weights. For the players page
+    (pipeline/players.py); nothing in the model reads it.
+
+    Returns one row per player with a game before `as_of`: rating (points of margin he adds over a
+    full game), attack and defence (points scored and conceded, the same split as rapm_attack and
+    rapm_defence), and games (appearances before `as_of`). The stats prior is off in the model
+    (RAPM_STATS_PRIOR), so a rating is the player's own coefficient."""
+    alpha = RAPM_ALPHA if alpha is None else alpha
+    half_life = RAPM_HALF_LIFE_DAYS if half_life is None else half_life
+    bench_weight = RAPM_BENCH_WEIGHT if bench_weight is None else bench_weight
+    d = _rapm_design(matches, players, alpha, bench_weight, False)
+    n, kickoff = d["n"], d["games"]["start_time_utc"]
+    as_of = pd.Timestamp(as_of)
+    train = ((kickoff < as_of) & ~np.isnan(d["ym"])).to_numpy()
+    if train.sum() < 20:
+        return pd.DataFrame(columns=["player_id", "rating", "attack", "defence", "games"])
+    w = 0.5 ** ((as_of - kickoff[train]).dt.days.to_numpy() / half_life)
+    cm = weighted_ridge(d["Xm"][train], d["ym"][train], w, d["pen_m"])
+    yt = d["yt"][train]
+    ct = weighted_ridge(d["Xt"][train], yt - np.average(yt, weights=w), w, d["pen_t"])
+    bm, bt = cm[:n], ct[:n]
+    played = d["game_row"].loc[players["match_id"]].to_numpy()
+    seen = players.loc[train[played] & d["is_named"].to_numpy(), "player_id"].value_counts()
+    out = pd.DataFrame({"player_id": d["pids"], "rating": bm, "attack": (bt + bm) / 2, "defence": (bt - bm) / 2})
+    out["games"] = out["player_id"].map(seen).fillna(0).astype(int)
+    return out[out["games"] > 0].reset_index(drop=True)
 
 
 def team_ratings(odds, half_life=None, hfa_penalty=None, strength_penalty=None):

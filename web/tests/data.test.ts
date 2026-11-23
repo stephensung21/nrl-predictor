@@ -11,7 +11,7 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
-  oddsRounds, roundData, seasonGames, summary, upcomingEdges,
+  oddsRounds, playerSeasonList, playerSeasons, roundData, dallyMSeasons, dallyMRounds, roundPlayers, lmsMatches, lmsSeason, seasonGames, summary, upcomingEdges,
 } from "../lib/data";
 import { buildRecord } from "../lib/model-record";
 import type { Sql } from "../lib/db";
@@ -74,6 +74,13 @@ const SEED = `
     ('wed', 3, 'with_odds', 'stars', 'diff_s2_stars_out_spine', -1, -1.1, -0.1, '[{"team": "Broncos", "name": "Reece Walsh"}]'),
     ('wed', 3, 'with_odds', 'stars', 'diff_s2_stars_out_other', 1, 1.1, 0.1,
      '[{"team": "Storm", "name": "Eli Katoa"}, {"team": "Storm", "name": "Harry Grant"}]');
+  insert into player_seasons (season, player_id, player_name, team, position, games, tries, tackles, missed_tackles, fantasy_points) values
+    (2026, 11, 'Ava Cole', 'Storm', 'Halfback', 20, 6, 300, 30, 1000.5),
+    (2026, 12, 'Ben Dane', 'Broncos', 'Interchange', 3, 0, 40, 4, 80);
+  insert into player_ratings (season, player_id, rating, attack, defence, as_of) values (2026, 11, 0.31, 0.2, -0.11, '2026-10-04');
+  insert into round_players (season, round, player_id, match_id, player_name, team, position, head_image) values
+    (2027, 1, 11, 1, 'Ava Cole', 'Storm', 'Halfback', 'https://www.nrl.com/a'), (2027, 1, 13, 2, 'Cy Bell', 'Eels', 'Prop', null),
+    (2026, 9, 11, 5, 'Ava Cole', 'Storm', 'Halfback', null);
 `;
 
 let db: PGlite;
@@ -293,5 +300,45 @@ describe.skipIf(!process.env.TEST_SITE_DATABASE_URL)("against a published season
     expect(buildRecord(await gradedGames(live, 2026))).toMatchObject({
       games: 213, model: totals.model, market: totals.market_open, elo: totals.elo,
     });
+  });
+});
+
+describe("players (/players)", () => {
+  it("lists seasons and reads each player's season with the Model's rating", async () => {
+    expect(await playerSeasonList(sql)).toEqual([2026]);
+    const rows = await playerSeasons(sql, 2026);
+    const ava = rows.find((p) => p.id === 11)!;
+    expect(ava).toMatchObject({ name: "Ava Cole", team: "Storm", position: "Halfback", games: 20, rating: 0.31, defence: -0.11 });
+    expect(ava.stats).toMatchObject({ tries: 6, tackles: 300, missed_tackles: 30, fantasy_points: 1000.5, kicks: 0 });
+    expect(rows.find((p) => p.id === 12)!.rating).toBeNull();
+    expect(await playerSeasons(sql, 2027)).toEqual([]);
+  });
+});
+
+describe("Dally M (/dally-m)", () => {
+  it("lists seasons with rounds open for votes, each round's window, and who played", async () => {
+    expect(await dallyMSeasons(sql)).toEqual([2027, 2026]);
+    // Round 1 of 2027 closes at round 2's first kickoff; 2026's round 9 had no later game, so a week on.
+    expect(await dallyMRounds(sql, 2027)).toEqual([{ round: 1, closes: "2027-03-13T08:00:00.000Z", isOpen: true, isClosed: false }]);
+    expect(await dallyMRounds(sql, 2026)).toEqual([{ round: 9, closes: "2026-05-08T08:00:00.000Z", isOpen: false, isClosed: true }]);
+    expect(await roundPlayers(sql, 2027, 1)).toEqual([
+      { id: 11, name: "Ava Cole", team: "Storm", position: "Halfback", image: "https://www.nrl.com/a", matchId: "1" },
+      { id: 13, name: "Cy Bell", team: "Eels", position: "Prop", image: null, matchId: "2" },
+    ]);
+    expect(await roundPlayers(sql, 2027, 2)).toEqual([]);
+  });
+});
+
+describe("last man standing (/last-man-standing)", () => {
+  it("picks the latest season from the comp's first, and gives its regular-season games with results", async () => {
+    expect(await lmsSeason(sql, 2027)).toBe(2027);
+    expect(await lmsSeason(sql, 2028)).toBeNull();
+    const { matches, seasonOver } = await lmsMatches(sql, 2027);
+    expect(seasonOver).toBe(false);
+    expect(matches.map((m) => [m.id, m.round, m.home, m.away, m.result])).toEqual([
+      ["1", 1, "Storm", "Broncos", "home"], ["2", 1, "Eels", "Panthers", "draw"],
+      ["3", 2, "Broncos", "Storm", undefined], ["4", 2, "Panthers", "Eels", undefined],
+    ]);
+    expect(matches[0].kickoff).toBe("2027-03-06T08:00:00.000Z");
   });
 });
