@@ -567,6 +567,8 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/news` | r/nrl feed |
 | `/players` | Player stats and the Model's power rankings, overall and by position |
 | `/dally-m` | The community Dally M: each tipper's 3-2-1 votes for the round's best players, hidden until the next round kicks off, then revealed, with a season leaderboard. Needs migration `20261122000000_dally_m.sql` (after the players migration); the results job's publish fills `round_players` |
+| `/groups` | Your groups (in More): start one, share its link, see who's in; the owner renames, makes a new link, removes members or deletes it. `/groups/join/<code>` joins one (signing up on the way). Migration `20261124000000_groups.sql` |
+| `/join` | Open sign-up for the global comp |
 | `/last-man-standing` | Last man standing (in More): one team a round, never twice in a game, out on a loss, draw or no pick; the last one left wins and a new game starts the next round, with a season tally of game wins. Rules in `web/lib/lms.ts`; picks in `lms_picks` (migration `20261123000000_last_man_standing.sql`), locked at kickoff by row-level security. No pipeline change |
 | `/model` | The Model's own page: its record this season as a tipper (tips right against the bookies' favourite and Elo, its place among the tippers, round by round, best calls and worst misses) and a short tested record |
 | `/about` | How the model works, in plain words, and its limits, with a technical section and a link to `/model` |
@@ -624,13 +626,15 @@ The data comes straight from `elo_ratings`; no calculation happens in the websit
 
 ### 3.5 Tipping comp
 
-A single invite-only comp for a few friends, following the **official NRL Tipping rules** (tipping.nrl.com, 2026 rules).
+One global comp that anyone can join, with **groups** for friend circles (24 November 2026; design in
+`docs/superpowers/specs/2026-11-24-tipping-groups-design.md`), following the **official NRL Tipping rules** (tipping.nrl.com, 2026 rules).
+Until then it was a single invite-only comp.
 
 **Joining:**
 
-1. The admin (you) creates an invite link from `/tipping/admin` and sends it to a friend.
-2. The friend signs in with an email magic link or Google through the invite link. There is no public sign-up page.
-3. They choose a display name, favourite team and **auto-tip option** (see below).
+1. Anyone signs in at `/join` (Google, or an email link), or through a group's link `/groups/join/<code>`, which joins that group too. Old single-use invite links still work.
+2. They choose a display name, favourite team and **auto-tip option** (see below).
+3. Everyone is on the global ladder. Any tipper can start a group (`/groups`, in More) and share its link; a group's ladder, last man standing and Dally M show only its members, over the same tips (nobody tips twice). Chips under each comp page's title switch between Global and your groups.
 
 **Rules (as NRL Tipping):**
 

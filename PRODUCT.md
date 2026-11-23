@@ -44,7 +44,7 @@ The opponent in this comp is a real, tested model, not a pundit. The Model tips 
 - **The Model is a tipper** in the comp. It tips its prediction of record and never uses an auto-tip. Its pick and probability can be shown as a hint on the tip page, with a toggle to hide it.
 - **Two models:** the with-odds ensemble for predictions and the Model tipper; the no-odds ensemble for the model vs market page and as the fallback when odds aren't available.
 - **Predicted scores never contradict the tip.** The winner comes from the win probability, and display scores are adjusted so they agree.
-- **Free plans only.** One invite-only comp. Accounts only for tipping; everything else is read-only.
+- **Free plans only.** One global comp anyone can join, with friend groups inside it (24 November 2026; it was invite-only before). Accounts only for tipping; everything else is read-only.
 - **No official NRL or club logos.** Team names are used, with plain coloured badges.
 - `noindex` on every page and a `robots.txt` that blocks crawlers.
 - The site stores only email addresses, display names, favourite teams, auto-tip choices and tips. Users can delete their account and tips. Google sign-in metadata (name, avatar) is not kept.
