@@ -8,6 +8,9 @@ round. Mostly for fun, like the Dally M.
 
 - **Restart straight away.** When a game ends, a new one starts the next round, every team available
   again. Several games a season; a season tally of game wins.
+- **A draw is a loss, and no pick is out** (confirmed 23 November 2026).
+- **Everyone out together: nobody is.** If everyone still in goes out in the same round, the round
+  doesn't count and they all stay in (23 November 2026; it replaced "they share the win").
 
 ## Rules (my calls, stated to the user)
 
@@ -15,11 +18,10 @@ round. Mostly for fun, like the Dally M.
   kickoff (the tips lockout). Finals don't count.
 - A pick **survives** if its team wins, or its game is cancelled. A draw is a loss.
 - **Out** on a loss, on no pick once the round is decided, or on picking a team already used in this
-  game. An out tipper waits for the next game.
+  game. An out tipper waits for the next game. Once a tipper has used every team, they start again.
 - A round is graded once all its games are final or cancelled.
-- After a graded round: one left → they win, game over. Nobody left → everyone still in at the start
-  of the round shares the win, game over. If nobody still in made a pick, the round doesn't count
-  (the season's first round before anyone has looked, say).
+- After a graded round: one left → they win, game over. Nobody left (all out, or nobody picked) → the
+  round doesn't count: everyone still in stays in, and its picks don't use up their teams.
 - The regular season ends with a game still going: everyone still in shares it.
 - Every tipper who isn't the Model is in every game from its first round. Someone who joins mid-game
   has no picks for its earlier rounds, so is out, and plays from the next game.

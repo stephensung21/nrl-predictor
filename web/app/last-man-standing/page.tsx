@@ -38,8 +38,9 @@ export default async function LastManStandingPage() {
     <main>
       <h1 className="pt-4 pb-3 font-display text-[26px] leading-none font-bold uppercase">Last man standing</h1>
       <p className="max-w-prose text-[15px] leading-snug text-ink-2">
-        Pick one team to win each round, never the same team twice in a game. A loss, a draw or no pick and you&rsquo;re out. The
-        last one left wins, then a new game starts the next round with everyone back in.
+        Pick one team to win each round, never the same team twice in a game. A loss, a draw or no pick and you&rsquo;re out,
+        unless everyone still in goes out that round: then it doesn&rsquo;t count. The last one left wins, then a new game starts
+        the next round with everyone back in.
       </p>
 
       <YourPick season={src.season} now={src.now} turn={turn} matches={src.matches} />
@@ -134,7 +135,9 @@ function ThisGame({ game, names, tippers, you }: { game: LmsGame; names: Map<str
         </table>
       </div>
       {game.rounds.some((r) => r.void) && (
-        <p className="mt-2 text-[13px] text-ink-3">A round nobody still in picked for doesn&rsquo;t count.</p>
+        <p className="mt-2 text-[13px] text-ink-3">
+          A round where everyone still in went out doesn&rsquo;t count: they all stay in, and can use those teams again.
+        </p>
       )}
     </section>
   );
@@ -147,6 +150,14 @@ function Cell({ entry, void: voided }: { entry?: LmsEntry; void: boolean }) {
     return <span className="text-[12px] whitespace-nowrap text-ink-3">{o === "missed" && !voided ? "No pick" : "–"}</span>;
   }
   const out = o === "out" || o === "repeat";
+  if (voided) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <TeamBadge name={entry.team} size="sm" dim />
+        <span className="sr-only">{entry.team}, didn&rsquo;t count</span>
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1">
       <TeamBadge name={entry.team} size="sm" dim={out} />

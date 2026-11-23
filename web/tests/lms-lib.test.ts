@@ -39,9 +39,37 @@ describe("playSeason", () => {
     expect(s.tally).toEqual([{ userId: "a", wins: 1 }, { userId: "b", wins: 0 }, { userId: "c", wins: 0 }]);
   });
 
-  it("shares the win when everyone still in goes out together", () => {
-    const s = playSeason(["a", "b"], matches, [p("a", 1, "Eels"), p("b", 1, "Knights")], false);
-    expect(s.games[0]).toMatchObject({ endRound: 1, winners: ["a", "b"] });
+  it("keeps everyone in when everyone still in goes out together, and doesn't count their teams as used", () => {
+    const s = playSeason(["a", "b", "c"], matches, [p("a", 1, "Broncos"), p("b", 1, "Knights"), p("a", 2, "Broncos"), p("b", 2, "Panthers")], false);
+    const g = s.games[0];
+    expect(g.rounds[0]).toMatchObject({ round: 1, void: true });
+    expect(g.rounds[0].entries.map((e) => e.outcome)).toEqual(["out", "out", "missed"]);
+    // Round 1 didn't count, so a can pick the Broncos again; c misses again and goes out.
+    expect(g.rounds[1].entries.map((e) => [e.userId, e.outcome])).toEqual([["a", "survived"], ["b", "survived"], ["c", "missed"]]);
+    expect(g.alive).toEqual(["a", "b"]);
+    expect(g.endRound).toBeNull();
+  });
+
+  it("lets a tipper start again once they've used every team", () => {
+    // Four teams, two games a round; the first-named team always wins.
+    const four = [1, 2, 3, 4, 5, 6].flatMap((r) =>
+      round(r, r % 2 ? [["Storm", "Broncos", "home"], ["Eels", "Panthers", "home"]] : [["Broncos", "Storm", "home"], ["Panthers", "Eels", "home"]]));
+    const q = (userId: string, r: number, team: TeamName): LmsPick => ({ userId, round: r, matchId: four.find((m) => m.round === r && (m.home === team || m.away === team))!.id, team });
+    const picks = [
+      q("a", 1, "Storm"), q("a", 2, "Broncos"), q("a", 3, "Eels"), q("a", 4, "Panthers"), q("a", 5, "Storm"), q("a", 6, "Broncos"),
+      q("b", 1, "Eels"), q("b", 2, "Panthers"), q("b", 3, "Storm"), q("b", 4, "Broncos"), q("b", 5, "Eels"), q("b", 6, "Panthers"),
+    ];
+    const s = playSeason(["a", "b"], four, picks, false);
+    expect(s.teams).toBe(4);
+    // Both use all four teams in rounds 1-4, so their round 5 and 6 picks start a fresh run.
+    expect(s.games[0].rounds.map((r) => r.entries.map((e) => e.outcome))).toEqual([
+      ["survived", "survived"], ["survived", "survived"], ["survived", "survived"], ["survived", "survived"],
+      ["survived", "survived"], ["survived", "survived"],
+    ]);
+    // A repeat inside the new cycle is still out.
+    const again = playSeason(["a", "b"], four, [...picks.filter((x) => !(x.userId === "a" && x.round === 6)), q("a", 6, "Storm")], false);
+    expect(again.games[0]).toMatchObject({ endRound: 6, winners: ["b"] });
+    expect(again.games[0].rounds[5].entries[0].outcome).toBe("repeat");
   });
 
   it("knocks out a repeat even when that team wins, and survives a cancelled game", () => {
