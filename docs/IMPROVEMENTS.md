@@ -732,6 +732,64 @@ The Poisson player rating is the same information as RAPM (correlation 0.92 on t
 
 **Not adopted.** Tries are close to Poisson, but RAPM and the team rating already pull the same information from margins, and the scoring rule only matters for line markets. If line betting is ever revisited, the discrete score model (with a field-goal term for one-point margins) is the one to use.
 
+## NEXT_IDEAS.md's three modelling ideas (items 50–52, November 2026)
+
+### 50. The closing price as the training target ❌ (for the win model); 🔶 as a price-move signal
+
+NEXT_IDEAS.md idea 1. `python src/experiments.py --only close_target` → `reports/experiments/experiments_close_target.md`. For each backtest season, a ridge model of `logit(p_avg)` (the closing average) on the linear win model's features (with or without the opening odds), penalty by walk-forward CV on the price, Platt-calibrated against the result; and a ridge model of `close_total` on the totals model's features.
+
+**Prediction: no gain.** Main ensembles, change against current (win log loss with odds / no odds; total MAE with odds / no odds):
+
+| Use | Win | Total |
+|---|---|---|
+| Closing-price model alone | +0.0038 / +0.0034 | −0.02 / −0.04 |
+| As a third ensemble member (equal thirds) | −0.0001 / −0.0002 | −0.03 / −0.02 |
+| Instead of the linear member | +0.0015 / +0.0007 | +0.02 / +0.01 |
+
+None is statistically clear. The ceiling was the problem: the closing price itself scores 0.6204 on these games against the with-odds ensemble's 0.6209, so there was only 0.0005 to gain.
+
+**Anticipating the price move: much better, but no extra profit.** The predicted move is the model's log-odds minus the opening's (item 41's measure), with odds:
+
+| Predictor | Corr. with the actual move | Price moved its way, largest 10% of disagreements | Return per bet at the opening price, 2% edge (95% interval) | Closing line value per bet |
+|---|---|---|---|---|
+| Current ensemble | 0.43 | 80% | +17.6% (+7% to +28%) | 4.5 points |
+| Closing-price model | **0.57** | **95%** | +12.9% (+4% to +22%) | **5.6 points** |
+| Third member | 0.50 | 86% | +17.7% (+7% to +29%) | 5.0 points |
+
+Trained on the price, the model predicts where the price goes very well and so gets more closing line value. But a bet pays on the result, and its return is no better (at a 5% edge it is +18.0% against +15.1%; every interval overlaps). **Not adopted** for the win model. Worth logging beside the paper bets in 2027 as a "the price will move" flag (bet early when it's large) if betting timing ever matters.
+
+### 51. RAPM priors: last season's rating or a selection-based replacement level ❌
+
+NEXT_IDEAS.md idea 2, aimed at item 38's star blind spot. `python src/experiments.py --only rapm_priors` → `reports/experiments/experiments_rapm_priors.md`. Every RAPM feature is rebuilt with a prior other than 0, then run through the full pipeline backtest with every other setting unchanged (penalty 300, half-life 90 days). A reimplementation with the zero prior reproduces the pipeline's RAPM exactly, as a check.
+- **Previous-season prior:** from each season's first round, players are shrunk towards κ × their rating at the end of the previous season instead of 0.
+- **Selection prior:** two lightly penalised columns, log(1 + career NRL games) and log(1 + starts in the last 365 days), both before the match, so a fringe replacement is shrunk towards a lower value than an established first-grader. Player data starts in 2020, so career games are truncated there.
+
+| Variant (main ensembles) | Win log loss (with odds / no odds) | Margin MAE | Points per S2 star out the model misses (with odds) |
+|---|---|---|---|
+| Current | – | – | −1.2 (−2.4 to +0.1) |
+| Previous season, κ 0.5 | +0.0018 / +0.0022 | +0.02 / +0.05 | −1.2 |
+| Previous season, κ 1 | +0.0054 / +0.0084 | +0.08 / +0.15 | −1.1 |
+| Selection | +0.0054 / +0.0061 | −0.01 / +0.00 | −1.1 |
+| Selection and previous season (κ 1) | +0.0066 / +0.0070 | +0.01 / +0.02 | −1.2 |
+
+- **Every variant is worse on win log loss** (none clearly), and the margin intervals are wide (±0.2) because the rating itself changed a lot: its correlation with the current `diff_rapm_total` is only 0.61–0.94.
+- **The star blind spot doesn't move.** Measured as the slope of (actual − predicted margin) on S2 stars out, the current ensemble still misses about **1.2 points per missing star** (interval −2.4 to +0.1). That's smaller than item 38's 3–4 points, which were measured before S2 was adopted and on hindsight-chosen stars. No prior changes it by more than 0.1.
+- Selection plus previous season gives a rating that correlates better with the margin on its own (0.380 against 0.351), but it overlaps less with the other features the models were built around, and the pipeline ends up worse. Retuning the RAPM penalty for each prior might recover some of that; it wasn't tried, to avoid choosing settings on the backtest.
+
+**Not adopted.** Shrinking towards 0 with a short half-life is the better setting here. The remaining star gap is about 1 point and isn't explained by the prior.
+
+### 52. Elo, the team rating and the odds on the full 2013+ history ❌
+
+NEXT_IDEAS.md idea 3, never run on the backtest (it was judged on 2025 alone). `python src/experiments.py --only long_history` → `reports/experiments/experiments_long_history.md`. A base win model (logistic) and margin model (least squares) on every game in the odds sheet from 2013 to the end of the season before each game's season (about 1,600–2,600 games, so every value was known before its season). No-odds base: Elo log-odds and the team margin rating. With-odds base: also the opening log-odds, with separate levels and slopes for Pinnacle (to 2018) and BlueBet (from 2024; item 35).
+
+| Use (main ensembles) | Win log loss (with odds / no odds) | Margin MAE |
+|---|---|---|
+| No-odds base replacing `elo_logit` and `team_margin` | +0.0011 / +0.0014 | +0.01 / +0.01 |
+| Base added beside them | +0.0004 / +0.0007 | **+0.02 (worse, clear)** / +0.00 |
+| Linear models anchored on the base (offset), learning only RAPM and star absences from 2021+ | +0.0012 / +0.0013 | +0.05 / +0.02 (linear alone +0.15 with odds, clearly worse) |
+
+**Not adopted.** More history doesn't help: the 2021+ rows already estimate the few weights on Elo, the team rating and the price well. The older eras are a different game (before the six-again rule, other bookmakers), and an offset fixes those weights at values from that older game. It is the same verdict item 13 reached for Elo retuned on 2013+.
+
 ---
 
 ## Suggested next steps

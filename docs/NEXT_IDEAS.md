@@ -24,7 +24,9 @@ the backtest and live use.**
 
 ## Worth testing, in order
 
-### 1. Train on the closing price, not just win or loss ⬜
+### 1. Train on the closing price, not just win or loss ❌ (tested, item 50)
+
+**Result (November 2026):** no gain as an ensemble member (−0.0001, not clear) or anywhere else; the close itself is only 0.0005 better than the with-odds ensemble. It predicts the price *move* much better (95% against 80% in the largest disagreements, more closing line value) but doesn't earn more at the opening price. See IMPROVEMENTS.md item 50.
 
 The with-odds model's edge is anticipating where the price moves between the opening and the
 close: in the largest 10% of disagreements the closing price moved towards the model 86% of the
@@ -42,7 +44,9 @@ time (item 41). The model learns that move from a 0/1 outcome, which is extremel
 - **Leakage:** none, as long as only earlier games' closes are used as targets. The modelling
   plan bans open→close movement as a *feature*, not as a target.
 
-### 2. Better RAPM priors, aimed at the star blind spot ⬜
+### 2. Better RAPM priors, aimed at the star blind spot ❌ (tested, item 51)
+
+**Result (November 2026):** previous-season and selection-based priors were all worse (+0.002 to +0.008 win log loss, not clear), and the remaining star gap (about 1.2 points per missing star after S2) didn't move. See IMPROVEMENTS.md item 51.
 
 The model under-reacts to a star's absence by **3–4 points** (item 38). That's the largest measured
 bias in the project, and S2 only partly fixed it. Two likely structural causes in `rapm_features`:
@@ -63,7 +67,9 @@ Variants to try:
 Score it on the backtest and also on item 38's star with/without check. If the 3–4 point gap
 shrinks, that's evidence it works even if log loss barely moves.
 
-### 3. Re-run "Elo + odds on the full 2013–2024 history" on the backtest ⬜
+### 3. Re-run "Elo + odds on the full 2013–2024 history" on the backtest ❌ (tested, item 52)
+
+**Result (November 2026):** as an input, beside the current features, or as an offset, it is no better and sometimes worse (margin +0.02 to +0.15). See IMPROVEMENTS.md item 52.
 
 It's in "Already tried", but it was judged on 2025 alone (0.654). Code-review point 2 says the
 2025-only rejections should be rerun on the backtest, and this is the one that never was (item 13
