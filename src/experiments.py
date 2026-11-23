@@ -2488,13 +2488,502 @@ def poisson_experiments():
     print("wrote reports/experiments/experiments_poisson.md")
 
 
+
+# ---------------------------------------------------------------- 50-52. NEXT_IDEAS.md's three modelling ideas
+
+def quiet_backtest(df, **settings):
+    """pipeline_backtest without develop()'s progress output."""
+    import builtins
+    quiet, builtins.print = builtins.print, (lambda *a, **k: None)
+    try:
+        return pipeline_backtest(df, **settings)
+    finally:
+        builtins.print = quiet
+
+
+def star_bias(test, preds, col):
+    """Item 38's blind spot, measured on the backtest: the points by which the actual margin beats the
+    predicted one per extra S2 star missing (home minus away), by least squares, with a bootstrap 95%
+    interval. Negative = a team missing a star does worse than predicted (the model under-reacts)."""
+    t = test.loc[preds.index]
+    x = (t["diff_s2_stars_out_spine"] + t["diff_s2_stars_out_other"]).to_numpy(float)
+    r = (t["margin"] - preds[col]).to_numpy(float)
+
+    def slope(i):
+        xi, ri = x[i], r[i]
+        return np.cov(xi, ri, bias=True)[0, 1] / np.var(xi)
+
+    idx = np.arange(len(x))
+    boot = [slope(np.random.default_rng(k).choice(idx, len(idx))) for k in range(1000)]
+    return slope(idx), np.percentile(boot, 2.5), np.percentile(boot, 97.5)
+
+
+def star_bias_rows(name, test, preds):
+    rows = []
+    for v in VARIANTS:
+        s, lo, hi = star_bias(test, preds, f"{v}|ensemble|margin")
+        rows.append({"variant": name, "model": VARIANT_LABEL[v], "points per star out": s, "ci_low": lo, "ci_high": hi})
+    return rows
+
+
+# 50. The closing price as the training target
+
+def ridge_cv(tr, feats, y, cv, grid=ALPHA_GRID):
+    """Ridge penalty by walk-forward CV (squared error) over cv seasons; returns the fitted model's
+    out-of-fold predictions for cv and the penalty."""
+    best = None
+    for a in grid:
+        oof = pd.Series(np.nan, index=tr.index)
+        for s in cv:
+            a_, b_ = tr["season"] < s, tr["season"] == s
+            oof[b_] = linear("reg", a).fit(tr.loc[a_, feats], y[a_]).predict(tr.loc[b_, feats])
+        err = ((oof - y) ** 2)[oof.notna()].mean()
+        if best is None or err < best[0]:
+            best = (err, a, oof)
+    return best[1], best[2]
+
+
+def close_members(df):
+    """For every backtest season and variant: a ridge model of the closing price, fitted on earlier
+    seasons. Win: logit(p_avg) on the linear win model's features, turned into a probability and
+    Platt-calibrated on walk-forward out-of-fold predictions against the result. Total: close_total on
+    the linear totals model's features. Indexed by match_id."""
+    out = {}
+    for variant in VARIANTS:
+        cols = []
+        for season in BACKTEST_SEASONS:
+            tr, te = df[df["season"] < season], df[df["season"] == season]
+            cv = list(range(FIRST_SEASON + 1, season))
+            p = pd.DataFrame(index=te["match_id"].to_numpy())
+            fw = LINEAR_FEATURES["home_win"] + (models.linear_odds("home_win") if variant == "with_odds" else [])
+            y = pd.Series(logit(tr["p_avg"].clip(0.02, 0.98).to_numpy()), index=tr.index)
+            a, oof = ridge_cv(tr, fw, y, cv)
+            z = linear("reg", a).fit(tr[fw], y).predict(te[fw])
+            done = oof.notna()
+            cal = platt(1 / (1 + np.exp(-oof[done])), tr.loc[done, "home_win"])
+            p["home_win"] = cal(1 / (1 + np.exp(-z)))
+            ft = LINEAR_FEATURES["total"] + (models.linear_odds("total") if variant == "with_odds" else [])
+            a, _ = ridge_cv(tr, ft, tr["close_total"], cv)
+            p["total"] = linear("reg", a).fit(tr[ft], tr["close_total"]).predict(te[ft])
+            cols.append(p)
+        out[variant] = pd.concat(cols)
+    return out
+
+
+def close_target_experiments():
+    """Item 50: models trained on the closing price instead of the result, as a third ensemble member
+    or in place of the linear member, in the full pipeline backtest."""
+    warnings.filterwarnings("ignore")
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    base = quiet_backtest(df)
+    close = close_members(df)
+    for variant in VARIANTS:
+        c, b = close[variant], base.loc[close[variant].index]
+        t = test.loc[c.index]
+        for target in ("home_win", "total"):
+            lin, gbm, ens = (b[f"{variant}|{m}|{target}"] for m in ("linear", "lightgbm", "ensemble"))
+            record("50 closing-price model alone", variant, target, t, c[target], ens)
+            record("50 closing-price model as a third member", variant, target, t, (lin + gbm + c[target]) / 3, ens)
+            record("50 closing-price model instead of the linear member", variant, target, t,
+                   (gbm + c[target]) / 2, ens)
+        record("50 reference: the closing price itself (p_avg)", variant, "home_win", t, t["p_avg"],
+               b[f"{variant}|ensemble|home_win"])
+    # The betting use: does it anticipate the move from the opening to the closing price better?
+    moves = []
+    for variant in VARIANTS:
+        c, b = close[variant], base.loc[close[variant].index]
+        t = test.loc[c.index]
+        actual = logit(t["p_avg"].clip(0.02, 0.98).to_numpy()) - t["open_logit"].to_numpy()
+        for name, p in (("current ensemble", b[f"{variant}|ensemble|home_win"]), ("closing-price model", c["home_win"]),
+                        ("third member", (b[f"{variant}|linear|home_win"] + b[f"{variant}|lightgbm|home_win"]
+                                          + c["home_win"]) / 3)):
+            pred = logit(np.asarray(p, float)) - t["open_logit"].to_numpy()
+            top = np.abs(pred) >= np.quantile(np.abs(pred), 0.9)
+            moves.append({"model": VARIANT_LABEL[variant], "predictor": name,
+                          "corr. with the price move": np.corrcoef(pred, actual)[0, 1],
+                          "move towards it, all games": np.mean(np.sign(pred) == np.sign(actual)),
+                          "move towards it, largest 10% disagreements": np.mean(np.sign(pred[top]) == np.sign(actual[top]))})
+    moves = pd.DataFrame(moves).set_index("model")
+    print(md_table(moves, "{:.3f}"))
+    # ...and does that earn more at the opening price? Flat 1-unit bets on the side with the larger edge.
+    odds = load_odds()
+    prices = join_odds_to_matches(df[["match_id", "start_time_utc", "home_team", "away_team"]], odds).merge(
+        odds[["odds_id", "home_odds_open", "away_odds_open", "home_odds_close", "away_odds_close"]],
+        on="odds_id").set_index("match_id")
+    bets = []
+    for variant in VARIANTS:
+        c, b = close[variant], base.loc[close[variant].index]
+        t, o = test.loc[c.index], prices.loc[c.index]
+        won = t["home_win"].to_numpy() == 1
+        for name, p in (("current ensemble", b[f"{variant}|ensemble|home_win"]), ("closing-price model", c["home_win"]),
+                        ("third member", (b[f"{variant}|linear|home_win"] + b[f"{variant}|lightgbm|home_win"]
+                                          + c["home_win"]) / 3)):
+            p = np.asarray(p, float)
+            for edge in (0.02, 0.05):
+                eh, ea = p * o["home_odds_open"].to_numpy() - 1, (1 - p) * o["away_odds_open"].to_numpy() - 1
+                home, away = (eh > edge) & (eh >= ea), (ea > edge) & ~((eh > edge) & (eh >= ea))
+                pnl = (np.where(home, np.where(won, o["home_odds_open"] - 1, -1), 0)
+                       + np.where(away, np.where(~won, o["away_odds_open"] - 1, -1), 0))[home | away]
+                clv = (np.where(home, 1 / o["home_odds_close"] - 1 / o["home_odds_open"], 0)
+                       + np.where(away, 1 / o["away_odds_close"] - 1 / o["away_odds_open"], 0))[home | away]
+                boot = pnl[np.random.default_rng(0).integers(0, len(pnl), (N_BOOT, len(pnl)))].mean(axis=1)
+                bets.append({"model": VARIANT_LABEL[variant], "predictor": name, "edge over": edge,
+                             "bets": float(len(pnl)), "return per bet": pnl.mean(), "ci_low": np.percentile(boot, 2.5),
+                             "ci_high": np.percentile(boot, 97.5), "closing line value": np.nanmean(clv)})
+    bets = pd.DataFrame(bets).set_index("model")
+    print(md_table(bets, "{:.3f}"))
+    res = pd.DataFrame(RESULTS)
+    report = ["# The closing price as the training target (item 50, 2023–2025 backtest)", "",
+              "For each backtest season, a ridge model of the closing price is fitted on earlier seasons only: "
+              "`logit(p_avg)` (the Odds Portal closing average) on the linear win model's features (with or "
+              "without the opening odds, as each variant), and `close_total` on the linear totals model's "
+              "features. The penalty is chosen by walk-forward CV on the price, and the win probability is "
+              "Platt-calibrated against the result on walk-forward out-of-fold predictions, as the pipeline does. "
+              "It is then used alone, as a third member of the ensemble (equal thirds), or in place of the "
+              "linear member. `baseline` is the current main ensemble; `diff` is new minus current "
+              "(negative = better), with a paired bootstrap 95% interval. The last rows are the closing price "
+              "itself, the ceiling (not usable before kickoff).", "",
+              md_table(res.set_index("experiment")), "",
+              "## Anticipating the price move", "",
+              "The betting use: the predicted move is the model's log-odds minus the opening log-odds, the actual "
+              "move the closing average's minus the opening's. 'Move towards it' is how often the price moved "
+              "in the direction the model disagreed with the opening price (item 41's measure).", "",
+              md_table(moves, "{:.3f}"), "",
+              "Flat 1-unit bets at the opening head-to-head price on the side whose edge (probability × price − 1) "
+              "is over the threshold; closing line value is the closing implied probability minus the opening one "
+              "for the side bet. The return interval is a bootstrap 95% interval over bets.", "",
+              md_table(bets, "{:.3f}"), ""]
+    (EXPERIMENTS / "experiments_close_target.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_close_target.md")
+
+
+# 51. RAPM priors
+
+def rapm_with_priors(matches, players, current=None, prev_kappa=0.0, selection=False):
+    """features.rapm_features with two kinds of prior instead of shrinking every player towards 0:
+    - prev_kappa > 0: each player is shrunk towards prev_kappa x his rating at the end of the previous
+      season (the last refit before the season's first round), the cheap version of a Bayesian model;
+    - selection: lightly penalised columns for log(1 + career NRL games played) and log(1 + starts in
+      the last 365 days), both before the match, so a player's rating is a deviation from what his
+      selection history suggests (a fringe replacement starts below an established first-grader).
+    Same settings as the pipeline (penalty, half-life, minutes weighting); returns the RAPM columns."""
+    from features import (RAPM_ALPHA, RAPM_HALF_LIFE_DAYS, RAPM_PRIOR_PENALTY, MARGIN_CAP, USUAL_WINDOW,
+                          USUAL_MIN, weighted_ridge)
+    from collections import Counter, deque
+    alpha, half_life = RAPM_ALPHA, RAPM_HALF_LIFE_DAYS
+    games = matches.sort_values("start_time_utc").reset_index(drop=True)
+    n_games = len(games)
+    game_row = pd.Series(games.index, index=games["match_id"])
+    home_team = dict(zip(games["match_id"], games["home_team"]))
+    pids = pd.Index(players["player_id"].unique())
+    n = len(pids)
+    minutes_share = players["minutesPlayed"].fillna(0).clip(upper=80) / 80
+    is_named = ~players["position"].isin(NOT_NAMED)
+
+    # Selection columns, per player-match row, from earlier games only.
+    pl = players.assign(_t=pd.to_datetime(players["start_time_utc"], utc=True))
+    if selection:
+        # starts in [t - 365 days, t): strictly before the match, so the match itself never counts
+        t_ns = pl["_t"].astype("int64").to_numpy()
+        is_start = (is_named & (pl["position"] != "Interchange")).to_numpy()
+        year = pd.Timedelta(days=365).value
+        recent = np.zeros(len(pl))
+        for _, idx in pl.groupby("player_id").indices.items():
+            s = np.sort(t_ns[idx][is_start[idx]])
+            recent[idx] = np.searchsorted(s, t_ns[idx], "left") - np.searchsorted(s, t_ns[idx] - year, "left")
+        z = np.c_[np.log1p(pl["n_prior"].fillna(0).to_numpy()), np.log1p(recent)]
+    else:
+        z = np.zeros((len(pl), 0))
+    k = z.shape[1]
+    zrow = pd.DataFrame(z, index=pl.index)
+
+    src = players[minutes_share > 0]
+    r = game_row.loc[src["match_id"]].to_numpy()
+    c = pids.get_indexer(src["player_id"])
+    share = minutes_share[src.index].to_numpy()
+    zs = zrow.loc[src.index].to_numpy()
+    home = src["team"].to_numpy() == src["match_id"].map(home_team).to_numpy()
+    sign = np.where(home, 1.0, -1.0)
+    g_all = np.arange(n_games)
+
+    def design(weights):
+        """Players | (home advantage) | prior columns, as rows of games."""
+        rows, cols, vals = [r], [c], [weights * share]
+        extra = 0
+        if weights is sign:
+            rows.append(g_all); cols.append(np.full(n_games, n)); vals.append(np.ones(n_games)); extra = 1
+        for j in range(k):
+            agg = np.bincount(r, weights=weights * share * zs[:, j], minlength=n_games)
+            rows.append(g_all); cols.append(np.full(n_games, n + extra + j)); vals.append(agg)
+        return sparse.csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+                                 shape=(n_games, n + extra + k)), extra
+
+    Xm, em = design(sign)
+    Xt, et = design(np.ones(len(src)))
+    ym = (games["home_score"] - games["away_score"]).clip(-MARGIN_CAP, MARGIN_CAP).to_numpy(dtype=float)
+    yt = (games["home_score"] + games["away_score"]).to_numpy(dtype=float)
+    pen_m = np.r_[np.full(n + em, alpha), np.full(k, RAPM_PRIOR_PENALTY)]
+    pen_t = np.r_[np.full(n, alpha), np.full(k, RAPM_PRIOR_PENALTY)]
+
+    named = players[is_named]
+    starter = (named["position"] != "Interchange").to_numpy()
+    named_game = game_row.loc[named["match_id"]].to_numpy()
+    named_share = minutes_share[named.index].to_numpy()
+    zn = zrow.loc[named.index].to_numpy()
+    lineups = defaultdict(list)
+    for key, j, s_, zz in zip(zip(named["match_id"], named["team"]), pids.get_indexer(named["player_id"]), starter, zn):
+        lineups[key].append((j, s_, zz))
+    if current is not None:
+        raise NotImplementedError("pre-kickoff lists are not needed for the backtest")
+
+    def solve(X, y, w, pen, prior):
+        """Ridge shrunk towards `prior` (a full coefficient vector) instead of 0."""
+        if prior is None:
+            return weighted_ridge(X, y, w, pen)
+        return prior + weighted_ridge(X, y - X @ prior, w, pen)
+
+    kickoff = games["start_time_utc"]
+    fit, block, out, season_of_fit = None, None, [], None
+    prior_m = prior_t = None
+    recent = defaultdict(lambda: deque(maxlen=USUAL_WINDOW))
+    for g in games.itertuples():
+        if (g.season, g.round) != block:
+            block = (g.season, g.round)
+            if prev_kappa and fit is not None and season_of_fit is not None and g.season != season_of_fit:
+                # new season: shrink this season's ratings towards last season's final ones
+                prior_m = np.r_[prev_kappa * fit["raw_m"][:n], np.zeros(em + k)]
+                prior_t = np.r_[prev_kappa * fit["raw_t"][:n], np.zeros(k)]
+            train = ((kickoff < g.start_time_utc) & ~np.isnan(ym)).to_numpy()
+            if train.sum() >= 20:
+                w = 0.5 ** ((g.start_time_utc - kickoff[train]).dt.days.to_numpy() / half_life)
+                yc = yt[train] - np.average(yt[train], weights=w)
+                cm = solve(Xm[train], ym[train], w, pen_m, prior_m)
+                ct = solve(Xt[train], yc, w, pen_t, prior_t)
+                bm, gm = cm[:n], cm[n + em:]
+                bt, gt = ct[:n], ct[n + et:]
+                in_train = train[named_game]
+                fit = {"margin": (bm, gm), "attack": ((bt + bm) / 2, (gt + gm) / 2),
+                       "defence": ((bt - bm) / 2, (gt - gm) / 2),
+                       "share": (named_share[in_train & starter].mean(), named_share[in_train & ~starter].mean()),
+                       "raw_m": cm, "raw_t": ct}
+                season_of_fit = g.season
+
+        def value(entries, kind):
+            if fit is None:
+                return 0.0
+            coef, gamma = fit[kind]
+            s_start, s_bench = fit["share"]
+            return float(sum((s_start if st else s_bench) * ((coef[j] if j >= 0 else 0.0) + float(gamma @ zz))
+                             for j, st, zz in entries))
+
+        for team in (g.home_team, g.away_team):
+            lineup = lineups.get((g.match_id, team), [])
+            prev = recent[team]
+            latest = {e[0]: e for lp in prev for e in lp}
+            counts = Counter(e[0] for lp in prev for e in lp)
+            ids = {e[0] for e in lineup}
+            missing = [latest[j] for j, kk in counts.items() if kk >= USUAL_MIN and j not in ids]
+            total = value(lineup, "margin")
+            out.append({"match_id": g.match_id, "team": team, "rapm_total": total,
+                        "rapm_stars_named": 0, "rapm_stars_out": 0,
+                        "rapm_vs_usual": total - (np.mean([value(l, "margin") for l in prev]) if prev else total),
+                        "rapm_missing": value(missing, "margin"),
+                        "rapm_attack": value(lineup, "attack"), "rapm_defence": value(lineup, "defence")})
+        for team in (g.home_team, g.away_team):
+            recent[team].append(lineups.get((g.match_id, team), []))
+    return pd.DataFrame(out).set_index(["match_id", "team"])
+
+
+RAPM_COLUMNS = ["diff_rapm_total", "diff_rapm_vs_usual", "diff_rapm_missing", "diff_rapm_attack",
+                "diff_rapm_defence", "rapm_points"]
+
+
+def rapm_variant_frame(df, **kw):
+    """The backtest frame with every RAPM feature rebuilt by rapm_with_priors(**kw); nothing else changes."""
+    import features
+    from elo import load_params
+    original = features.rapm_features
+    features.rapm_features = lambda matches, players, current=None, **_: rapm_with_priors(matches, players, current, **kw)
+    try:
+        matches, team_stats, players, odds, origin, reserve = features.load_inputs()
+        f = features.build_features(matches, team_stats, players, odds, origin, elo_params=load_params(odds))
+    finally:
+        features.rapm_features = original
+    f = f.set_index("match_id")
+    out = df.copy()
+    for col in RAPM_COLUMNS:
+        out[col] = f.loc[out["match_id"], col].to_numpy()
+    return out
+
+
+RAPM_PRIOR_VARIANTS = {
+    "51 zero prior, reimplemented (check)": {},
+    "51 previous-season prior, kappa 0.5": {"prev_kappa": 0.5},
+    "51 previous-season prior, kappa 1": {"prev_kappa": 1.0},
+    "51 selection prior (career games, recent starts)": {"selection": True},
+    "51 selection prior and previous-season prior (kappa 1)": {"selection": True, "prev_kappa": 1.0},
+}
+
+
+def rapm_prior_experiments():
+    """Item 51: RAPM shrunk towards last season's rating or a selection-based replacement level instead
+    of 0, in the full pipeline backtest, with item 38's star check."""
+    warnings.filterwarnings("ignore")
+    df = load()
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    base = quiet_backtest(df)
+    bias = star_bias_rows("current", test, base)
+    corr = []
+    for name, kw in RAPM_PRIOR_VARIANTS.items():
+        print(f"building {name}...")
+        d = rapm_variant_frame(df, **kw)
+        if not kw:  # the reimplementation must reproduce the pipeline's RAPM
+            assert np.allclose(d[RAPM_COLUMNS].to_numpy(), df[RAPM_COLUMNS].to_numpy(), atol=1e-6), "RAPM copy differs"
+            print("  reimplementation reproduces the pipeline's RAPM features")
+            continue
+        preds = quiet_backtest(d)
+        compare_pipelines(name, test, preds, base)
+        bias += star_bias_rows(name, test, preds)
+        t = d[d["season"].isin(BACKTEST_SEASONS)]
+        corr.append({"variant": name, "corr. with current diff_rapm_total": t["diff_rapm_total"].corr(
+            df.loc[t.index, "diff_rapm_total"]), "corr. with margin": t["diff_rapm_total"].corr(t["margin"]),
+            "current's corr. with margin": df.loc[t.index, "diff_rapm_total"].corr(t["margin"])})
+    res = pd.DataFrame(RESULTS)
+    report = ["# RAPM priors (item 51, 2023–2025 backtest)", "",
+              "Every RAPM feature (`diff_rapm_total`, `_vs_usual`, `_missing`, `_attack`, `_defence`, `rapm_points`) "
+              "rebuilt with a prior other than 0, then the full pipeline backtest (all settings unchanged; the "
+              "RAPM penalty stays 300 and the half-life 90 days). Previous-season prior: from each season's first "
+              "round, players are shrunk towards kappa × their rating at the end of the previous season instead "
+              "of 0. Selection prior: two lightly penalised columns, log(1 + career NRL games) and log(1 + starts "
+              "in the last 365 days), both before the match, so players are shrunk towards what their selection "
+              "history implies (player data starts in 2020, so career games are truncated at 2020). "
+              "`diff` is new minus current (negative = better), with a paired bootstrap 95% interval.", "",
+              md_table(res.set_index("experiment")), "",
+              "## The star blind spot (item 38)", "",
+              "Least-squares slope of (actual margin − the main ensemble's predicted margin) on the S2 stars "
+              "out (home minus away), with a bootstrap 95% interval: the points a team loses beyond the "
+              "prediction for each extra star missing. 0 means the model fully accounts for absences; negative "
+              "means it under-reacts.", "",
+              md_table(pd.DataFrame(bias).set_index("variant"), "{:.2f}"), "",
+              "## How much the rating changed", "",
+              md_table(pd.DataFrame(corr).set_index("variant"), "{:.3f}"), ""]
+    (EXPERIMENTS / "experiments_rapm_priors.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_rapm_priors.md")
+
+
+# 52. Elo, the team rating and the odds on the full 2013+ history
+
+def long_history_base(df):
+    """For each game in df, a base win model and margin model fitted on every game from 2013 to the end
+    of the season before the game's season (the odds sheet: Elo, team margin rating, opening price),
+    so each value is what was known before that season. Columns hist_logit / hist_margin (Elo and team
+    rating only) and hist_logit_odds / hist_margin_odds (plus the opening log-odds, with separate slopes
+    and levels for Pinnacle and BlueBet, bet365 the baseline)."""
+    from elo import load_params
+    from sklearn.linear_model import LinearRegression
+    odds = load_odds()
+    odds = odds.join(run_elo(odds, **load_params(odds)))
+    h = odds.merge(team_ratings(odds)[["odds_id", "team_margin"]], on="odds_id", how="left")
+    h["margin"] = h["home_score"] - h["away_score"]
+    h["home_win"] = (h["margin"] > 0).astype(int)
+    h["elo_logit"] = logit(h["elo_prob"])
+    h["open_logit"] = logit(h["p_open"])
+    for bk in ("Pinnacle", "BlueBet"):
+        h[bk] = (h["bookmaker"] == bk).astype(int)
+        h[f"open_x_{bk}"] = h["open_logit"] * h[bk]
+    sets = {"": ["elo_logit", "team_margin"],
+            "_odds": ["elo_logit", "team_margin", "open_logit", "Pinnacle", "BlueBet", "open_x_Pinnacle", "open_x_BlueBet"]}
+    m = join_odds_to_matches(df[["match_id", "start_time_utc", "home_team", "away_team"]], odds)
+    oid = m.set_index("match_id")["odds_id"]
+    out = df.copy()
+    hi = h.set_index("odds_id")
+    for season in sorted(df["season"].unique()):
+        tr = h[h["season"].between(2013, season - 1) & h["p_open"].notna() & h["team_margin"].notna()]
+        rows = df["season"] == season
+        x = hi.loc[oid.loc[df.loc[rows, "match_id"]].to_numpy()]
+        for suffix, feats in sets.items():
+            keep = [f for f in feats if tr[f].std() > 0]  # BlueBet has no rows before 2024
+            w = tr[tr["margin"] != 0]
+            lr = LogisticRegression(C=1e4, max_iter=5000).fit(w[keep], w["home_win"])
+            out.loc[rows, f"hist_logit{suffix}"] = lr.decision_function(x[keep])
+            out.loc[rows, f"hist_margin{suffix}"] = LinearRegression().fit(tr[keep], tr["margin"]).predict(x[keep])
+    return out
+
+
+def offset_linear(df, base_win, base_margin, feats, test_seasons=BACKTEST_SEASONS):
+    """Linear win and margin models anchored on a base: logit p = base + b0 + x'b (L2 on b, standardised x,
+    penalty by walk-forward CV) and margin = base + ridge(x), then the pipeline's margin blend
+    (P = average of the logistic and Phi(margin / sigma), sigma from out-of-fold errors)."""
+    tmp = df.assign(open_logit=df[base_win])  # offset_logistic anchors on the open_logit column
+    out = []
+    for season in test_seasons:
+        te = df[df["season"] == season]
+        p_win = offset_logistic(tmp, season, feats).to_numpy()
+        tr = df[df["season"] < season]
+        cv = list(range(FIRST_SEASON + 1, season))
+        resid = tr["margin"] - tr[base_margin]
+        a, oof = ridge_cv(tr, feats, resid, cv)
+        m = te[base_margin].to_numpy() + linear("reg", a).fit(tr[feats], resid).predict(te[feats])
+        done = oof.notna()
+        sigma = np.std(resid[done] - oof[done])
+        lin = (p_win + norm.cdf(m / sigma)) / 2
+        out.append(pd.DataFrame({"home_win": lin, "margin": m}, index=te["match_id"].to_numpy()))
+    return pd.concat(out)
+
+
+def long_history_experiments():
+    """Item 52: Elo, the team rating and the opening odds weighted on 2013+ (about 2,700 games) instead
+    of the 2021+ training rows, as an input to the pipeline's models or as an offset."""
+    warnings.filterwarnings("ignore")
+    df = long_history_base(load())
+    test = df[df["season"].isin(BACKTEST_SEASONS)].set_index("match_id")
+    base = quiet_backtest(df)
+    lf = LINEAR_FEATURES
+    replace = {"home_win": ["hist_logit"] + [f for f in lf["home_win"] if f not in ("elo_logit", "team_margin")],
+               "margin": ["hist_margin"] + [f for f in lf["margin"] if f != "elo_logit"], "total": lf["total"]}
+    add = {"home_win": lf["home_win"] + ["hist_logit"], "margin": lf["margin"] + ["hist_margin"], "total": lf["total"]}
+    for name, sets in (("52 long-history base replacing Elo and the team rating", replace),
+                       ("52 long-history base added", add)):
+        compare_pipelines(name, test, quiet_backtest(df, LINEAR_FEATURES=sets), base)
+    player = [f for f in lf["home_win"] if f not in ("elo_logit", "team_margin")]
+    for variant, suffix in (("no_odds", ""), ("with_odds", "_odds")):
+        off = offset_linear(df, f"hist_logit{suffix}", f"hist_margin{suffix}", player)
+        b = base.loc[off.index]
+        t = test.loc[off.index]
+        for target in ("home_win", "margin"):
+            record("52 offset on the long-history base: linear", variant, target, t, off[target],
+                   b[f"{variant}|linear|{target}"])
+            record("52 offset on the long-history base: ensemble", variant, target, t,
+                   (off[target] + b[f"{variant}|lightgbm|{target}"]) / 2, b[f"{variant}|ensemble|{target}"])
+    res = pd.DataFrame(RESULTS)
+    report = ["# Elo, the team rating and the odds on the full history (item 52, 2023–2025 backtest)", "",
+              "The training rows start in 2021, but Elo, the team margin rating and the opening odds go back to "
+              "2013 in the odds sheet. A base win model (logistic) and margin model (least squares) are fitted on "
+              "every game from 2013 to the end of the season before each game's season, so every value was known "
+              "before its season. No-odds base: Elo log-odds and the team margin rating. With-odds base: also the "
+              "opening log-odds, with separate levels and slopes for Pinnacle (to 2018) and BlueBet (from 2024; "
+              "item 35's bookmaker change). Three uses:", "",
+              "- **replacing:** the no-odds base replaces `elo_logit` and `team_margin` in the linear models (and "
+              "so LightGBM's compact set); the with-odds models still get the opening odds as inputs;",
+              "- **added:** the base is added beside them;",
+              "- **offset:** the linear win and margin models are anchored on the base and learn only the player "
+              "features (RAPM, star absences) from 2021+, with the pipeline's margin blend; the ensemble averages "
+              "that with the pipeline's LightGBM.", "",
+              "`diff` is new minus current (negative = better), with a paired bootstrap 95% interval.", "",
+              md_table(res.set_index("experiment")), ""]
+    (EXPERIMENTS / "experiments_long_history.md").write_text("\n".join(report), encoding="utf-8")
+    print("wrote reports/experiments/experiments_long_history.md")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", choices=["robust", "lightgbm", "gam", "reserve", "team_total", "weekly",
                                            "context2", "ladder", "stars", "key_absence", "origin_stars",
                                            "calibration", "weekly2", "blend", "shin",
                                            "disagreement", "pre_kickoff", "weather", "correlation",
-                                           "correlation_leads", "lgb_extras", "underdog", "poisson"],
+                                           "correlation_leads", "lgb_extras", "underdog", "poisson",
+                                           "close_target", "rapm_priors", "long_history"],
                         help="run just one experiment group")
     args = parser.parse_args()
     {"robust": robust_targets, "lightgbm": lightgbm_experiments, "gam": gam_experiments,
@@ -2514,4 +3003,5 @@ if __name__ == "__main__":
      "correlation_leads": lambda: context2_experiments(CORRELATION_GROUPS, "46", "experiments_correlation_leads.md",
                                                        "Correlation audit leads"),
      "lgb_extras": lgb_extras_experiments, "underdog": underdog_experiments,
-     "poisson": poisson_experiments}.get(args.only, main)()
+     "poisson": poisson_experiments, "close_target": close_target_experiments,
+     "rapm_priors": rapm_prior_experiments, "long_history": long_history_experiments}.get(args.only, main)()
