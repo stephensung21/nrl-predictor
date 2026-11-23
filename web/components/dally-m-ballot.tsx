@@ -4,6 +4,7 @@
 // over the players who took the field that round. Saved to the viewer's VoteStore (this browser for the
 // sample, the database live), where it can be changed until voting closes.
 
+import { Pictogram } from "./art/pictogram";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { PlayerPhoto } from "@/components/player-photo";
@@ -183,11 +184,14 @@ export function DallyMNudge({ season, round, closes, now }: { season: number; ro
   }, [season, round, closes, now]);
   if (!show) return null;
   return (
-    <p className="mt-4 text-[14px] text-ink-2">
-      <Link href="/dally-m" className="font-semibold text-ink underline underline-offset-2 hover:text-lime-fg">
-        Dally M votes for Round {round} are open
-      </Link>
-      . Give your 3, 2 and 1 before the next round kicks off.
+    <p className="mt-4 flex items-start gap-2.5 text-[14px] text-ink-2">
+      <Pictogram name="podium" size={20} className="mt-px text-ink-3" />
+      <span>
+        <Link href="/dally-m" className="font-semibold text-ink underline underline-offset-2 hover:text-lime-fg">
+          Dally M votes for Round {round} are open
+        </Link>
+        . Give your 3, 2 and 1 before the next round kicks off.
+      </span>
     </p>
   );
 }

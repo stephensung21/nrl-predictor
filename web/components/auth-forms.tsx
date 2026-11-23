@@ -1,5 +1,7 @@
 "use client";
 
+import { Spot } from "./art/spot";
+import { RuleStrip } from "./art/diagrams";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -419,12 +421,21 @@ export function JoinFlow({ invite: inviteCode, group }: { invite?: string; group
       : "Join the comp.";
   return (
     <section className="pt-6">
+      <Spot name="kick" className="mb-4" />
       <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">{title}</h1>
       <p className="mt-3 max-w-[40ch] text-[15px] leading-relaxed text-ink-2">
         {group ? `${tippersIn(group.members)}. ` : ""}
-        Tip every NRL game, climb the ladder, and see if you can beat the Model. Everyone&rsquo;s on the global ladder; start
-        or join a group for a ladder of your own mates.
+        Tip every NRL game and see if you can beat the Model.
       </p>
+      <RuleStrip
+        className="mt-5"
+        label="Joining"
+        steps={[
+          { icon: "whistle", title: "Sign in", note: "Google, no password" },
+          { icon: "lineup", title: "Three answers", note: "Name, team, auto-tip" },
+          { icon: "ball", title: "Tip", note: group ? `On the global ladder and ${group.name}’s` : "On the global ladder; start a group any time" },
+        ]}
+      />
       {!session ? (
         <>
           <SignInPanel intent="join" returnTo={returnTo} />
@@ -468,6 +479,7 @@ export function SignInPage() {
 
   return (
     <section className="pt-6">
+      <Spot name="kick" className="mb-4" />
       <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">Sign in</h1>
       <p className="mt-3 text-[15px] text-ink-2">Welcome back. {EMAIL_SIGN_IN ? "Same email or Google account" : "The same Google account"} you joined with.</p>
       {linkFailed && (

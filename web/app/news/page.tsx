@@ -1,18 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, RotateCw } from "lucide-react";
+import { Spot, type SpotName } from "@/components/art/spot";
+import { Pictogram } from "@/components/art/pictogram";
 import { SampleNote } from "@/components/sample-note";
 import { createNewsSource, domainLabel, flairLabel, flairsOf, type NewsFeed } from "@/lib/news";
 import { sydney } from "@/lib/time";
 
 export const metadata: Metadata = { title: "News · Full Credit" };
 
+/** A post's kind as a pictogram: a discussion thread, a video or picture, or a news story. Never a publisher's logo. */
+function flairIcon(flair: string) {
+  const f = flair.toLowerCase();
+  if (f.includes("thread") || f.includes("discussion")) return "thread" as const;
+  if (f.includes("media") || f.includes("video") || f.includes("highlight")) return "media" as const;
+  return "news" as const;
+}
+
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
 /** Empty and error states are one of the places the brief allows a little banter. */
-function Quiet({ title, body, retry }: { title: string; body: string; retry: string }) {
+function Quiet({ title, body, retry, art }: { title: string; body: string; retry: string; art: SpotName }) {
   return (
-    <section className="pt-16 pb-8">
+    <section className="pt-10 pb-8">
+      <Spot name={art} className="mb-5" />
       <h1 className="font-display text-[52px] leading-[0.9] font-bold uppercase">{title}</h1>
       <p className="mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink-2">{body}</p>
       <a
@@ -56,7 +67,7 @@ export default async function NewsPage({ searchParams }: Props) {
   if (!feed) {
     return (
       <main>
-        <Quiet title={"Reddit’s gone quiet."} body={"Couldn’t reach r/nrl just now. It’s usually back in a minute."} retry={here} />
+        <Quiet title={"Reddit’s gone quiet."} body={"Couldn’t reach r/nrl just now. It’s usually back in a minute."} retry={here} art="knock-on" />
         {states(forced)}
       </main>
     );
@@ -64,7 +75,7 @@ export default async function NewsPage({ searchParams }: Props) {
   if (feed.posts.length === 0) {
     return (
       <main>
-        <Quiet title="Nothing doing." body="r/nrl has nothing new right now. Must be the off-season." retry={here} />
+        <Quiet title="Nothing doing." body="r/nrl has nothing new right now. Must be the off-season." retry={here} art="empty-pitch" />
         {states(forced)}
       </main>
     );
@@ -126,6 +137,7 @@ export default async function NewsPage({ searchParams }: Props) {
           {shown.map((p) => (
             <li key={p.id}>
               <a href={p.link} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-3 py-3">
+                <Pictogram name={flairIcon(flairLabel(p))} size={24} className="mt-0.5 text-ink-3 group-hover:text-ink-2" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[16px] leading-snug font-semibold text-ink group-hover:underline">{p.title}</span>
                   <span className="mt-1 block text-[12px] text-ink-3">

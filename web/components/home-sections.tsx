@@ -1,3 +1,4 @@
+import { Spot } from "./art/spot";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock, RotateCw, X } from "lucide-react";
 import { emptyCopy, modelRoundLine, perfectLine, roastLine, vsModelLine } from "@/lib/copy";
@@ -406,7 +407,8 @@ export function RecapPanel({
 export function EmptyState({ kind, lastRound }: { kind: keyof typeof emptyCopy; lastRound?: { season: number; round: number } }) {
   const c = emptyCopy[kind];
   return (
-    <section className="pt-16 pb-8" aria-live={kind === "error" ? "polite" : undefined}>
+    <section className="pt-10 pb-8" aria-live={kind === "error" ? "polite" : undefined}>
+      <Spot name={kind === "error" ? "knock-on" : kind === "pending" ? "team-sheet" : "empty-pitch"} className="mb-5" />
       <h1 className="font-display text-[52px] leading-[0.9] font-bold uppercase">{c.title}</h1>
       <p className="mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink-2">{c.body}</p>
       {kind === "error" ? (

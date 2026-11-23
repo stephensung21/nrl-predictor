@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RuleStrip } from "@/components/art/diagrams";
 import Link from "next/link";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { EloSeasonChart, EloTeamChart, SeasonPicker } from "@/components/elo-charts";
@@ -48,11 +49,16 @@ export default async function EloPage({ searchParams }: Props) {
         <SeasonPicker seasons={src.seasons} value={season} team={pickedTeam} />
       </div>
 
-      <p className="mt-3 max-w-[60ch] text-[14px] leading-snug text-ink-2">
-        Elo rates each team from its results: beating a strong team earns more than beating a weak one. A 100-point gap is about a{" "}
-        {gap100}% chance of winning before home advantage, which is worth {HOME_ADVANTAGE} points. Every rating drifts back toward
-        1500 over the off-season.
-      </p>
+      <RuleStrip
+        className="mt-3 max-w-[48rem]"
+        label="How Elo works"
+        steps={[
+          { icon: "ratings", title: "Results move ratings", note: "Beating a strong team earns more" },
+          { icon: "dial", title: `100 points ≈ ${gap100}%`, note: "Chance of winning, before home advantage" },
+          { icon: "posts", title: `Home: +${HOME_ADVANTAGE} points`, note: "Added for a team at its own ground" },
+          { icon: "calendar", title: "Back toward 1500", note: "Every rating drifts over the off-season" },
+        ]}
+      />
 
       <div className="mt-5 md:grid md:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] md:items-start md:gap-x-10">
         <section aria-labelledby="ratings">

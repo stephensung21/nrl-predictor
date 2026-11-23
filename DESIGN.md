@@ -645,11 +645,21 @@ Anything that deletes starts as a quiet text action and opens an inline panel in
 ### News List
 `/news`, read-mode in the column: the 26px title over a 13px `ink-3` meta line ("From r/nrl · fetched Tue 12 May 5:15pm", plus "· flairs guessed" on the sample), the flair chip row, then `line-soft`-divided rows. Each row is one link opening Reddit in a new tab (a screen-reader note says so): a 16px semibold `ink` headline that underlines on hover, a 12px `ink-3` meta line (flair · Sydney time · linked site), and a 16px `ink-3` external-link icon at the right. An unknown flair gets a ruled 15px `ink-2` line ("No “Trades” posts in this feed.") with a "Show all" link. The sample-data note appears only when the source is the sample.
 
+### Illustrations and Pictograms
+The site's own drawings (`web/components/art/`, design in `docs/superpowers/specs/2026-11-24-site-graphics-design.md`), never club logos or clip art: "chalk on the scoreboard". Round-cap strokes in `ink-2` and `ink-3`, flat fills in `pitch` and `raised-2`, ground lines in `line`; the shapes come from the logo (the H goalposts, the rugby ball, the pitch with ten-metre lines). Lime only where the picture means you, an action or a right call (the ball sailing through on the join page); team colours never. Static: the logo's kick is the one animated mark.
+- **Pictograms** (`Pictogram`, 20, 24 or 32px, 24-unit grid): beside a line of text, never alone without a label. Decorative ones are `aria-hidden`.
+- **Spot illustrations** (`Spot`, 120 by 90, 112px wide on phones, 128px from `sm`): one above the title of every message page and empty or error state (whistle: sign in; kick: join and sign in; empty pitch: off-season and nothing yet; team sheet: on its way; knock-on: not found and errors; ballot: no Dally M votes; last one: no last man standing game; huddle: no groups). Always decorative.
+- **Rule strip** (`RuleStrip`): rules or steps as a row of 3 to 5 (two columns on phones, three when there are three), each a 32px pictogram over a 14px semibold `ink` line and a 13px `ink-3` note, between `line-soft` rules. Not tiles: no boxes. Used for last man standing, the Dally M, groups, joining and Elo.
+- **Flow diagram** (`FlowDiagram`): inputs in two columns, a down arrow, the centre on an unbordered `raised` tint, a down arrow, the outputs. Used for what goes into the Model.
+- **Compare bars** (`CompareBars`): forecasters' figures as 10px bars in their series colours on `pitch`, starting from a stated baseline (a coin toss for win rates), the figure in the score face at the end.
+- **Icon list** (`IconList`): a list whose items lead with a 24px pictogram, a semibold line and a short `ink-2` line, between `line-soft` rules. Used for where the Model falls down.
+- Diagram words are real text, so screen readers get the same facts; drawings are `aria-hidden`.
+
 ### Empty and Error States
-A 52px display title, one 16px relaxed `ink-2` line capped at 34ch, then one way on: a lime pill ("Try again" with a retry icon) or, on not-found, link rows. These are one of the four places banter is allowed ("Nothing doing.", "Reddit's gone quiet.", "Knocked on.").
+A spot illustration (above), then a 52px display title, one 16px relaxed `ink-2` line capped at 34ch, then one way on: a lime pill ("Try again" with a retry icon) or, on not-found, link rows. These are one of the four places banter is allowed ("Nothing doing.", "Reddit's gone quiet.", "Knocked on.").
 
 ### Not Found
-"Knocked on." at 52px, one line on why, then three link rows capped at 24rem (This round, Your tips, The ladder) between `line-soft` rules: 15px semibold `ink` with an `ink-3` chevron that nudges 2px right on hover.
+The knock-on spot, then "Knocked on." at 52px, one line on why, then three link rows capped at 24rem (This round, Your tips, The ladder) between `line-soft` rules: 15px semibold `ink` with an `ink-3` chevron that nudges 2px right on hover.
 
 ### Odds copy
 No disclaimer or gambling message. The bookmaker is named in plain text and the source credited once at the page foot (12px `ink-3`: aussportsbetting.com historical odds, BlueBet prices, margin removed). The no-odds Model is explained once, in a single line under the page heading.

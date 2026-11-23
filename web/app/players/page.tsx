@@ -33,10 +33,10 @@ export default async function PlayersPage({ searchParams }: Props) {
   const q = await searchParams;
   const src = await playersSource();
   if (src.missing) {
-    return <PageMessage title="Player stats are on their way." body="The players page's data hasn't been published yet." />;
+    return <PageMessage art="team-sheet" title="Player stats are on their way." body="The players page's data hasn't been published yet." />;
   }
   if (!src.seasons.length) {
-    return <PageMessage title="No player stats yet." body="They appear once the first games of the season are played." />;
+    return <PageMessage art="empty-pitch" title="No player stats yet." body="They appear once the first games of the season are played." />;
   }
   const season = src.seasons.includes(Number(q.season)) ? Number(q.season) : src.seasons[0];
   const players = await src.season(season);

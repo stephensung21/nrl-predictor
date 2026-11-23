@@ -1,3 +1,4 @@
+import { RuleStrip } from "@/components/art/diagrams";
 import { GroupSwitcher } from "@/components/group-switcher";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -23,9 +24,9 @@ type Props = { searchParams: Promise<Record<string, string | undefined>> };
 export default async function DallyMPage({ searchParams }: Props) {
   const q = await searchParams;
   const src = await dallyMSource(q.group);
-  if (src.missing) return <PageMessage title="The Dally M is on its way." body="Its votes and players haven't been set up yet." />;
+  if (src.missing) return <PageMessage art="team-sheet" title="The Dally M is on its way." body="Its votes and players haven't been set up yet." />;
   if (!src.seasons.length) {
-    return <PageMessage title="No Dally M votes yet." body="Voting opens after the first round of the season is played." />;
+    return <PageMessage art="ballot" title="No Dally M votes yet." body="Voting opens after the first round of the season is played." />;
   }
   const season = src.seasons.includes(Number(q.season)) ? Number(q.season) : src.seasons[0];
   const rounds = await src.rounds(season);
@@ -53,10 +54,14 @@ export default async function DallyMPage({ searchParams }: Props) {
         )}
       </div>
       {votes?.groups && <GroupSwitcher choice={votes.groups} />}
-      <p className="max-w-prose text-[15px] leading-snug text-ink-2">
-        Each round, give 3, 2 and 1 votes to the best players of the whole round. Votes stay hidden until the next round kicks
-        off, then everyone&rsquo;s are revealed.
-      </p>
+      <RuleStrip
+        label="How the votes work"
+        steps={[
+          { icon: "podium", title: "3, 2 and 1 votes", note: "The best players of the whole round" },
+          { icon: "hidden", title: "Hidden till next round", note: "Nobody copies anyone" },
+          { icon: "crowd", title: "Then everyone’s revealed", note: "And added to the leaderboard" },
+        ]}
+      />
 
       <YourVotes season={season} now={src.now} open={open} players={openPlayers} votes={votes} nextRound={(rounds.at(-1)?.round ?? 0) + 1} />
 
@@ -74,6 +79,7 @@ export default async function DallyMPage({ searchParams }: Props) {
         <Leaderboard season={season} tallies={votes.leaderboard} all={q.all === "1"} query={query} />
       ) : (
         <PageMessage
+          art="whistle"
           title="Sign in to see the votes."
           body="The Dally M is for the comp's tippers: sign in to vote and see the leaderboard."
           action={{ href: "/sign-in", label: "Sign in" }}

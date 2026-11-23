@@ -3,6 +3,8 @@
 // The groups page (docs/superpowers/specs/2026-11-24-tipping-groups-design.md): your groups, each
 // with its share link and members; the owner's controls; leaving; and starting a new group.
 
+import { Spot } from "./art/spot";
+import { RuleStrip } from "./art/diagrams";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -54,6 +56,7 @@ export function GroupsPanel() {
     const out = state.kind === "signed-out";
     return (
       <section className="pt-12">
+        <Spot name={out ? "whistle" : "huddle"} className="mb-5" />
         <h1 className="font-display text-[36px] leading-[0.92] font-bold uppercase">{out ? "Sign in for groups." : "Join the comp first."}</h1>
         <p className="mt-4 max-w-[38ch] text-[16px] leading-relaxed text-ink-2">
           A group is a ladder of your own mates, alongside the global one. {out ? "Sign in to start one or see yours." : "Three quick things and you’re in."}
@@ -69,10 +72,16 @@ export function GroupsPanel() {
   return (
     <section>
       <h1 className="pt-4 pb-3 font-display text-[26px] leading-none font-bold uppercase">Groups</h1>
-      <p className="max-w-prose text-[15px] leading-snug text-ink-2">
-        Everyone&rsquo;s on the global ladder. A group is a ladder of your own: share its link, and the ladder, last man standing and
-        Dally M show just your mates. Your tips count in every group you&rsquo;re in.
-      </p>
+      {groups.length === 0 && <Spot name="huddle" className="mb-4" />}
+      <RuleStrip
+        label="How groups work"
+        steps={[
+          { icon: "people", title: "Start a group", note: "Or join one from a link" },
+          { icon: "link", title: "Share its link", note: "Anyone with it can join" },
+          { icon: "crown", title: "Your own ladder", note: "Plus last man standing and the Dally M" },
+          { icon: "tick", title: "Same tips everywhere", note: "Nothing to tip twice" },
+        ]}
+      />
       {error && (
         <p role="alert" className="mt-4 text-[14px] text-miss">
           {error}

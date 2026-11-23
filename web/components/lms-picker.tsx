@@ -5,6 +5,7 @@
 // kicked off can't be picked, and once the picked game has kicked off the pick is locked in. Saved to
 // the viewer's PickStore (this browser for the sample, the database live).
 
+import { Pictogram } from "./art/pictogram";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -141,11 +142,14 @@ export function LmsNudge({ season, round }: { season: number; round: number }) {
   }, [season, round]);
   if (!show) return null;
   return (
-    <p className="mt-2 text-[14px] text-ink-2">
-      <Link href="/last-man-standing" className="font-semibold text-ink underline underline-offset-2 hover:text-lime-fg">
-        You&rsquo;re still in last man standing
-      </Link>
-      . Pick a team for Round {round}.
+    <p className="mt-2 flex items-start gap-2.5 text-[14px] text-ink-2">
+      <Pictogram name="crown" size={20} className="mt-px text-ink-3" />
+      <span>
+        <Link href="/last-man-standing" className="font-semibold text-ink underline underline-offset-2 hover:text-lime-fg">
+          You&rsquo;re still in last man standing
+        </Link>
+        . Pick a team for Round {round}.
+      </span>
     </p>
   );
 }

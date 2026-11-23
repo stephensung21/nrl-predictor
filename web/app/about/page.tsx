@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { ModelBadge } from "@/components/team-badge";
-import { SERIES } from "@/lib/odds";
+import { CompareBars, FlowDiagram, IconList } from "@/components/art/diagrams";
+import { Pictogram } from "@/components/art/pictogram";
 
 export const metadata: Metadata = { title: "How the Model works · Full Credit" };
 
@@ -35,7 +36,6 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 export default function AboutPage() {
-  const pct = (x: number) => `${Math.round(x * 100)}%`;
   return (
     <main>
       <div className="pt-4">
@@ -59,113 +59,92 @@ export default function AboutPage() {
 
       <Section id="what" title="What it is">
         <p>
-          A machine-learning model that gives every game a chance to win, a winning margin and a total score, which together
-          make its predicted score. Its tip is whichever team it gives the better chance, so the score it shows always agrees
-          with the tip.
-        </p>
-        <p>
-          It&rsquo;s also a tipper in the comp. Every round it tips its prediction from just before kickoff, and it never forgets
-          a game, so it never needs an auto-tip.
+          A machine-learning model that gives every game a win chance, a margin and a total, which together make its predicted
+          score. It tips whichever team it gives the better chance, and it&rsquo;s a tipper in the comp too: it tips its last
+          prediction before kickoff and never forgets a game.
         </p>
       </Section>
 
       <Section id="inputs" title="What goes in">
-        <ul className="list-disc space-y-2 pl-5 marker:text-ink-3">
-          <li>
-            <span className="font-semibold text-ink">Team ratings</span> built from every result since 2009: Elo, and a rating
-            fitted to winning margins. Together they say how strong each team is right now.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">Tuesday&rsquo;s team lists:</span> a rating for every player from how his
-            teams have gone with him on the field, plus who&rsquo;s missing from the spine and whether stars are out.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">The situation:</span> rest days, travel and whether a team is at its own
-            ground, plus the Origin period and a wet ground for the total.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">The bookies&rsquo; opening prices,</span> for the main Model only.
-          </li>
-        </ul>
+        <FlowDiagram
+          label="What goes into the Model and what comes out"
+          inputs={[
+            { icon: "ratings", title: "Team ratings", note: "Elo and a margin rating, from every result since 2009" },
+            { icon: "lineup", title: "Tuesday’s team lists", note: "A rating for every player, the spine, stars out" },
+            { icon: "calendar", title: "The situation", note: "Rest, travel, home ground, Origin, a wet ground" },
+            { icon: "tag", title: "Opening prices", note: "The bookies’ first line: the main Model only" },
+          ]}
+          centre={{ title: "The Model", note: "Frozen before the season" }}
+          outputs={[
+            { icon: "dial", title: "Win chance", note: "Roosters 74%" },
+            { icon: "short-bars", title: "Margin and total", note: "So a score: 32–18" },
+            { icon: "tick", title: "Its tip", note: "Always the team it backs" },
+          ]}
+        />
       </Section>
 
       <Section id="versions" title="Two versions">
-        <p>
-          The <span className="font-semibold text-ink">main Model</span> uses the bookies&rsquo; opening prices as one of its
-          inputs. It&rsquo;s the more accurate one, so it&rsquo;s the one that tips in the comp and the one on the Round page.
-        </p>
-        <p>
-          The <span className="font-semibold text-ink">Model without odds</span> never sees a price, so it&rsquo;s an independent
-          opinion of the bookies. That&rsquo;s the one on the{" "}
-          <Link href="/odds" className="font-semibold text-ink underline decoration-line">
-            Model vs market
-          </Link>{" "}
-          page.
-        </p>
+        <ul className="mt-1 grid gap-x-6 gap-y-4 border-y border-line-soft py-4 sm:grid-cols-2">
+          <li className="flex items-start gap-3">
+            <Pictogram name="tag" size={32} className="text-ink-2" />
+            <span>
+              <span className="block font-semibold text-ink">With odds: the main Model</span>
+              <span className="block text-[14px] leading-snug text-ink-2">The more accurate one. It tips in the comp and shows on the Round page.</span>
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <Pictogram name="hidden" size={32} className="text-ink-2" />
+            <span>
+              <span className="block font-semibold text-ink">Without odds</span>
+              <span className="block text-[14px] leading-snug text-ink-2">
+                Never sees a price, so it&rsquo;s an independent opinion of the bookies: the one on{" "}
+                <Link href="/odds" className="font-semibold text-ink underline decoration-line">
+                  Model vs market
+                </Link>
+                .
+              </span>
+            </span>
+          </li>
+        </ul>
       </Section>
 
       <Section id="tested" title="How it was tested">
         <p>
-          It was only ever judged on seasons it never saw while it was being built. On 2023&ndash;25 its win chances were more
-          accurate than Elo&rsquo;s and the bookies&rsquo; opening prices, and it tipped slightly more winners than the opening
-          favourite, though the closing prices were slightly more accurate still. Then, with everything fixed in advance, it predicted the whole 2026 season once.
+          Only ever on seasons it never saw while being built: 2023&ndash;25, then the whole 2026 season, predicted once with
+          everything fixed in advance.
+        </p>
+        <CompareBars
+          caption="Winners tipped in 2026, all 213 games, from a coin toss (50%)"
+          min={50}
+          max={75}
+          rows={[
+            { label: "The Model", value: Math.round(TEST_2026[0].accuracy * 100), series: "model" },
+            { label: "Bookies’ favourite", value: Math.round(TEST_2026[3].accuracy * 100), series: "market" },
+            { label: "Elo", value: Math.round(TEST_2026[4].accuracy * 100), series: "elo" },
+          ]}
+        />
+        <p>
+          Its win chances matched the bookies&rsquo; closing prices, the market&rsquo;s sharpest: level with the best, not ahead.
+          It&rsquo;s frozen before each season; refitting it every week made no clear difference.
         </p>
       </Section>
-      <dl className="mt-4 grid max-w-[40rem] grid-cols-3 border-y border-line-soft">
-        {(
-          [
-            ["model", "The Model", TEST_2026[0].accuracy, true],
-            ["market", "Bookies’ favourite", TEST_2026[3].accuracy, false],
-            ["elo", "Elo", TEST_2026[4].accuracy, false],
-          ] as const
-        ).map(([k, label, acc, main]) => (
-          <div key={label} className="py-3 pr-2">
-            {/* The same comparison as /model and /odds, so the same series keys. */}
-            <dt className="flex min-h-[2lh] items-start gap-1.5 text-[12px] leading-tight text-ink-3">
-              <span className="mt-[0.45em] h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: SERIES[k].colour }} aria-hidden />
-              {label}
-            </dt>
-            <dd className={`mt-1 font-display text-[30px] leading-none font-bold ${main ? "text-ink" : "text-ink-2"}`}>
-              {pct(acc)}
-            </dd>
-            <dd className="mt-0.5 text-[12px] text-ink-3">of 2026 winners</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-3 max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
-        Its win chances were as accurate as the bookies&rsquo; closing prices, the market&rsquo;s sharpest numbers. That&rsquo;s
-        level with the best there is, not ahead of it. The Model is frozen before each season and only its inputs update week to
-        week: refitting it every week was tested, made no clear difference, and was worse late in the season.
-      </p>
 
       <Section id="limits" title="Where it falls down">
-        <ul className="list-disc space-y-2 pl-5 marker:text-ink-3">
-          <li>
-            <span className="font-semibold text-ink">It&rsquo;s wrong about a third of the time.</span> A 70% favourite still
-            loses three games in ten.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">The bookies are hard to beat.</span> Over 2026 it matched their closing
-            prices, and over 2023&ndash;25 the closing prices were slightly better. It hasn&rsquo;t beaten the market at its
-            sharpest.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">Late changes.</span> The main prediction comes from Tuesday&rsquo;s lists.
-            It updates through the week, but a change an hour before kickoff can beat the last update.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">Weather</span> isn&rsquo;t known on Tuesday, so the predicted total
-            doesn&rsquo;t allow for rain.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">Not much data.</span> A season is only about 200 games, and a new club
-            like the Perth Bears starts with no history at all, so its early predictions will be rough.
-          </li>
-          <li>
-            <span className="font-semibold text-ink">It only knows the numbers.</span> Mid-week injuries that aren&rsquo;t on a
-            team list, a coach under pressure or a dead-rubber round are invisible to it.
-          </li>
-        </ul>
+        <IconList
+          className="text-[15px]"
+          items={[
+            { icon: "cross", title: "It’s wrong about a third of the time.", note: "A 70% favourite still loses three games in ten." },
+            {
+              icon: "tag",
+              title: "The bookies are hard to beat.",
+              note: "Over 2026 it matched their closing prices; over 2023–25 the closing prices were slightly better. It hasn’t beaten the market at its sharpest.",
+            },
+            { icon: "swap", title: "Late changes.", note: "It predicts from Tuesday’s lists and updates through the week, but a change an hour before kickoff can beat the last update." },
+            { icon: "rain", title: "Weather.", note: "It isn’t known on Tuesday, so the predicted total doesn’t allow for rain." },
+            { icon: "short-bars", title: "Not much data.", note: "About 200 games a season, and a new club like the Perth Bears starts with no history, so its early predictions will be rough." },
+            { icon: "question", title: "It only knows the numbers.", note: "Mid-week injuries not on a team list, a coach under pressure or a dead rubber are invisible to it." },
+          ]}
+        />
       </Section>
 
       <details className="group mt-10 border-y border-line-soft">

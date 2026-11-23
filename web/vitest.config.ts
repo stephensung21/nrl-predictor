@@ -7,4 +7,6 @@ export default defineConfig({
   test: { hookTimeout: 60_000, testTimeout: 30_000 },
   // The app's "@/" import paths, so tests can load components too.
   resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
+  // JSX as Next.js compiles it (the automatic runtime), so components render in tests without importing React.
+  esbuild: { jsx: "automatic" },
 });

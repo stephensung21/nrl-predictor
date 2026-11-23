@@ -58,6 +58,7 @@ async function LiveLadder({ group }: { group?: string }) {
   if (!user) {
     return (
       <PageMessage
+        art="whistle"
         title="Sign in to see the ladder."
         body="Sign in with the Google account you joined with. New here? Joining is open to everyone."
         action={{ href: "/sign-in", label: "Sign in" }}
@@ -65,13 +66,14 @@ async function LiveLadder({ group }: { group?: string }) {
     );
   }
   const { data: me } = await sb.from("profiles").select("id").eq("id", user.id).maybeSingle();
-  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Three quick things and you’re in." action={{ href: "/join", label: "Join the comp" }} />;
+  if (!me) return <PageMessage art="kick" title="Signed in, but not in the comp." body="Three quick things and you’re in." action={{ href: "/join", label: "Join the comp" }} />;
   const season = await compSeason(sb);
   const groups = await viewerGroups(sb, user.id, group);
   const view = season == null ? null : await readLadder(sb, season, groups.current?.id);
   if (!view) {
     return (
       <PageMessage
+        art="empty-pitch"
         title="The ladder starts with Round 1."
         body={`Points start counting once the first game of the ${season ?? COMP_FIRST_SEASON} season is decided.`}
       />

@@ -39,7 +39,7 @@ export default async function ModelPage() {
       </main>
     );
   }
-  if (live === null) return <PageMessage title="No games graded yet." body="The Model's record starts once its first predicted game is played." />;
+  if (live === null) return <PageMessage art="empty-pitch" title="No games graded yet." body="The Model's record starts once its first predicted game is played." />;
   return (
     <main>
       <ModelRecordView
@@ -194,10 +194,8 @@ function ModelRecordView({
           How it was tested
         </h2>
         <p className="mt-2 max-w-[60ch] text-[15px] leading-relaxed text-ink-2">
-          Before it tipped a single game, the Model was tested on seasons it never saw while being built. Over
-          2023&ndash;25 its win chances were more accurate than Elo&rsquo;s and the bookies&rsquo; opening prices, though the
-          closing prices were slightly better. Over its 2026 test season (every game, predicted before the season started) it
-          matched the closing prices: level with the market at its sharpest, not ahead of it.
+          On seasons it never saw while being built: it beat Elo and the opening prices over 2023&ndash;25, and matched the
+          bookies&rsquo; closing prices over 2026. Level with the market at its sharpest, not ahead of it.
         </p>
         <div className="mt-4 flex flex-col gap-1 text-[15px] font-semibold">
           <Link href="/about" className="group flex items-center justify-between border-y border-line-soft py-3 text-ink hover:text-ink">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { Spot } from "@/components/art/spot";
 
 // Empty and error states are one of the four places the site is allowed some banter (DESIGN_BRIEF.md).
 export const metadata: Metadata = { title: "Not found · Full Credit" };
@@ -8,7 +9,8 @@ export const metadata: Metadata = { title: "Not found · Full Credit" };
 export default function NotFound() {
   return (
     <main>
-      <section className="pt-16 pb-8">
+      <section className="pt-10 pb-8">
+        <Spot name="knock-on" className="mb-5" />
         <h1 className="font-display text-[52px] leading-[0.9] font-bold uppercase">Knocked on.</h1>
         <p className="mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink-2">
           There&rsquo;s nothing at this address. The link might be old, or a game or round that doesn&rsquo;t exist.

@@ -27,7 +27,7 @@ export default async function TipsPage({ searchParams }: { searchParams: Promise
   if (tippingLive) {
     const round = await liveTipRound(new Date());
     // Live tips need live games: without the model's database (SITE_DATABASE_URL) there are none.
-    if (round === undefined) return <PageMessage title="Tipping isn't connected yet." body="The site can't reach the Model's games right now." />;
+    if (round === undefined) return <PageMessage art="team-sheet" title="Tipping isn't connected yet." body="The site can't reach the Model's games right now." />;
     return <LiveTipsPage round={round} />;
   }
   const state: State = (await searchParams).state === "live" ? "live" : "open";
@@ -100,12 +100,12 @@ async function LiveTipsPage({ round }: { round: RoundData | null }) {
   const { data: auth } = await sb.auth.getUser();
   const user = auth.user;
   if (!user) {
-    return <PageMessage title="Sign in to tip." body="Sign in with the Google account you joined with. New here? Joining is open to everyone." action={{ href: "/sign-in", label: "Sign in" }} />;
+    return <PageMessage art="whistle" title="Sign in to tip." body="Sign in with the Google account you joined with. New here? Joining is open to everyone." action={{ href: "/sign-in", label: "Sign in" }} />;
   }
   const { data: me } = await sb.from("profiles").select("id, created_at").eq("id", user.id).maybeSingle();
-  if (!me) return <PageMessage title="Signed in, but not in the comp." body="Three quick things and you’re in." action={{ href: "/join", label: "Join the comp" }} />;
+  if (!me) return <PageMessage art="kick" title="Signed in, but not in the comp." body="Three quick things and you’re in." action={{ href: "/join", label: "Join the comp" }} />;
   if (!round) {
-    return <PageMessage title="No round to tip." body="It's the off-season. Tipping opens when the Model's first predictions for next season are out." />;
+    return <PageMessage art="empty-pitch" title="No round to tip." body="It's the off-season. Tipping opens when the Model's first predictions for next season are out." />;
   }
 
   const view = buildRound({ data: round, now: new Date(), tips: [], tippers: [], ladderBefore: [] });

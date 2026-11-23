@@ -27,6 +27,7 @@ export default async function JoinGroupPage({ params }: { params: Promise<{ code
   if (!group) {
     return (
       <PageMessage
+        art="knock-on"
         title="That group link doesn’t work."
         body="Check you copied the whole link, or ask for a fresh one: the group's owner may have made a new link. You can still join the global comp."
         action={{ href: "/join", label: "Join the comp" }}

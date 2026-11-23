@@ -1,3 +1,4 @@
+import { RuleStrip } from "@/components/art/diagrams";
 import type { Metadata } from "next";
 import { Check, X } from "lucide-react";
 import { GroupSwitcher } from "@/components/group-switcher";
@@ -16,13 +17,14 @@ export const dynamic = "force-dynamic";
 
 export default async function LastManStandingPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const src = await lmsSource((await searchParams).group);
-  if (src.missing) return <PageMessage title="Last man standing is on its way." body="Its picks haven't been set up yet." />;
+  if (src.missing) return <PageMessage art="team-sheet" title="Last man standing is on its way." body="Its picks haven't been set up yet." />;
   if (src.season == null) {
-    return <PageMessage title="No last man standing yet." body={`The first game starts with Round 1 of ${COMP_FIRST_SEASON}, once the draw is out.`} />;
+    return <PageMessage art="last-one" title="No last man standing yet." body={`The first game starts with Round 1 of ${COMP_FIRST_SEASON}, once the draw is out.`} />;
   }
   if (!src.view) {
     return (
       <PageMessage
+        art="whistle"
         title="Sign in to play."
         body="Last man standing is for the comp's tippers: sign in to pick and see who's still in."
         action={{ href: "/sign-in", label: "Sign in" }}
@@ -47,11 +49,15 @@ export default async function LastManStandingPage({ searchParams }: { searchPara
         Last man standing{groups.current ? <span className="text-ink-3"> · {groups.current.name}</span> : null}
       </h1>
       <GroupSwitcher choice={groups} />
-      <p className="max-w-prose text-[15px] leading-snug text-ink-2">
-        Pick one team to win each round, never the same team twice in a game. A loss, a draw or no pick and you&rsquo;re out,
-        unless everyone still in goes out that round: then it doesn&rsquo;t count. The last one left wins, then a new game starts
-        the next round with everyone back in.
-      </p>
+      <RuleStrip
+        label="The rules"
+        steps={[
+          { icon: "ball", title: "Pick one team a round", note: "Never the same team twice in a game" },
+          { icon: "cross", title: "Lose, draw or miss: out", note: "No pick counts as out" },
+          { icon: "draw", title: "Everyone out together?", note: "That round doesn’t count" },
+          { icon: "crown", title: "Last one left wins", note: "A new game starts the next round" },
+        ]}
+      />
 
       <YourPick season={src.season} now={src.now} turn={turn} matches={src.matches} elsewhere={!!elsewhere} />
 
