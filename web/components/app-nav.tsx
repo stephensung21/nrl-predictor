@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CalendarRange, Ellipsis, ListChecks, Medal, Trophy, type LucideIcon } from "lucide-react";
+import { Ellipsis, House, ListChecks, Medal, Trophy, type LucideIcon } from "lucide-react";
 import { createAuthStore } from "@/lib/auth";
 
 type Item = { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean };
 
 const ITEMS: Item[] = [
-  { href: "/", label: "Round", icon: CalendarRange, match: (p) => p === "/" || p.startsWith("/round") || p.startsWith("/match") },
+  { href: "/", label: "Home", icon: House, match: (p) => p === "/" || p.startsWith("/round") || p.startsWith("/match") },
   { href: "/tipping", label: "Tips", icon: ListChecks, match: (p) => p === "/tipping" },
   { href: "/tipping/ladder", label: "Ladder", icon: Trophy, match: (p) => p.startsWith("/tipping/ladder") },
   { href: "/dally-m", label: "Dally M", icon: Medal, match: (p) => p.startsWith("/dally-m") },

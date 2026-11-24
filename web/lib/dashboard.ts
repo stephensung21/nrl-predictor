@@ -2,6 +2,7 @@
 // has to do before the round locks, worked out from the round view, their last man standing turn and
 // the Dally M's open round. Pure, so the page only lays it out.
 
+import { playSeason, yourTurn, type LmsMatch, type LmsPick } from "./lms";
 import type { RoundView } from "./round";
 import type { TeamName } from "./teams";
 import { sydney } from "./time";
@@ -35,12 +36,12 @@ export function todos({ view, now, yourMargin, lms, dallyM }: TodoInput): Todo[]
   const tipped = view.games.filter((g) => g.yourTip).length;
 
   if (untipped.length) {
-    const next = untipped[0];
     out.push({
       key: "tips",
       done: false,
       title: `Tip ${plural(untipped.length, "more game")}`,
-      note: `${tipped} of ${view.games.length} tipped · next lockout ${sydney(next.match.kickoff)}`,
+      // The board's heading gives the next lockout.
+      note: `${tipped} of ${view.games.length} tipped`,
       action: { href: "/tipping", label: `Tip ${untipped.length} →` },
     });
   } else {
@@ -89,4 +90,44 @@ export function todos({ view, now, yourMargin, lms, dallyM }: TodoInput): Todo[]
   }
 
   return [...out.filter((t) => !t.done), ...out.filter((t) => t.done)];
+}
+
+// ---------- Last man standing at a glance ----------
+
+
+export type LmsGlance = {
+  /** The to-do's part: the open round, whether you're in any of your games, and your pick. */
+  todo: { round: number; alive: boolean; picked?: TeamName } | null;
+  /** The shown group's (or the global) game: its number, you in or out, how many left of how many. */
+  game: number;
+  alive: boolean;
+  stillIn: number;
+  field: number;
+  wins: number;
+  used: TeamName[];
+};
+
+/**
+ * Last man standing as the dashboard shows it, from the same inputs as its page: `tippers` is the
+ * shown field, `fields` every game you're in (one pick counts in all of them).
+ */
+export function lmsGlance(you: string, tippers: string[], fields: string[][], matches: LmsMatch[], picks: LmsPick[], seasonOver: boolean): LmsGlance | null {
+  const season = playSeason(tippers, matches, picks, seasonOver);
+  const game = season.games.at(-1);
+  if (!game) return null;
+  const shown = yourTurn(season, you);
+  const elsewhere =
+    shown && !shown.alive
+      ? fields.map((f) => yourTurn(playSeason(f, matches, picks, seasonOver), you)).find((t) => t?.alive && t.round === shown.round)
+      : undefined;
+  const turn = elsewhere ?? shown;
+  return {
+    todo: turn ? { round: turn.round, alive: turn.alive, ...(turn.pick ? { picked: turn.pick.team } : {}) } : null,
+    game: game.number,
+    alive: game.alive.includes(you),
+    stillIn: game.alive.length,
+    field: tippers.length,
+    wins: season.tally.find((t) => t.userId === you)?.wins ?? 0,
+    used: shown?.used ?? [],
+  };
 }

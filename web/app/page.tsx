@@ -12,9 +12,14 @@ import { ladderBefore } from "@/lib/ladder";
 import { buildRound } from "@/lib/round";
 import type { RoundComp } from "@/lib/comp";
 import { GroupSwitcher } from "@/components/group-switcher";
+import { Dashboard } from "@/components/dashboard";
+import { todos } from "@/lib/dashboard";
+import { dashboardComps } from "@/lib/dashboard-data";
+import { choiceOf, sampleGroups } from "@/lib/groups-server";
 import { liveHome, viewerRoundComp, type LiveHome } from "@/lib/source";
 import {
   margins,
+  MODEL_ID,
   modelRecord,
   NEXT_ROUND,
   round10,
@@ -31,7 +36,12 @@ const STATES: SampleState[] = ["recap", "open", "live", "pending", "offseason", 
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams;
   const live = await liveHome(new Date());
-  if (live) return <LiveHomePage live={live} comp={live.kind === "round" ? await viewerRoundComp(live.round) : null} />;
+  if (live) {
+    const comp = live.kind === "round" ? await viewerRoundComp(live.round) : null;
+    // A signed-in tipper in a comp season gets their week at a glance; anyone else the round.
+    if (live.kind === "round" && comp) return <LiveDashboard live={live} comp={comp} />;
+    return <LiveHomePage live={live} comp={comp} />;
+  }
   const state: SampleState = STATES.includes(params.state as SampleState) ? (params.state as SampleState) : "open";
   const signedIn = params.as !== "guest";
 
@@ -47,6 +57,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   }
 
   const nowIso = SAMPLE_NOW[state];
+  if (signedIn) return <SampleDashboard state={state} group={params.group} />;
   const view = buildRound({
     data: round10,
     now: new Date(nowIso),
@@ -88,6 +99,46 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </ul>
       <ModelRecordStrip record={modelRecord} />
       <SampleBar state={state} signedIn={signedIn} />
+    </main>
+  );
+}
+
+/** The dashboard from the database: the round as the viewer's group sees it, and their other comps. */
+async function LiveDashboard({ live, comp }: { live: Extract<LiveHome, { kind: "round" }>; comp: RoundComp }) {
+  const now = new Date();
+  const view = buildRound({ data: live.round, now, tips: comp.tips, tippers: comp.tippers, ladderBefore: comp.ladderBefore, youId: comp.youId });
+  const { lms, dallyM } = await dashboardComps();
+  const items = todos({ view, now, yourMargin: comp.yourMargin, lms: lms?.todo ?? null, dallyM: dallyM?.todo ?? null });
+  return (
+    <main>
+      <Dashboard view={view} items={items} youId={comp.youId} lms={lms} dallyM={dallyM} groups={comp.groups} />
+      {live.record && <ModelRecordStrip record={live.record} />}
+    </main>
+  );
+}
+
+/** The sample's dashboard: the sample week as Sully sees it, kept to a sample group when one is chosen. */
+async function SampleDashboard({ state, group }: { state: "open" | "live" | "recap"; group?: string }) {
+  const now = new Date(SAMPLE_NOW[state]);
+  const g = await sampleGroups(group);
+  const inGroup = (id: string) => !g.memberIds || g.memberIds.has(id) || id === MODEL_ID;
+  const view = buildRound({
+    data: round10,
+    now,
+    tips: tips.filter((t) => inGroup(t.tipperId)),
+    tippers: tippers.filter((t) => inGroup(t.id)),
+    ladderBefore: ladderBefore(round10.round).filter((r) => inGroup(r.tipperId)),
+    youId: YOU_ID,
+    yourTipLimit: state === "open" ? YOUR_EARLY_TIP_COUNT : undefined,
+  });
+  const yourMargin = view.featured.yourTip ? margins.find((m) => m.tipperId === YOU_ID)?.margin : undefined;
+  const { lms, dallyM } = await dashboardComps(group);
+  const items = todos({ view, now, yourMargin, lms: lms?.todo ?? null, dallyM: dallyM?.todo ?? null });
+  return (
+    <main>
+      <Dashboard view={view} items={items} youId={YOU_ID} lms={lms} dallyM={dallyM} groups={choiceOf(g)} />
+      <ModelRecordStrip record={modelRecord} />
+      <SampleBar state={state} signedIn />
     </main>
   );
 }

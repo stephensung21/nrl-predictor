@@ -11,10 +11,10 @@ const NOW = new Date("2026-05-05T09:30:00Z"); // Tuesday night, before the first
 const byKey = (list: ReturnType<typeof todos>) => Object.fromEntries(list.map((t) => [t.key, t]));
 
 describe("todos", () => {
-  it("asks for the untipped games, with the next lockout, and the button says how many", () => {
+  it("asks for the untipped games, and the button says how many", () => {
     const t = byKey(todos({ view: view(3), now: NOW, yourMargin: 10, lms: null, dallyM: null }));
     expect(t.tips).toMatchObject({ done: false, title: "Tip 4 more games", action: { href: "/tipping", label: "Tip 4 →" } });
-    expect(t.tips.note).toMatch(/^3 of 7 tipped · next lockout /);
+    expect(t.tips.note).toBe("3 of 7 tipped");
   });
 
   it("ticks the tips off once every game is tipped", () => {
