@@ -150,7 +150,7 @@ export default function AboutPage() {
       <details className="group mt-10 border-y border-line-soft">
         <summary className="flex cursor-pointer list-none items-center justify-between py-3.5 text-[15px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
           The technical details
-          <ChevronRight className="size-5 text-ink-3 transition-transform group-open:rotate-90" aria-hidden />
+          <ChevronRight className="size-5 text-ink-3 transition-[transform,color] group-open:rotate-90 group-hover:text-ink-2" aria-hidden />
         </summary>
         <div className="max-w-[60ch] space-y-3 pb-5 text-[15px] leading-relaxed text-ink-2">
           <p>

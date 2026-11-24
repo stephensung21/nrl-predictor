@@ -168,7 +168,7 @@ export function TipList({
           aria-checked={showHint}
           aria-labelledby="hint-label"
           onClick={toggleHint}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${showHint ? "bg-ink-2" : "bg-raised-2 ring-1 ring-line ring-inset"}`}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${showHint ? "bg-ink-2 hover:bg-ink-3" : "bg-raised-2 ring-1 ring-line ring-inset hover:ring-ink-3"}`}
         >
           <span
             className={`absolute top-1 left-1 size-5 rounded-full bg-ground transition-transform duration-200 ease-[var(--ease-out-expo)] ${showHint ? "translate-x-5" : ""}`}

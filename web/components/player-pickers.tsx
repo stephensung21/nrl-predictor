@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 const field =
-  "h-11 rounded-md bg-raised px-2 text-[15px] font-semibold text-ink ring-1 ring-line ring-inset focus:ring-2 focus:ring-lime-fg focus:outline-none";
+  "h-11 rounded-md bg-raised px-2 text-[15px] font-semibold text-ink ring-1 ring-line ring-inset transition-shadow hover:ring-ink-3 focus:ring-2 focus:ring-lime-fg focus:outline-none";
 
 /** A select that sets one query parameter, keeping the others. */
 export function QuerySelect({

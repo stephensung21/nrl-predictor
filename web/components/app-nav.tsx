@@ -65,7 +65,7 @@ function MoreMenu({ placement }: { placement: "up" | "down" }) {
         onClick={() => setOpen((o) => !o)}
         className={
           tab
-            ? `flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide ${active || open ? "text-ink" : "text-ink-3"}`
+            ? `flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide transition-colors hover:text-ink ${active || open ? "text-ink" : "text-ink-3"}`
             : `flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold transition-colors hover:text-ink ${active || open ? "text-ink" : "text-ink-3"}`
         }
       >

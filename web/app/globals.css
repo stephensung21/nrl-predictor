@@ -58,6 +58,22 @@
     background: var(--color-lime);
     color: var(--color-lime-ink);
   }
+  /* Tailwind 4 gives buttons the plain arrow; everything you can press shows the hand, and a
+     disabled control says so. Each control also has its own hover change (DESIGN.md, Buttons). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary,
+  input:is([type="checkbox"], [type="radio"]):not(:disabled),
+  label:has(> input:is([type="checkbox"], [type="radio"]):not(:disabled)) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   :focus-visible {
     outline: 2px solid var(--color-lime-fg);
     outline-offset: 2px;

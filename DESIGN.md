@@ -477,6 +477,7 @@ Pill-shaped, bold, short labels with an arrow or icon.
 - **Text action:** 13 to 15px semibold, underlined in `line` ("Sign out", "Delete my account", "Cancel", "Remove"), `ink-2` (`ink-3` for Remove) with hover one step brighter; in rows it keeps a 44px hit area (see Layout).
 - **Round stepper:** a 40px circle with an inset `line` ring and a 20px chevron in `ink-2` (hover `ink` text, `ink-3` ring), prev and next side by side at the right of the round heading; at either end the missing step stays in place at `ink-3` 40% and is not a link.
 - **Focus:** 2px `lime` outline at 2px offset, 4px radius, on every focusable element.
+- **Pointer and hover:** everything you can press (buttons, selects, disclosure rows, radio and checkbox labels) shows the hand cursor (`globals.css`, base layer), a disabled control `not-allowed`; and each has a visible hover change: text one step brighter, an `ink-3` ring in place of `line`, an underline darkening to `ink-3`, or a lime fill to `lime-hover` (a `miss` fill brightens). Selects and the season picker take the ring change.
 - **Never disabled:** a submit pill stays live; an incomplete form says what's missing when it is submitted ("Fill in all three to join: a name, a team and an auto-tip.").
 
 ### Chips

@@ -66,7 +66,7 @@ function EmailSent({ email, intent, returnTo, onBack }: { email: string; intent:
       >
         Sample only: open the link
       </Link>
-      <button type="button" className="mt-3 text-[13px] font-semibold text-ink-3 underline decoration-line" onClick={onBack}>
+      <button type="button" className="mt-3 text-[13px] font-semibold text-ink-3 underline decoration-line hover:text-ink-2 hover:decoration-ink-3" onClick={onBack}>
         Use a different email
       </button>
     </div>
@@ -309,7 +309,7 @@ function JoinForm({ session, join }: { session: Session; join: JoinWith }) {
           Signed in as <span className="font-semibold text-ink">{session.email}</span>.{" "}
           <button
             type="button"
-            className="font-semibold text-ink underline decoration-line"
+            className="font-semibold text-ink underline decoration-line hover:decoration-ink-3"
             onClick={async () => {
               // Wrong account: sign out and come back here to pick another.
               await store.signOut();
@@ -653,7 +653,7 @@ export function AccountPanel() {
             <div className="mt-3 flex flex-wrap gap-3">
               <button
                 type="button"
-                className="rounded-full bg-miss px-4 py-2.5 text-[14px] font-bold text-ground"
+                className="rounded-full bg-miss px-4 py-2.5 text-[14px] font-bold text-ground transition-[filter] hover:brightness-110"
                 onClick={async () => {
                   await store.deleteAccount();
                   setDeleted(true);
@@ -664,7 +664,7 @@ export function AccountPanel() {
               <button
                 ref={keepRef}
                 type="button"
-                className="rounded-full px-4 py-2.5 text-[14px] font-semibold text-ink-2 ring-1 ring-line ring-inset"
+                className="rounded-full px-4 py-2.5 text-[14px] font-semibold text-ink-2 ring-1 ring-line ring-inset hover:text-ink hover:ring-ink-3"
                 onClick={() => {
                   setConfirming(false);
                   requestAnimationFrame(() => deleteRef.current?.focus());

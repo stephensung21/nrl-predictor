@@ -18,9 +18,9 @@ import { TeamBadge } from "./team-badge";
 
 const pill =
   "inline-flex items-center justify-center gap-1.5 rounded-full bg-lime px-5 py-3 text-[15px] font-bold text-lime-ink hover:bg-lime-hover";
-const ghost = "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-ink-2 ring-1 ring-line ring-inset hover:text-ink";
+const ghost = "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-ink-2 ring-1 ring-line ring-inset hover:text-ink hover:ring-ink-3";
 /** Text actions in a row: a 44px hit area without changing the row's look. */
-const rowAction = "-my-2 -mr-2 inline-flex min-h-11 shrink-0 items-center px-2 text-[13px] font-semibold underline decoration-line";
+const rowAction = "-my-2 -mr-2 inline-flex min-h-11 shrink-0 items-center px-2 text-[13px] font-semibold underline decoration-line hover:decoration-ink-3";
 
 function useStore() {
   return useMemo(() => createAdminStore(), []);
@@ -258,7 +258,7 @@ export function Tippers() {
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="min-h-11 rounded-full bg-miss px-4 text-[13px] font-bold text-ground"
+                    className="min-h-11 rounded-full bg-miss px-4 text-[13px] font-bold text-ground transition-[filter] hover:brightness-110"
                     onClick={async () => {
                       await store.removeTipper(t.id);
                       setConfirming(null);
@@ -348,7 +348,7 @@ export function Margin() {
             {excluded.length > 0 && <> Left out (they include the {current.game.home} or {current.game.away}): {excluded.map((g) => `${g.home} v ${g.away}`).join(", ")}.</>}
           </p>
           <details className="group mt-1">
-            <summary className="-my-2 inline-flex min-h-11 cursor-pointer items-center font-semibold text-ink-2 underline decoration-line">
+            <summary className="-my-2 inline-flex min-h-11 cursor-pointer items-center font-semibold text-ink-2 underline decoration-line hover:text-ink hover:decoration-ink-3">
               <span className="group-open:hidden">Show the {eligible.length} games in the draw</span>
               <span className="hidden group-open:inline">Hide them</span>
             </summary>
