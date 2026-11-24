@@ -12,7 +12,7 @@ import type {
 } from "./types";
 import type { TeamName } from "./teams";
 import { paperBet } from "./odds";
-import { STAT_KEYS, type PlayerSeason } from "./players";
+import { STAT_KEYS, withFantasyRatings, type PlayerSeason } from "./players";
 
 const iso = (d: Date | string) => new Date(d).toISOString();
 const num = (v: unknown) => (v == null ? null : Number(v));
@@ -436,12 +436,13 @@ export async function playerSeasons(sql: Sql, season: number): Promise<PlayerSea
   const rows = await sql`select s.*, r.rating, r.attack, r.defence
                          from player_seasons s left join player_ratings r using (season, player_id)
                          where s.season = ${season}`;
-  return rows.map((r) => ({
+  // Rows published before the fantasy_rating column (or its migration) get it computed here, the same way.
+  return withFantasyRatings(rows.map((r) => ({
     season: r.season as number, id: Number(r.player_id), name: r.player_name as string, team: r.team as TeamName,
     position: r.position as PlayerSeason["position"], games: r.games as number, image: (r.head_image as string | null) ?? null,
     fantasyRating: num(r.fantasy_rating), impact: num(r.rating), attack: num(r.attack), defence: num(r.defence),
     stats: Object.fromEntries(STAT_KEYS.map((k) => [k, Number(r[k] ?? 0)])) as PlayerSeason["stats"],
-  }));
+  })));
 }
 
 /* ---------- the community Dally M (/dally-m) ---------- */

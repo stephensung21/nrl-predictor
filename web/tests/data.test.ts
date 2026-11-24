@@ -310,7 +310,10 @@ describe("players (/players)", () => {
     const ava = rows.find((p) => p.id === 11)!;
     expect(ava).toMatchObject({ name: "Ava Cole", team: "Storm", position: "Halfback", games: 20, fantasyRating: 48.2, impact: 0.31, defence: -0.11 });
     expect(ava.stats).toMatchObject({ tries: 6, tackles: 300, missed_tackles: 30, fantasy_points: 1000.5, kicks: 0 });
-    expect(rows.find((p) => p.id === 12)!).toMatchObject({ fantasyRating: null, impact: null });
+    // Published without a fantasy rating: computed here (the only interchange player, so his own average).
+    const ben = rows.find((p) => p.id === 12)!;
+    expect(ben.impact).toBeNull();
+    expect(ben.fantasyRating).toBeCloseTo(80 / 3);
     expect(await playerSeasons(sql, 2027)).toEqual([]);
   });
 });

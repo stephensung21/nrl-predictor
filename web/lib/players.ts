@@ -47,6 +47,28 @@ export const MIN_GAMES = 5;
 export const TOP_OVERALL = 25;
 export const TOP_POSITION = 15;
 
+/** fantasy_rating's pull towards the position average, in games (pipeline/players.py FANTASY_PRIOR_GAMES). */
+export const FANTASY_PRIOR_GAMES = 4;
+
+/** One season's players with any missing fantasy rating filled in as pipeline/players.py computes it:
+ *  (points + k × position average) / (games + k), the average over every game at that position. For a
+ *  database not yet republished with the column; pass the whole season so the averages are the same. */
+export function withFantasyRatings(players: PlayerSeason[]): PlayerSeason[] {
+  if (players.every((p) => p.fantasyRating != null)) return players;
+  const totals = new Map<string, { points: number; games: number }>();
+  for (const p of players) {
+    const t = totals.get(p.position) ?? { points: 0, games: 0 };
+    totals.set(p.position, { points: t.points + p.stats.fantasy_points, games: t.games + p.games });
+  }
+  const k = FANTASY_PRIOR_GAMES;
+  return players.map((p) => {
+    if (p.fantasyRating != null) return p;
+    const t = totals.get(p.position)!;
+    const avg = t.games ? t.points / t.games : 0;
+    return { ...p, fantasyRating: (p.stats.fantasy_points + k * avg) / (p.games + k) };
+  });
+}
+
 export type Ranked = { rank: number; tied: boolean; player: PlayerSeason };
 
 /** The power rankings: by fantasy rating, overall or at one position. Ranks follow the exact rating

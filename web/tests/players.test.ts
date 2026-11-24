@@ -1,7 +1,9 @@
 // The players page's rankings and stat groups (lib/players.ts).
 
 import { describe, expect, it } from "vitest";
-import { MIN_GAMES, powerRankings, statGroups, STAT_KEYS, TOP_OVERALL, type PlayerSeason } from "../lib/players";
+import {
+  MIN_GAMES, powerRankings, statGroups, STAT_KEYS, TOP_OVERALL, withFantasyRatings, type PlayerSeason,
+} from "../lib/players";
 import { SAMPLE_PLAYERS } from "../lib/sample-players";
 
 const zero = Object.fromEntries(STAT_KEYS.map((k) => [k, 0])) as PlayerSeason["stats"];
@@ -28,6 +30,20 @@ describe("powerRankings", () => {
 
   it("caps the list", () => {
     expect(powerRankings(SAMPLE_PLAYERS.filter((x) => x.season === 2026), null)).toHaveLength(TOP_OVERALL);
+  });
+});
+
+describe("withFantasyRatings", () => {
+  it("fills missing ratings as pipeline/players.py does: shrunk 4 games towards the position's average", () => {
+    const rows = withFantasyRatings([
+      p(1, null, "Centre", 4, { fantasy_points: 400 }), p(2, null, "Centre", 1, { fantasy_points: 20 }),
+      p(3, null, "Prop", 1, { fantasy_points: 50 }), p(4, 77, "Prop", 2, { fantasy_points: 10 }),
+    ]);
+    const centreAvg = 420 / 5;
+    expect(rows[0].fantasyRating).toBeCloseTo((400 + 4 * centreAvg) / 8);
+    expect(rows[1].fantasyRating).toBeCloseTo((20 + 4 * centreAvg) / 5);
+    expect(rows[2].fantasyRating).toBeCloseTo((50 + 4 * 60 / 3) / 5); // the prop average counts every prop's games
+    expect(rows[3].fantasyRating).toBe(77); // a published rating is kept
   });
 });
 
