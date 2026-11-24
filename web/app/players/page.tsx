@@ -6,7 +6,7 @@ import { PlayerSearch, QuerySelect } from "@/components/player-pickers";
 import { SampleNote } from "@/components/sample-note";
 import { TeamBadge } from "@/components/team-badge";
 import {
-  formatRating, MIN_GAMES, POSITION_CODE, POSITIONS, powerRankings, statGroups, type PlayerSeason, type Position,
+  formatFantasy, formatImpact, MIN_GAMES, POSITION_CODE, POSITIONS, powerRankings, statGroups, type PlayerSeason, type Position,
 } from "@/lib/players";
 import { tippers, YOU_ID } from "@/lib/sample";
 import { playersSource } from "@/lib/source";
@@ -90,8 +90,8 @@ export default async function PlayersPage({ searchParams }: Props) {
 
       {!src.live && (
         <SampleNote>
-          Real 2025 and 2026 seasons for the {players.length} players with the most minutes. Ratings and rankings are the
-          Model&rsquo;s, from every game.
+          Real 2025 and 2026 seasons for the {players.length} players with the most minutes. Ratings come from every
+          game; the Model&rsquo;s impact is its own.
         </SampleNote>
       )}
     </main>
@@ -117,8 +117,9 @@ function Rankings({
         />
       </div>
       <p className="mt-2 text-[13px] leading-snug text-ink-3">
-        Ranked by the Model&rsquo;s rating: the points of margin a player adds over a full game, as the Model rates him after
-        the {season} season&rsquo;s latest game. Fantasy is NRL fantasy points per game. At least {MIN_GAMES} games to be
+        Ranked by rating: NRL fantasy points a game over the {season} season, pulled a little towards the average at his
+        position so a few big games can&rsquo;t top the list. Impact is the Model&rsquo;s view: the points of margin his
+        team gains with him on the field, which mostly reflects how good his team is. At least {MIN_GAMES} games to be
         ranked.
       </p>
 
@@ -141,12 +142,12 @@ function Rankings({
                 Rating
               </th>
               <th scope="col" className="w-16 py-2 pr-2 text-right font-semibold">
-                Fantasy
+                Impact
               </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ rank, tied, player, fantasyPerGame }) => (
+            {rows.map(({ rank, tied, player }) => (
               <tr key={player.id} className={`border-b border-line-soft ${player.team === fav ? "bg-lime-wash" : ""}`}>
                 <td className={`py-2.5 pl-2 align-middle font-score text-[20px] font-bold ${rank === 1 ? "text-lime-fg" : "text-ink-2"}`}>
                   {tied ? "=" : ""}
@@ -169,10 +170,10 @@ function Rankings({
                   </Link>
                 </td>
                 <td className="py-2.5 text-right align-middle font-score text-[20px] font-bold text-ink">
-                  {formatRating(player.rating!)}
+                  {formatFantasy(player.fantasyRating!)}
                 </td>
                 <td className="py-2.5 pr-2 text-right align-middle font-score text-[17px] font-semibold text-ink-2">
-                  {fantasyPerGame.toFixed(1)}
+                  {player.impact == null ? "–" : formatImpact(player.impact)}
                 </td>
               </tr>
             ))}
@@ -208,12 +209,12 @@ function Stats({ player, players, query }: { player: PlayerSeason; players: Play
       </div>
 
       <dl className="mt-4 grid grid-cols-3 gap-2">
-        <Figure label="Model rating" value={player.rating == null ? "–" : formatRating(player.rating)} />
+        <Figure label="Rating" value={player.fantasyRating == null ? "–" : formatFantasy(player.fantasyRating)} />
         <Figure
           label={posRank ? `${POSITION_CODE[player.position]} rank` : "Overall rank"}
           value={posRank ? `${posRank.tied ? "=" : ""}${posRank.rank}` : ranked ? `${ranked.tied ? "=" : ""}${ranked.rank}` : "–"}
         />
-        <Figure label="Fantasy a game" value={(player.stats.fantasy_points / Math.max(1, player.games)).toFixed(1)} />
+        <Figure label="Model impact" value={player.impact == null ? "–" : formatImpact(player.impact)} />
       </dl>
 
       <div className="mt-6 grid gap-x-8 gap-y-6 md:grid-cols-2">

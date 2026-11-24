@@ -83,6 +83,22 @@ def test_season_rows_position_team_and_totals():
     assert out.loc[7, "head_image"].startswith("https://www.nrl.com/x") and pd.isna(out.loc[8, "head_image"])
 
 
+def test_fantasy_rating_shrinks_towards_the_position_average():
+    """Season fantasy points a game, pulled FANTASY_PRIOR_GAMES games' worth towards the average at his position."""
+    from players import FANTASY_PRIOR_GAMES, season_rows
+    assert FANTASY_PRIOR_GAMES == 4
+    matches = pd.DataFrame([_game(i, f"2026-03-0{i}T08:00:00Z") for i in range(1, 5)])
+    players = pd.DataFrame([_row(i, 7, "Eels", "Centre", fantasyPointsTotal=100) for i in range(1, 5)]
+                           + [_row(1, 8, "Eels", "Centre", fantasyPointsTotal=20),
+                              _row(1, 9, "Eels", "Prop", fantasyPointsTotal=50)])
+    out = season_rows(players, matches, 2026, images=pd.DataFrame(columns=["season", "player_id", "head_image"]))
+    out = out.set_index("player_id")["fantasy_rating"]
+    centre_avg = 420 / 5  # every centre game this season
+    assert out[7] == pytest.approx((400 + 4 * centre_avg) / 8)
+    assert out[8] == pytest.approx((20 + 4 * centre_avg) / 5)
+    assert out[9] == pytest.approx(50)  # alone at his position: its average is his own
+
+
 def test_season_rows_empty_season():
     from players import SEASON_COLS, season_rows
     out = season_rows(pd.DataFrame([_row(1, 7, "Eels", "Centre")]), pd.DataFrame([_game(1, "2026-03-01T08:00:00Z")]), 2027)
@@ -96,6 +112,17 @@ def test_headshot_links_prefer_the_season_then_the_nearest():
     assert got[7] == "https://www.nrl.com/a24" + IMAGE_SIZE  # equally near: the earlier season, not a future photo
     assert got[8] == "https://www.nrl.com/b25" + IMAGE_SIZE
     assert image_for(images.iloc[0:0], 2025).empty
+
+
+def test_headshot_links_skip_club_sites():
+    """Some headImage links point at a club's site, which neither serves them nor lets nrl.com's proxy fetch
+    them: those are skipped for the player's nearest nrl.com photo, or none (the page shows his team badge)."""
+    from players import IMAGE_SIZE, image_for
+    club = "https://www.bulldogs.com.au/contentassets/x/galvin-headshot.png?center=0.3%2C0.52"
+    images = pd.DataFrame({"season": [2026, 2025, 2026], "player_id": [7, 7, 8], "head_image": [club, "/a25", club]})
+    got = image_for(images, 2026)
+    assert got[7] == "https://www.nrl.com/a25" + IMAGE_SIZE
+    assert 8 not in got.index
 
 
 def _round_game(match_id, rnd, kickoff, is_final=False):

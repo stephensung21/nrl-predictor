@@ -6,14 +6,19 @@ tables. publish.py writes them to the database.
 - player_seasons: one row per player per season, totals over every game he played in (regular season
   and finals, minutes > 0). His position is the starting position he wore most often that season (the
   most recent start on a tie), or "Interchange" if he only came off the bench; his team is the one he
-  played for last.
+  played for last. fantasy_rating is the players page's ranking: his NRL fantasy points a game over the
+  season, pulled FANTASY_PRIOR_GAMES games' worth towards the average at that position, so a player with
+  few games can't top the list on one big day. Points a game as fantasy scores them, not adjusted for
+  position, so it can seed a fantasy team later.
 - player_ratings: features.player_ratings, as of the season's last decided game: the RAPM rating the
-  model would give him for his next game, with its attack and defence split.
+  model would give him for his next game, with its attack and defence split. The page shows it as the
+  Model's impact, not the ranking: all 17 players take the field together, so plus-minus mostly measures
+  the team (about three quarters of the spread in 2026) and can't rank teammates fairly.
 - round_players: everyone who took the field in each regular-season round, the community Dally M's
   candidates (a round opens for votes once its players are published).
 
 Usage:
-    python pipeline/players.py --season 2026     # print the season's top 10 by rating
+    python pipeline/players.py --season 2026     # print the season's top 10 by fantasy rating
 """
 
 import argparse
@@ -40,7 +45,8 @@ TOTALS = {
     "errors": "errors", "penalties": "penalties", "sin_bins": "sinBins", "send_offs": "sendOffs",
     "fantasy_points": "fantasyPointsTotal",
 }
-SEASON_COLS = ["season", "player_id", "player_name", "team", "position", "games", "head_image", *TOTALS]
+SEASON_COLS = ["season", "player_id", "player_name", "team", "position", "games", "head_image", *TOTALS, "fantasy_rating"]
+FANTASY_PRIOR_GAMES = 4  # fantasy_rating's pull towards the position average, in games
 RATING_COLS = ["season", "player_id", "rating", "attack", "defence", "as_of"]
 ROUND_PLAYER_COLS = ["season", "round", "player_id", "match_id", "player_name", "team", "position", "head_image"]
 
@@ -61,7 +67,10 @@ def load_images():
 
 def image_for(images, season):
     """Each player's headshot link for a season: that season's, else his nearest season's (a photo a year
-    out is better than none), as a full nrl.com address at the page's size. Links only, never images."""
+    out is better than none), as a full nrl.com address at the page's size. Links only, never images.
+    Only nrl.com's own paths count: a few headImage links point at a club's site, which refuses them (and
+    nrl.com's image proxy won't fetch them), so they are treated as no photo."""
+    images = images[images["head_image"].astype(str).str.startswith("/")]
     if images.empty:
         return pd.Series(dtype=object)
     i = images.assign(dist=(images["season"] - season).abs(), later=images["season"] > season)
@@ -97,7 +106,17 @@ def season_rows(players, matches, season, images=None):
     out = out.reset_index()
     ints = [c for c in TOTALS if c != "fantasy_points"]
     out[ints] = out[ints].fillna(0).astype(int)
+    out["fantasy_rating"] = fantasy_rating(out)
     return out[SEASON_COLS]
+
+
+def fantasy_rating(seasons):
+    """Fantasy points a game over the season, shrunk towards the position's average (every game played
+    at that position this season) by FANTASY_PRIOR_GAMES games: (points + k * average) / (games + k)."""
+    by_pos = seasons.groupby("position")[["fantasy_points", "games"]].transform("sum")
+    pos_avg = by_pos["fantasy_points"] / by_pos["games"]
+    k = FANTASY_PRIOR_GAMES
+    return (seasons["fantasy_points"] + k * pos_avg) / (seasons["games"] + k)
 
 
 def round_rows(players, matches, season, images=None):
@@ -150,8 +169,8 @@ def main():
     parser.add_argument("--season", type=int, required=True)
     args = parser.parse_args()
     t = tables(args.season)
-    top = t["player_ratings"].merge(t["player_seasons"], on=["season", "player_id"]).nlargest(10, "rating")
-    print(top[["player_name", "team", "position", "games", "rating", "attack", "defence"]].to_string(index=False))
+    top = t["player_seasons"].merge(t["player_ratings"], on=["season", "player_id"], how="left").nlargest(10, "fantasy_rating")
+    print(top[["player_name", "team", "position", "games", "fantasy_rating", "rating"]].to_string(index=False))
 
 
 if __name__ == "__main__":
