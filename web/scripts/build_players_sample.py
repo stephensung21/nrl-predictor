@@ -2,7 +2,7 @@
 
 Run from the repo root:  python web/scripts/build_players_sample.py
 
-Real data only: pipeline/players.py's tables (each player's season of stats and the Model's rating)
+Real data only: pipeline/players.py's tables (each player's season of stats, fantasy rating and the Model's impact)
 for the last two finished seasons, cut to the most-used players each season so the sample stays small.
 """
 
@@ -31,7 +31,9 @@ for season in SEASONS:
             "season": int(d["season"]), "id": int(d["player_id"]), "name": d["player_name"], "team": d["team"],
             "position": d["position"], "games": int(d["games"]),
             "image": None if pd.isna(d["head_image"]) else d["head_image"],
-            **{k: (None if pd.isna(d[k]) else round(float(d[k]), 4)) for k in ("rating", "attack", "defence")},
+            "fantasyRating": None if pd.isna(d["fantasy_rating"]) else round(float(d["fantasy_rating"]), 4),
+            **{k: (None if pd.isna(d[c]) else round(float(d[c]), 4))
+               for k, c in (("impact", "rating"), ("attack", "attack"), ("defence", "defence"))},
             "stats": {k: (round(float(d[k]), 1) if k == "fantasy_points" else int(d[k])) for k in players.TOTALS},
         })
 

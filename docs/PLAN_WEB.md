@@ -565,7 +565,7 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/tipping/ladder` | The ladder and round-by-round results |
 | `/tipping/admin` | Invites (one use, 7 days), the tippers (remove one), this round's featured game and how it was drawn, and pipeline run status (admin only) |
 | `/news` | r/nrl feed |
-| `/players` | Player stats and the Model's power rankings, overall and by position |
+| `/players` | Player stats and power rankings by fantasy rating (season fantasy points a game, shrunk to the position average), overall and by position, with the Model's plus-minus impact alongside |
 | `/dally-m` | The community Dally M: each tipper's 3-2-1 votes for the round's best players, hidden until the next round kicks off, then revealed, with a season leaderboard. Needs migration `20261122000000_dally_m.sql` (after the players migration); the results job's publish fills `round_players` |
 | `/groups` | Your groups (in More): start one, share its link, see who's in; the owner renames, makes a new link, removes members or deletes it. `/groups/join/<code>` joins one (signing up on the way). Migration `20261124000000_groups.sql` |
 | `/join` | Open sign-up for the global comp |

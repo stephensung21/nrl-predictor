@@ -1,6 +1,6 @@
-// The players page (/players): each player's season (pipeline/players.py → player_seasons) with the
-// Model's rating of him (player_ratings), the power rankings built from them, and the stat groups the
-// stats tab shows. Stat keys are the database's column names, so rows pass straight through.
+// The players page (/players): each player's season (pipeline/players.py → player_seasons) with its
+// fantasy rating and the Model's plus-minus impact (player_ratings), the power rankings built from the
+// fantasy rating, and the stat groups the stats tab shows. Stat keys are the database's column names, so rows pass straight through.
 
 import type { TeamName } from "./teams";
 
@@ -31,8 +31,12 @@ export type PlayerSeason = {
   games: number;
   /** nrl.com's headshot link (loaded from nrl.com; never stored here). */
   image: string | null;
-  /** The Model's rating: points of margin he adds over a full game. Null if he has none. */
-  rating: number | null;
+  /** The ranking: season fantasy points a game, shrunk towards his position's average (pipeline/players.py).
+   *  Null if he has none. */
+  fantasyRating: number | null;
+  /** The Model's plus-minus: points of margin he adds over a full game. Mostly his team's strength, so it
+   *  is shown beside the ranking, never ranked by. Null if he has none. */
+  impact: number | null;
   attack: number | null;
   defence: number | null;
   stats: Record<StatKey, number>;
@@ -43,19 +47,41 @@ export const MIN_GAMES = 5;
 export const TOP_OVERALL = 25;
 export const TOP_POSITION = 15;
 
-export type Ranked = { rank: number; tied: boolean; player: PlayerSeason; fantasyPerGame: number };
+/** fantasy_rating's pull towards the position average, in games (pipeline/players.py FANTASY_PRIOR_GAMES). */
+export const FANTASY_PRIOR_GAMES = 4;
 
-/** The power rankings: by the Model's rating, overall or at one position. Ranks follow the exact
- *  rating (shown to two decimals, so neighbours can look level); only equal ratings share a rank. */
+/** One season's players with any missing fantasy rating filled in as pipeline/players.py computes it:
+ *  (points + k × position average) / (games + k), the average over every game at that position. For a
+ *  database not yet republished with the column; pass the whole season so the averages are the same. */
+export function withFantasyRatings(players: PlayerSeason[]): PlayerSeason[] {
+  if (players.every((p) => p.fantasyRating != null)) return players;
+  const totals = new Map<string, { points: number; games: number }>();
+  for (const p of players) {
+    const t = totals.get(p.position) ?? { points: 0, games: 0 };
+    totals.set(p.position, { points: t.points + p.stats.fantasy_points, games: t.games + p.games });
+  }
+  const k = FANTASY_PRIOR_GAMES;
+  return players.map((p) => {
+    if (p.fantasyRating != null) return p;
+    const t = totals.get(p.position)!;
+    const avg = t.games ? t.points / t.games : 0;
+    return { ...p, fantasyRating: (p.stats.fantasy_points + k * avg) / (p.games + k) };
+  });
+}
+
+export type Ranked = { rank: number; tied: boolean; player: PlayerSeason };
+
+/** The power rankings: by fantasy rating, overall or at one position. Ranks follow the exact rating
+ *  (shown to one decimal, so neighbours can look level); only equal ratings share a rank. */
 export function powerRankings(players: PlayerSeason[], position: Position | null): Ranked[] {
   const pool = players
-    .filter((p) => p.rating != null && p.games >= MIN_GAMES && (position == null || p.position === position))
-    .sort((a, b) => b.rating! - a.rating! || b.games - a.games || a.name.localeCompare(b.name))
+    .filter((p) => p.fantasyRating != null && p.games >= MIN_GAMES && (position == null || p.position === position))
+    .sort((a, b) => b.fantasyRating! - a.fantasyRating! || b.games - a.games || a.name.localeCompare(b.name))
     .slice(0, position == null ? TOP_OVERALL : TOP_POSITION);
   return pool.map((player) => {
-    const first = pool.findIndex((q) => q.rating === player.rating);
-    const tied = pool.filter((q) => q.rating === player.rating).length > 1;
-    return { rank: first + 1, tied, player, fantasyPerGame: player.stats.fantasy_points / Math.max(1, player.games) };
+    const first = pool.findIndex((q) => q.fantasyRating === player.fantasyRating);
+    const tied = pool.filter((q) => q.fantasyRating === player.fantasyRating).length > 1;
+    return { rank: first + 1, tied, player };
   });
 }
 
@@ -79,6 +105,7 @@ export function statGroups(p: PlayerSeason): StatGroup[] {
         { label: "Conversions", value: `${n(s.conversions)}/${n(s.conversion_attempts)}` },
         { label: "Penalty goals", value: n(s.penalty_goals) },
         { label: "Field goals", value: n(s.field_goals) },
+        { label: "Fantasy points", value: n(s.fantasy_points), perGame: per(s.fantasy_points, g) },
       ],
     },
     {
@@ -126,5 +153,8 @@ export function statGroups(p: PlayerSeason): StatGroup[] {
   ];
 }
 
-/** A rating as the page shows it: signed, two decimals, a real minus sign. */
-export const formatRating = (r: number) => `${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(2)}`;
+/** A fantasy rating as the page shows it: one decimal. */
+export const formatFantasy = (r: number) => r.toFixed(1);
+
+/** The Model's impact as the page shows it: signed, two decimals, a real minus sign. */
+export const formatImpact = (r: number) => `${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(2)}`;

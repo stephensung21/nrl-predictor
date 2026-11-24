@@ -110,10 +110,14 @@ def test_margin_games_follow_the_rule():
 
 
 def test_publishes_to_a_trial_database_and_refuses_the_real_one(db_url, odds):
-    # Round 1 opened on the last Tuesday at least two days ago, so now is somewhere in its week.
-    today = pd.Timestamp.now(tz=trial.SYDNEY).normalize().tz_localize(None)
-    t = trial_from(today - pd.Timedelta(days=(today.dayofweek - 1) % 7 + 7 * ((today.dayofweek - 1) % 7 < 2)))
+    # Round 1 opened on the latest Tuesday whose opening has passed, so now is somewhere in its week
+    # (Round 2 opens a week later). On a Tuesday before the opening, that is last week's Tuesday.
     now = pd.Timestamp.now(tz="UTC")
+    today = now.tz_convert(trial.SYDNEY).normalize().tz_localize(None)
+    start = today - pd.Timedelta(days=(today.dayofweek - 1) % 7)
+    if trial.timetable(games(), start)["opens_at"].min() > now:
+        start -= pd.Timedelta(days=7)
+    t = trial_from(start)
     conn = connection(db_url)
     trial.check_trial_db(conn.cursor())  # empty: fine
     counts = publish_to(db_url, trial.visible(t, now, odds), trial.SEASON)
