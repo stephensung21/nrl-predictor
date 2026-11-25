@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Ellipsis, House, ListChecks, Medal, Trophy, type LucideIcon } from "lucide-react";
-import { createAuthStore } from "@/lib/auth";
 
 type Item = { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean };
 
@@ -29,16 +28,37 @@ const MORE = [
   { href: "/tipping/admin", label: "Admin", adminOnly: true },
 ];
 
+// The admin item shows only for whoever runs the comp. Asked only when a More menu opens, and once at a
+// time for both menus (the header's and the tab bar's are both mounted), with the auth code loaded then:
+// Supabase's client is a big download, and every page has this nav (docs/PLAN_PERF.md, Phase 1).
+let lastAdmin = false;
+let adminCheck: Promise<boolean> | null = null;
+function checkAdmin(): Promise<boolean> {
+  adminCheck ??= import("@/lib/auth")
+    .then(({ createAuthStore }) => createAuthStore().isAdmin())
+    .catch(() => false)
+    .then((admin) => {
+      lastAdmin = admin;
+      adminCheck = null;
+      return admin;
+    });
+  return adminCheck;
+}
+
 function MoreMenu({ placement }: { placement: "up" | "down" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const active = MORE.some((m) => pathname.startsWith(m.href));
-  // The admin item shows only for whoever runs the comp.
+  // The last answer shows straight away; a fresh one replaces it (signing in or out changes it).
   const [admin, setAdmin] = useState(false);
-  useEffect(() => {
-    createAuthStore().isAdmin().then(setAdmin);
-  }, []);
+  const toggle = () => {
+    if (!open) {
+      setAdmin(lastAdmin);
+      checkAdmin().then(setAdmin);
+    }
+    setOpen((o) => !o);
+  };
   const items = MORE.filter((m) => !("adminOnly" in m) || admin);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -62,7 +82,7 @@ function MoreMenu({ placement }: { placement: "up" | "down" }) {
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className={
           tab
             ? `flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide transition-colors hover:text-ink ${active || open ? "text-ink" : "text-ink-3"}`

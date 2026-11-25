@@ -4,7 +4,7 @@
 // it in the `fc-group` cookie, so every comp page shows it, and refreshes the page.
 
 import { useRouter } from "next/navigation";
-import { GLOBAL, groupCookie, type GroupChoice } from "@/lib/groups";
+import { GLOBAL, groupCookie, type GroupChoice } from "@/lib/group-choice";
 
 const chip = "shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold whitespace-nowrap transition-colors";
 

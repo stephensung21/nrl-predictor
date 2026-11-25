@@ -33,12 +33,18 @@ export const viewport: Viewport = {
 /** The trial site (pipeline/trial.py): a separate database replaying 2026's Rounds 1 and 2. */
 const TRIAL = process.env.NEXT_PUBLIC_TRIAL === "1";
 
+/** Real phones' load times (docs/PLAN_PERF.md, Phase 0): Vercel Speed Insights' script, which Vercel serves
+ * once Speed Insights is turned on for the project. Only on Vercel, not locally. The plain script, not the
+ * @vercel/speed-insights package, whose optional peer dependencies clash with vitest's Vite. */
+const SPEED_INSIGHTS = process.env.VERCEL === "1";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     // The theme script sets color-scheme on <html> before React hydrates.
     <html lang="en-AU" className={`${saira.variable} ${sofia.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {SPEED_INSIGHTS && <script defer src="/_vercel/speed-insights/script.js" />}
       </head>
       <body className="min-h-dvh">
         <AppNav />
