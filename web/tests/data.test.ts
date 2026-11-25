@@ -11,7 +11,7 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   currentRound, eloSeason, eloTeamView, gradedGames, latestGradedSeason, matchDetail, matchDrivers, modelRecord, oddsHistory,
-  oddsRounds, playerSeasonList, playerSeasons, roundData, dallyMSeasons, dallyMRounds, roundPlayers, lmsMatches, lmsSeason, seasonGames, summary, upcomingEdges,
+  oddsRounds, playerSeasonList, playerSeasons, roundData, roundParts, withBets, dallyMSeasons, dallyMRounds, roundPlayers, lmsMatches, lmsSeason, seasonGames, summary, upcomingEdges,
 } from "../lib/data";
 import { buildRecord } from "../lib/model-record";
 import type { Sql } from "../lib/db";
@@ -228,6 +228,18 @@ describe("the site's data layer", () => {
     expect(coming).toMatchObject({ matchId: "102", side: "away", odds: 2.8, price: "latest" });
     expect(coming.edge).toBeCloseTo(0.064, 12);
     expect((await roundData(sql, 2027, 2))!.bets).toEqual([]); // Betr hasn't priced round 2 by today
+  });
+
+  it("bets at the opening price once a game kicks off, even on prices read before it (the site's cache)", async () => {
+    // Read now, while game 102 is still to come, as the site caches it; then the clock moves past kickoff.
+    const parts = (await roundParts(sql, 2025, 6))!;
+    expect(withBets(parts, new Date()).bets!.find((b) => b.matchId === "102")).toMatchObject({ price: "latest", odds: 2.8 });
+    const later = withBets(parts, new Date(Date.now() + 4 * 24 * 3600 * 1000));
+    // Its opening price is Betr's first, 3.50 away: edge 0.38 x 3.5 - 1.
+    expect(later.bets!.find((b) => b.matchId === "102")).toMatchObject({ side: "away", odds: 3.5, price: "opening" });
+    expect(later.bets!.find((b) => b.matchId === "101")).toMatchObject({ odds: 2.5, price: "opening" });
+    // The cached part is plain data, as the cache stores it.
+    expect(JSON.parse(JSON.stringify(parts))).toEqual(parts);
   });
 
   it("reads what drove a game's prediction of record, by group, without the calibration row", async () => {

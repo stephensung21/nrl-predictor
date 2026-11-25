@@ -19,8 +19,10 @@ rebuilt from the repo. Nothing here touches the tippers' own data except the Mod
 
 Connects with SUPABASE_DB_URL: the project's session pooler connection string (Project Settings →
 Database → Connection string → Session pooler), which works over IPv4 as GitHub's runners need.
-Without it, publishing is skipped. After publishing, REVALIDATE_URL (with REVALIDATE_SECRET) is
-called so the website refreshes its cached pages, once the site exists (step 12).
+Without it, publishing is skipped. After publishing, REVALIDATE_URL (the site's /api/revalidate, with
+REVALIDATE_SECRET) is called so the website drops its cached model data (web/lib/cache.ts) and the
+next visitor sees what was just published. Without it the site's cache refreshes on its own (every
+five minutes while the site has no REVALIDATE_SECRET).
 
 Usage:
     python pipeline/publish.py                       # the current season's live records
@@ -474,7 +476,10 @@ def main():
             print({s: {t: len(r) for t, r in players.tables(s).items()} for s in args.players})
             return
         url = env("SUPABASE_DB_URL")
-        print(f"publish players: {publish_players(url, args.players) if url else 'skipped (no SUPABASE_DB_URL)'}")
+        if not url:
+            print("publish players: skipped (no SUPABASE_DB_URL)")
+            return
+        print(f"publish players: {publish_players(url, args.players)}; revalidate: {revalidate()}")
         return
     season = args.backfill or args.season
     tables = backfill_tables(season) if args.backfill else live_tables(season, Records(season, replay=False))

@@ -27,6 +27,9 @@ jobs:
       cancel-in-progress: false
     env:
       TRIAL_DB_URL: ${{ secrets.TRIAL_DB_URL }}
+      # The trial site's /api/revalidate and its secret, so each hourly publish shows at once.
+      REVALIDATE_URL: ${{ secrets.TRIAL_REVALIDATE_URL }}
+      REVALIDATE_SECRET: ${{ secrets.TRIAL_REVALIDATE_SECRET }}
     steps:
       - uses: actions/checkout@v4
         if: env.TRIAL_DB_URL != ''
