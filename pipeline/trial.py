@@ -390,7 +390,7 @@ def main():
             print({t: len(rows) for t, rows in tables.items()})
             return
         try:
-            print(f"trial publish at {now}: {publish_trial(tables, trial_url())}")
+            print(f"trial publish at {now}: {publish_trial(tables, trial_url())}; revalidate: {pub.revalidate()}")
         except psycopg.Error as ex:
             print(f"trial publish FAILED: {type(ex).__name__}: {str(ex).splitlines()[0] if str(ex) else ''}",
                   file=sys.stderr)

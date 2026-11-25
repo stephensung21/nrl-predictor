@@ -37,8 +37,21 @@ const MATCH_COLS = "m.id, m.season, m.round, m.round_title, m.kickoff, m.home_te
 
 /* ---------- rounds ---------- */
 
-/** A round's predicted games, each with its prediction of record, and the round's margin game. */
-export async function roundData(sql: Sql, season: number, round: number): Promise<RoundData | null> {
+/** A round's predicted games, each with its prediction of record, the round's margin game, and paper
+ * trading's bets as they stand at `now`. */
+export async function roundData(sql: Sql, season: number, round: number, now = new Date()): Promise<RoundData | null> {
+  const parts = await roundParts(sql, season, round);
+  return parts && withBets(parts, now);
+}
+
+/** One price from a pair of head-to-head odds (null where Betr hasn't priced the game). */
+type Price = { matchId: string; homeOdds: number | null; awayOdds: number | null };
+
+/** A round without its bets, and the prices they're placed at: the part of `roundData` that changes only
+ * when the pipeline publishes, so the site can cache it (lib/source.ts). Bets depend on the clock as well. */
+export type RoundParts = { round: Omit<RoundData, "bets">; prices: { latest: Price[]; opening: Price[] } };
+
+export async function roundParts(sql: Sql, season: number, round: number): Promise<RoundParts | null> {
   const rows = await sql.unsafe<(MatchRow & {
     home_win_prob: number; margin: number; total: number; p_home: number; p_away: number; model: string;
     model_version: string; updated_reason: string | null;
@@ -55,39 +68,50 @@ export async function roundData(sql: Sql, season: number, round: number): Promis
     ...(r.updated_reason ? { updated: r.updated_reason } : {}),
   }));
   const ids = rows.map((r) => String(r.id));
-  const [weather, bets] = await Promise.all([weatherFor(sql, ids), roundBets(sql, predictions)]);
+  const [weather, prices] = await Promise.all([weatherFor(sql, ids), roundPrices(sql, ids)]);
   return {
-    season, round,
-    // The pipeline draws the margin game; until it has, the round's first game stands in.
-    featuredMatchId: drawn?.featured_match != null ? String(drawn.featured_match) : String(rows[0].id),
-    matches: rows.map((r) => {
-      const m = toMatch(r);
-      const w = weather.get(m.id);
-      return w ? { ...m, weather: w } : m;
-    }),
-    predictions,
-    bets,
+    round: {
+      season, round,
+      // The pipeline draws the margin game; until it has, the round's first game stands in.
+      featuredMatchId: drawn?.featured_match != null ? String(drawn.featured_match) : String(rows[0].id),
+      matches: rows.map((r) => {
+        const m = toMatch(r);
+        const w = weather.get(m.id);
+        return w ? { ...m, weather: w } : m;
+      }),
+      predictions,
+    },
+    prices,
   };
 }
 
-/** Paper trading's bet on each game: at Betr's latest price while it's still to kick off (`match_edges`,
- * as /odds's coming games), then at the opening price (`match_odds`, as /odds's season record). */
-async function roundBets(sql: Sql, predictions: Prediction[]): Promise<RoundBet[]> {
-  const ids = predictions.map((p) => p.matchId);
+/** Betr's latest price for the games still to kick off (`match_edges`, as /odds's coming games) and every
+ * game's opening price (`match_odds`, as /odds's season record). */
+async function roundPrices(sql: Sql, ids: string[]): Promise<RoundParts["prices"]> {
   const [latest, opening] = await Promise.all([
     sql`select match_id, home_odds, away_odds from match_edges where match_id in ${sql(ids)}`,
     sql`select match_id, home_odds_open as home_odds, away_odds_open as away_odds from match_odds where match_id in ${sql(ids)}`,
   ]);
-  const byId = (rows: typeof latest) => new Map(rows.map((r) => [String(r.match_id), r]));
-  const [live, open] = [byId(latest), byId(opening)];
-  return predictions.flatMap((p) => {
-    // A game in match_edges hasn't kicked off: its latest price or, unpriced, no bet yet.
-    const price = live.has(p.matchId) ? "latest" : "opening";
+  const price = (r: (typeof latest)[number]): Price => ({ matchId: String(r.match_id), homeOdds: num(r.home_odds), awayOdds: num(r.away_odds) });
+  return { latest: latest.map(price), opening: opening.map(price) };
+}
+
+/** Paper trading's bet on each game at `now`: at Betr's latest price while it's still to kick off, then
+ * at the opening price. Kickoff is checked here, against `now`, rather than left to `match_edges`, so
+ * cached prices give the right bet after a game kicks off. */
+export function withBets({ round, prices }: RoundParts, now: Date): RoundData {
+  const byId = (rows: Price[]) => new Map(rows.map((r) => [r.matchId, r]));
+  const [live, open] = [byId(prices.latest), byId(prices.opening)];
+  const kickoff = new Map(round.matches.map((m) => [m.id, Date.parse(m.kickoff)]));
+  const bets: RoundBet[] = round.predictions.flatMap((p) => {
+    // Still to kick off: its latest price or, unpriced, no bet yet.
+    const price = (kickoff.get(p.matchId) ?? 0) > now.getTime() ? "latest" : "opening";
     const r = (price === "latest" ? live : open).get(p.matchId);
-    if (r?.home_odds == null || r.away_odds == null) return [];
-    const bet = paperBet(p.homeWinProb, Number(r.home_odds), Number(r.away_odds));
+    if (r?.homeOdds == null || r.awayOdds == null) return [];
+    const bet = paperBet(p.homeWinProb, r.homeOdds, r.awayOdds);
     return bet ? [{ matchId: p.matchId, ...bet, price }] : [];
   });
+  return { ...round, bets };
 }
 
 /** Each game's weather (`match_weather`: observed if known, otherwise the latest forecast). */

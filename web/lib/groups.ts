@@ -8,23 +8,15 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { browserClient, tippingLive } from "./supabase";
+import { GLOBAL } from "./group-choice";
 import { MODEL_ID, tippers as sampleTippers, YOU_ID } from "./sample";
 
 export type GroupMember = { id: string; name: string; joinedAt: string };
 
 export type Group = { id: string; name: string; code: string; owner: string | null; members: GroupMember[] };
 
-export const GROUP_COOKIE = "fc-group";
-
-/** What a page's switcher needs: the viewer's groups and the one shown (null: the global comp). */
-export type GroupChoice = { options: { id: string; name: string }[]; current: { id: string; name: string } | null };
-export const GLOBAL = "global";
+export { CLEAR_GROUP_COOKIE, GLOBAL, GROUP_COOKIE, groupCookie, type GroupChoice } from "./group-choice";
 export const MAX_GROUPS = 10;
-
-/** A year, so the choice outlives the session. */
-export const groupCookie = (value: string) => `${GROUP_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=31536000; samesite=lax`;
-/** No choice saved: pages show the group joined most recently. */
-export const CLEAR_GROUP_COOKIE = `${GROUP_COOKIE}=; path=/; max-age=0; samesite=lax`;
 
 /**
  * The group a page shows: the one asked for (null for "global"); with nothing asked for, the group

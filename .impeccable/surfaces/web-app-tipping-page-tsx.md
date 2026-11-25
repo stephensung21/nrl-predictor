@@ -1,7 +1,7 @@
 ---
 version: 1
 slug: "web-app-tipping-page-tsx"
-primary_target: "web/app/tipping/page.tsx"
+primary_target: "web/app/tipping/(tips)/page.tsx"
 related_targets: []
 ---
 

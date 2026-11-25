@@ -39,10 +39,10 @@ export default async function PlayersPage({ searchParams }: Props) {
     return <PageMessage art="empty-pitch" title="No player stats yet." body="They appear once the first games of the season are played." />;
   }
   const season = src.seasons.includes(Number(q.season)) ? Number(q.season) : src.seasons[0];
-  const players = await src.season(season);
+  // The viewer's team (a Supabase round trip) alongside the players (cached), not after them.
+  const [players, fav] = await Promise.all([src.season(season), favouriteTeam(src.live)]);
   const tab = q.tab === "stats" ? "stats" : "rankings";
   const position = (POSITIONS as readonly string[]).includes(q.pos ?? "") ? (q.pos as Position) : null;
-  const fav = await favouriteTeam(src.live);
   const query: Record<string, string> = { season: String(season), tab, ...(position ? { pos: position } : {}) };
   const ranked = powerRankings(players, null);
   const picked = players.find((p) => p.id === Number(q.player)) ?? ranked[0]?.player ?? players[0];
