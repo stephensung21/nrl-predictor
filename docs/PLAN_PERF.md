@@ -1,6 +1,60 @@
 # Site performance plan
 
-Why the site is slow and hangs on a phone, and what to change, in order. Written 25 November 2026 from a code review and measurements of a local production build. Nothing here is built yet.
+Why the site is slow and hangs on a phone, and what to change, in order. Written 25 November 2026 from a code review and measurements of a local production build. **Phases 0–2 are built** (25 November 2026; see [Progress](#progress)); Phases 3–6 are still to do.
+
+## Progress
+
+### Phases 0–2: built 25 November 2026
+
+What changed:
+
+- **Phase 0, measuring.** `web/scripts/perf.mjs` times a phone loading each page and tapping between tabs (`node web/scripts/perf.mjs <url> [--latency 150]`). `web/lib/perf.ts` logs one `perf <read> <ms>` line per data read to Vercel's runtime logs, marked `cold` on a fresh instance. Vercel Speed Insights' script is in the layout, on Vercel only. It's the plain script, because the `@vercel/speed-insights` package's optional peer dependencies clash with vitest's Vite. `vercel.json` turns on Fluid compute explicitly.
+- **Phase 1, instant taps.**
+  - Loading skeletons (`web/components/skeleton.tsx`, one `loading.tsx` per section). The Tips page moved into a route group, `app/tipping/(tips)/`, so its skeleton doesn't also cover the Ladder and Admin pages (same URL).
+  - The nav asks whether you're the admin only when More opens, once for both menus, and loads the auth code only then. The group switcher's cookie helpers moved to `lib/group-choice.ts`. Together these take Supabase's client off every page that doesn't tip.
+  - The middleware skips visitors with no session and router prefetches, and uses `getClaims()`. The DB pool went from 1 connection to 4.
+- **Phase 2, caching.**
+  - `web/lib/cache.ts` wraps every model-data read in `lib/source.ts` in Next.js's data cache, under one tag (`model-data`), keyed by deployment.
+  - Clock-dependent parts are applied per request from the cached rows. A game's paper bet switches from the latest to the opening price at kickoff (`withBets` in `lib/data.ts`, with a test). `/odds`' coming games drop out at kickoff. The Dally M round opens and closes by the clock. The off-season starts a week after the last game.
+  - `app/api/revalidate` expires the tag. `publish.py` (and now `publish.py --players` and `trial.py publish`) already calls it after each publish.
+  - Cached data lasts an hour, or 5 minutes while the site has no `REVALIDATE_SECRET`.
+  - `/players` looks up your favourite team alongside the data rather than after it.
+
+Measured against a local Postgres holding the trial's Round 1 in play plus every game since 2021 and Elo since 2009, with the old build (`main`) and the new side by side. The figures are SQL statements per request and server time on this machine, three requests in a row:
+
+| Page | Before | After |
+|---|---|---|
+| `/` | 12, 11, 11 queries | 0, 0, 0 (already cached) |
+| `/round/2026/1` | 8, 8, 8 | 12 (first read), then 0, 0 |
+| `/match/<id>` | 38, 38, 38 | 19 (first read, now in parallel), then 0, 0 |
+| `/elo`, `/odds` | 3 and 5 every time | 3 and 5 once, then 0 |
+
+As a phone (Pixel 7, CPU 4x slower, 150 ms added round trip):
+
+| | Before | After |
+|---|---|---|
+| JS downloaded per page (gzip) | 184–195 kB | 111–122 kB |
+| Tap Home → Tips / Ladder / Dally M, until the screen changes | 509 / 464 / 367 ms | 154 / 178 / 161 ms; 83 ms when the skeleton was already prefetched (traced separately, without the CPU slowdown) |
+| …until the new page is in | 532 / 476 / 376 ms | 556 / 562 / 276 ms (no faster: the server still answers once) |
+
+The live site's baseline, measured from a US machine before deploying (`perf.mjs https://nrl-predictor.vercel.app`): 2.3 s to the first byte on a cold start, about 0.45 s warm, and 650–760 ms from a tap to any change on screen. Re-run it after deploying to compare like with like.
+
+Checks: web tests 180 passed (new: the revalidate route, the middleware's fast path, bets across kickoff); Python 99 passed; lint and types clean; every page renders on sample data and on the database; revalidation checked end to end. The pages read the old value from cache after a change in the database, and the new value after `publish.revalidate()` called the endpoint (a wrong secret gets 401). Skeletons were checked at 390 px and 1440 px in both themes. The impeccable check wasn't run: the design skills aren't installed in this environment.
+
+**Set up after deploying:**
+
+1. Make a secret (`openssl rand -hex 32`). In Vercel: Settings → Environment Variables → `REVALIDATE_SECRET` (Production), then redeploy.
+2. In GitHub: Settings → Secrets and variables → Actions → `REVALIDATE_URL` = `https://nrl-predictor.vercel.app/api/revalidate` and `REVALIDATE_SECRET` = the same secret. Until both are set, cached data refreshes every 5 minutes on its own.
+3. In Vercel: Speed Insights → Enable. Until then the script's request gets a 404, which does no harm.
+4. Optional, to make signed-in requests skip a call to Supabase: in Supabase, Project Settings → JWT Keys → migrate to asymmetric signing keys. `getClaims()` then checks tokens locally. Until then it costs the same as before.
+5. Watch `perf` lines in Vercel's runtime logs. For the slowest queries, run this in Supabase's SQL editor: `select calls, round(mean_exec_time::numeric, 1) as ms, query from pg_stat_statements order by total_exec_time desc limit 20;`
+
+**Changed from the plan:**
+
+- One cache tag, not one per kind of data: every publish writes all of them.
+- 2.4: `/players` keeps its favourite-team lookup on the server, run in parallel. Moving it to the browser would bring Supabase's client back to that page.
+- 2.5, streaming the viewer's comp separately, isn't done. With the round cached, the comp read is the only wait left, and the skeleton covers it. Splitting the home page would show the games first and then shift them as tips and the ladder arrive, and the signed-in dashboard is a different layout altogether. Better judged in Phase 3, with Phase 0's real numbers.
+- A side effect of the skeletons: an unknown `/match/<id>` now answers HTTP 200 instead of 404. It still shows the "Knocked on." not-found page, marked noindex, because the page decides "not found" after the response has started streaming.
 
 ## What was measured
 
