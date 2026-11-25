@@ -417,3 +417,20 @@ def test_players_publishing_without_the_tables_is_a_warning(db_url, monkeypatch)
     monkeypatch.setattr(players, "tables", lambda season: {"player_seasons": pd.DataFrame({"season": [1]})})
     connection(db_url).execute("drop table player_ratings; drop table player_seasons")
     assert publish.publish_players(db_url, [2026], conn=connection(db_url)).startswith("players skipped")
+
+
+def test_an_empty_team_list_snapshot_is_skipped(tmp_path, monkeypatch):
+    # Before predict.fetch_lists wrote fixed columns, a round with no lists yet was saved as an empty
+    # file; reading it stopped every publish from 20 November 2026.
+    monkeypatch.setattr(publish, "LIVE_LISTS", tmp_path)
+    snap = tmp_path / "2027" / "round-1"
+    snap.mkdir(parents=True)
+    (snap / "20261120T035822Z.csv").write_text("\n")
+    assert publish.team_list_rows(2027, {1}).empty
+    pd.DataFrame([{
+        "match_id": 1, "season": 2027, "team": "Storm", "player_id": 7, "player_name": "A Player",
+        "jersey_number": 1, "position": "Fullback", "list_updated_utc": "2027-03-03T06:00:00Z",
+        "fetched_utc": "2027-03-03T07:15:00Z",
+    }]).to_csv(snap / "20270303T071500Z.csv", index=False)
+    rows = publish.team_list_rows(2027, {1})
+    assert rows[["match_id", "player_name"]].values.tolist() == [[1, "A Player"]]

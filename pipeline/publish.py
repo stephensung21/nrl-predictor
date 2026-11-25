@@ -142,12 +142,22 @@ def snapshot_rows(snaps, matches):
     return out.drop_duplicates(["match_id", "bookmaker", "captured_at"], keep="last")
 
 
+def read_list(path):
+    """One saved team-list snapshot, or None for one with nothing in it: before predict.fetch_lists wrote
+    fixed columns, a round with no lists yet was saved as an empty file (2027's first, 20 November 2026)."""
+    try:
+        return pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return None
+
+
 def team_list_rows(season, match_ids):
     """Every version of every team list the pipeline fetched for these games."""
     files = sorted((LIVE_LISTS / str(season)).glob("*/*.csv"))
-    if not files:
+    frames = [f for f in map(read_list, files) if f is not None]
+    if not frames:
         return pd.DataFrame()
-    lists = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
+    lists = pd.concat(frames, ignore_index=True)
     lists = lists[lists["match_id"].isin(match_ids)]
     out = pd.DataFrame({
         "match_id": lists["match_id"].astype("int64"), "team": lists["team"], "fetched_at": ts(lists["fetched_utc"]),
