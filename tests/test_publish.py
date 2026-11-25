@@ -100,6 +100,24 @@ def close(url):
         conn.close()
 
 
+# ---------------------------------------------------------------- team lists
+
+def test_team_list_rows_skip_empty_snapshots(tmp_path, monkeypatch):
+    """A snapshot saved with no lists (no header at all, as before the 2027 pre-season fix, or a header
+    only) adds nothing; it used to stop every publish with pandas' EmptyDataError."""
+    monkeypatch.setattr(publish, "LIVE_LISTS", tmp_path)
+    snap = tmp_path / "2027" / "round-1"
+    snap.mkdir(parents=True)
+    (snap / "20261120T035822Z.csv").write_text("\r\n")
+    header = "match_id,season,team,player_id,player_name,jersey_number,position,list_updated_utc,fetched_utc\n"
+    (snap / "20261121T035656Z.csv").write_text(header)
+    assert publish.team_list_rows(2027, {1}).empty
+    (snap / "20261124T185522Z.csv").write_text(
+        header + "1,2027,Storm,7,A B,1,Fullback,2026-11-24T18:00:00Z,2026-11-24T18:55:22Z\n")
+    rows = publish.team_list_rows(2027, {1})
+    assert rows[["match_id", "player_id", "jersey_number"]].values.tolist() == [[1, 7, 1]]
+
+
 # ---------------------------------------------------------------- live records
 
 @pytest.fixture
