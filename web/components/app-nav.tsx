@@ -14,9 +14,10 @@ const ITEMS: Item[] = [
   { href: "/dally-m", label: "Dally M", icon: Medal, match: (p) => p.startsWith("/dally-m") },
 ];
 
-// Elo moved here to make room for the Dally M (a layout with room for more tabs: PLAN_WEB.md §3.1a).
+// Teams (the Elo ratings, until November 2026 at /elo) moved here to make room for the Dally M (a layout
+// with room for more tabs: PLAN_WEB.md §3.1a).
 const MORE = [
-  { href: "/elo", label: "Elo" },
+  { href: "/teams", label: "Teams" },
   { href: "/last-man-standing", label: "Last man standing" },
   { href: "/groups", label: "Groups" },
   { href: "/players", label: "Players" },

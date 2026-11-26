@@ -430,7 +430,7 @@ export function EmptyState({ kind, lastRound }: { kind: keyof typeof emptyCopy; 
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} aria-hidden />
             </Link>
           )}
-          <Link href="/elo" className="inline-flex items-center gap-1 text-[15px] font-semibold text-ink underline decoration-line">
+          <Link href="/teams" className="inline-flex items-center gap-1 text-[15px] font-semibold text-ink underline decoration-line">
             {lastRound ? "Or the Elo ratings" : "Look at the Elo ratings instead"}
             <ChevronRight className="size-4" aria-hidden />
           </Link>

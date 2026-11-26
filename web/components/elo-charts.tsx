@@ -346,7 +346,7 @@ export function SeasonPicker({ seasons, value, team: t }: { seasons: number[]; v
       Season
       <select
         value={value}
-        onChange={(e) => router.push(`/elo?season=${e.target.value}&team=${encodeURIComponent(t)}`, { scroll: false })}
+        onChange={(e) => router.push(`/teams?season=${e.target.value}&team=${encodeURIComponent(t)}`, { scroll: false })}
         className="h-10 rounded-md bg-raised px-2 font-score text-[16px] font-semibold text-ink ring-1 ring-line ring-inset transition-shadow hover:ring-ink-3 focus:ring-2 focus:ring-lime-fg focus:outline-none"
       >
         {[...seasons].reverse().map((s) => (

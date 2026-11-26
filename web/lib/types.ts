@@ -256,7 +256,28 @@ export type EloSeason = {
   /** Rating going into the season, after the off-season pull back toward 1500. */
   start: Record<string, number>;
   ratings: Record<string, number[]>;
+  /** Each team's games so far this season, finals included, as Elo rated them. */
+  records: Record<string, EloRecord>;
 };
+
+/** A team's season so far: results, points, the wins Elo expected and the last five games. */
+export type EloRecord = {
+  won: number;
+  lost: number;
+  drawn: number;
+  scored: number;
+  conceded: number;
+  /** The team's win chances going into each game, added up: the wins Elo expected. */
+  expectedWins: number;
+  /** Games decided by 6 points or fewer. */
+  closeWon: number;
+  closeLost: number;
+  /** The last five games, oldest first. */
+  form: EloFormGame[];
+};
+
+/** One recent game: "Round 7" or "Finals", the score from the team's side and its rating change. */
+export type EloFormGame = { label: string; opponent: string; scored: number; conceded: number; change: number };
 
 /** A team's recent seasons game by game; `swings` index its biggest rises and falls. */
 export type EloTeamView = {
