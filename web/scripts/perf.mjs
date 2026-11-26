@@ -4,7 +4,7 @@
 //
 //   node web/scripts/perf.mjs                                   # http://localhost:3000 (next start)
 //   node web/scripts/perf.mjs https://nrl-predictor.vercel.app  # the live site, as a guest
-//   node web/scripts/perf.mjs http://localhost:3000 --cpu 6 --pages / /elo --taps /tipping
+//   node web/scripts/perf.mjs http://localhost:3000 --cpu 6 --pages / /teams --taps /tipping
 //   node web/scripts/perf.mjs http://localhost:3000 --latency 150   # a phone on 4G: 150ms round trips
 //
 // Needs Playwright with Chromium (`npm i -g playwright && npx playwright install chromium`); it isn't
@@ -37,7 +37,7 @@ const flag = (name) => {
 const cpu = Number(flag("--cpu")?.[0] ?? 4);
 /** Extra round-trip time and a 4G-like bandwidth, for a local server that otherwise answers instantly. */
 const latency = Number(flag("--latency")?.[0] ?? 0);
-const pages = flag("--pages") ?? ["/", "/tipping", "/tipping/ladder", "/dally-m", "/elo", "/players", "/odds", "/model", "/about"];
+const pages = flag("--pages") ?? ["/", "/tipping", "/tipping/ladder", "/dally-m", "/teams", "/players", "/odds", "/model", "/about"];
 const taps = flag("--taps") ?? ["/tipping", "/tipping/ladder", "/dally-m"];
 
 const kb = (n) => (n / 1024).toFixed(0);

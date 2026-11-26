@@ -618,7 +618,7 @@ export function EloSection({ game, elo }: { game: Game; elo?: MatchElo }) {
       </div>
 
       <Link
-        href={`/elo?season=${elo.season}&team=${encodeURIComponent(home.team)}#team`}
+        href={`/teams?season=${elo.season}&team=${encodeURIComponent(home.team)}#team`}
         className="mt-5 inline-flex items-center gap-1 text-[14px] font-semibold text-ink-2 hover:text-ink"
       >
         All Elo ratings

@@ -423,7 +423,7 @@
         "bar": "pitch-bar fill, lightened for the dark ground"
       },
       "clashRule": "When the away bar is under 90 RGB distance from the home bar, the away fill switches to whichever of its primary or secondary is furthest from the home bar (barColours in web/components/pitch-bar.tsx); Sea Eagles v Broncos draws the Broncos gold.",
-      "teamLineRule": "On /elo, lines are team colours (colourFor and lineColours in web/lib/line-colours.ts): a lit team takes its bar colour unless clearance() finds it under OKLab deltaE x100 of 15 (normal vision) or 8 (protan, deutan; Machado 2009 full severity) from a colour already lit, then whichever of bar, secondary or primary clears best. At most three lit; colour held in state from the moment it is lit. The field is ink-3 at 0.28 opacity, 1.25px; the 1500 gridline is ink-3; end labels (code plus rating, 13px semibold score face ink-2) replace a legend."
+      "teamLineRule": "On /teams, lines are team colours (colourFor and lineColours in web/lib/line-colours.ts): a lit team takes its bar colour unless clearance() finds it under OKLab deltaE x100 of 15 (normal vision) or 8 (protan, deutan; Machado 2009 full severity) from a colour already lit, then whichever of bar, secondary or primary clears best. At most three lit; colour held in state from the moment it is lit. The field is ink-3 at 0.28 opacity, 1.25px; the 1500 gridline is ink-3; end labels (code plus rating, 13px semibold score face ink-2) replace a legend."
     },
     "tippingRules": {
       "source": "web/lib/rules.ts",
@@ -446,7 +446,7 @@
         "live",
         "miss"
       ],
-      "scope": "Charts that compare forecasters (Model vs market and the series-keyed stat rows on /odds and /model). The /elo charts compare teams and use the team-colour series instead."
+      "scope": "Charts that compare forecasters (Model vs market and the series-keyed stat rows on /odds and /model). The /teams charts compare teams and use the team-colour series instead."
     },
     "containers": [
       {
@@ -472,7 +472,7 @@
     ],
     "dataTruth": {
       "coinFlip": "An exact 50-50 price or chance is no tip: the /odds and /model tallies count it as not right (as the reports count it), and a 50% bookies' price never marks a call against the bookies (web/lib/odds.ts, web/lib/model-record.ts).",
-      "printedFigures": "Derived figures come from the rounded figures shown: Elo Week and Season changes are differences of rounded ratings (web/lib/elo.ts, web/app/elo/page.tsx)."
+      "printedFigures": "Derived figures come from the rounded figures shown: Elo Week and Season changes are differences of rounded ratings, and v Elo is measured against expected wins rounded to one decimal (web/lib/elo.ts, web/app/teams/page.tsx)."
     },
     "timeZone": {
       "source": "web/lib/time.ts sydney()",

@@ -172,6 +172,15 @@ describe("the site's data layer", () => {
     expect(s.start).toMatchObject({ Storm: 1550, Broncos: 1500 });
     expect(s.ratings.Storm).toEqual([1560, 1615]);
     expect(s.ratings.Broncos).toEqual([1490, 1490]); // didn't play in the finals
+    // Each team's season, finals included: results, points, the wins Elo expected, close games and last five.
+    expect(s.records.Storm).toEqual({
+      won: 2, lost: 0, drawn: 0, scored: 54, conceded: 26, expectedWins: 1.18, closeWon: 0, closeLost: 0,
+      form: [
+        { label: "Round 1", opponent: "Broncos", scored: 24, conceded: 16, change: 10 },
+        { label: "Finals", opponent: "Eels", scored: 30, conceded: 10, change: 15 },
+      ],
+    });
+    expect(s.records.Eels).toMatchObject({ won: 0, lost: 0, drawn: 1, expectedWins: 0.51, closeWon: 0, closeLost: 0 });
     const v = await eloTeamView(sql, "Storm");
     expect(v.points.map((p) => [p.label, p.text])).toEqual([["Round 1", "Beat Broncos 24–16"], ["Finals", "Beat Eels 30–10"]]);
     expect(v.swings).toEqual([0, 1]);

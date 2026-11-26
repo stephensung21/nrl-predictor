@@ -3,7 +3,7 @@
 
 import { ELO_PARAMS, ELO_SEASONS, ELO_TEAMS } from "./sample-elo";
 import type { TeamName } from "./teams";
-import type { EloSeason, EloTeamView } from "./types";
+import type { EloFormGame, EloRecord, EloSeason, EloTeamView } from "./types";
 
 export const SEASONS = ELO_SEASONS.map((s) => s.season);
 export const LATEST = ELO_SEASONS.at(-1)!.season;
@@ -14,7 +14,19 @@ export const HOME_ADVANTAGE = ELO_PARAMS.hfa;
 /** Win chance for a rating gap, before home advantage. */
 export const chanceForGap = (gap: number) => 1 / (1 + 10 ** (-gap / 400));
 
-export type EloRow = { team: TeamName; rank: number; rating: number; change: number | null; start: number; bye: boolean };
+export type EloRow = {
+  team: TeamName; rank: number; rating: number; change: number | null; start: number; bye: boolean;
+  record: EloRecord;
+  /** The wins Elo expected, to one decimal as the page prints it. */
+  expectedWins: number;
+  /** Wins (a draw counts half) above `expectedWins`, so it equals the printed figures (DESIGN.md, The Printed Figures Rule). */
+  vsElo: number;
+  pointsDiff: number;
+  /** Rating gained or lost over the last five games. */
+  formChange: number;
+};
+
+const NO_GAMES: EloRecord = { won: 0, lost: 0, drawn: 0, scored: 0, conceded: 0, expectedWins: 0, closeWon: 0, closeLost: 0, form: [] };
 
 /** The sample's current round (its results aren't in yet). */
 export const CURRENT_ROUND = 10;
@@ -32,11 +44,38 @@ export function tableOf(s: EloSeason): EloRow[] {
       // A rating that didn't move at all means the team didn't play (a result always shifts it).
       const bye = r.length > 1 && r.at(-1) === r.at(-2);
       const change = r.length > 1 ? Math.round(r.at(-1)!) - Math.round(r.at(-2)!) : null;
-      return { team: t, rating: r.at(-1)!, change, start: s.start[t], rank: 0, bye };
+      const record = s.records[t] ?? NO_GAMES;
+      const expectedWins = Math.round(record.expectedWins * 10) / 10;
+      return {
+        team: t, rating: r.at(-1)!, change, start: s.start[t], rank: 0, bye, record, expectedWins,
+        vsElo: record.won + record.drawn / 2 - expectedWins,
+        pointsDiff: record.scored - record.conceded,
+        formChange: record.form.reduce((n, g) => n + g.change, 0),
+      };
     })
     .sort((a, b) => b.rating - a.rating)
     .map((row, i) => ({ ...row, rank: i + 1 }));
 }
+
+/* ---------- Hot and cold: who moved most over their last five ---------- */
+
+/** Regular-season rounds before hot and cold shows: five games is the smallest sample it means anything on. */
+export const FORM_FROM_ROUND = 5;
+
+/** Whether a season has enough rounds rated for hot and cold. */
+export const formReady = (s: EloSeason) => s.rounds.filter((r) => r.startsWith("R")).length >= FORM_FROM_ROUND;
+
+/** The teams that gained most over their last five games, and the ones that lost most, `n` of each, biggest first. */
+export function hotAndCold(rows: EloRow[], n = 4): { hot: EloRow[]; cold: EloRow[] } {
+  const moved = [...rows].sort((a, b) => b.formChange - a.formChange);
+  return {
+    hot: moved.filter((r) => Math.round(r.formChange) > 0).slice(0, n),
+    cold: moved.filter((r) => Math.round(r.formChange) < 0).reverse().slice(0, n),
+  };
+}
+
+/** "W", "L" or "D" for a game, from the team's side. */
+export const resultOf = (g: Pick<EloFormGame, "scored" | "conceded">) => (g.scored > g.conceded ? "W" : g.scored < g.conceded ? "L" : "D");
 
 /* ---------- One game: both teams going in, and what the game did to them ---------- */
 

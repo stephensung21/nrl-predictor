@@ -7,7 +7,7 @@ import type { Sql } from "./db";
 import type { LmsMatch } from "./lms";
 import type { GradedGame } from "./model-record";
 import type {
-  Drivers, Edge, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsHistory, OddsRound,
+  Drivers, Edge, EloRecord, EloSeason, EloTeamView, ListedPlayer, Match, MatchDetail, ModelRecord, OddsGame, OddsHistory, OddsRound,
   Prediction, RoundBet, RoundData, SeasonBet, SeasonGame, StarOut, Weather,
 } from "./types";
 import type { TeamName } from "./teams";
@@ -368,11 +368,37 @@ export async function modelRecord(sql: Sql, season: number): Promise<ModelRecord
 
 type EloRow = {
   team: string; season: number; played_on: Date; round_label: string; opponent: string; is_home: boolean;
-  points_for: number; points_against: number; rating_before: number; rating_after: number;
+  win_prob: number; points_for: number; points_against: number; rating_before: number; rating_after: number;
 };
 
 /** "R10" stays as is; a final is "F" (finals collapse into one point each week). */
 const step = (label: string) => (/^R\d+$/.test(label) ? label : "F");
+
+/** "R10" reads "Round 10"; every final reads "Finals". */
+const gameLabel = (label: string) => (/^R\d+$/.test(label) ? `Round ${label.slice(1)}` : "Finals");
+
+/** A close game is decided by this many points or fewer. */
+const CLOSE = 6;
+
+/** A team's season from its games in date order (the same sums web/scripts/build_elo_sample.py makes). */
+function eloRecord(games: EloRow[]): EloRecord {
+  const margin = (g: EloRow) => g.points_for - g.points_against;
+  const close = games.filter((g) => Math.abs(margin(g)) <= CLOSE);
+  return {
+    won: games.filter((g) => margin(g) > 0).length,
+    lost: games.filter((g) => margin(g) < 0).length,
+    drawn: games.filter((g) => margin(g) === 0).length,
+    scored: games.reduce((n, g) => n + g.points_for, 0),
+    conceded: games.reduce((n, g) => n + g.points_against, 0),
+    expectedWins: Math.round(games.reduce((n, g) => n + Number(g.win_prob), 0) * 100) / 100,
+    closeWon: close.filter((g) => margin(g) > 0).length,
+    closeLost: close.filter((g) => margin(g) < 0).length,
+    form: games.slice(-5).map((g) => ({
+      label: gameLabel(g.round_label), opponent: g.opponent, scored: g.points_for, conceded: g.points_against,
+      change: round1(g.rating_after - g.rating_before),
+    })),
+  };
+}
 
 /** One season of Elo: each team's rating after every round, from `elo_ratings`. */
 export async function eloSeason(sql: Sql, season: number): Promise<EloSeason | null> {
@@ -406,7 +432,8 @@ export async function eloSeason(sql: Sql, season: number): Promise<EloSeason | n
       return round1(rating);
     });
   }
-  return { season, rounds: steps, lastRound: steps[steps.length - 1], start, ratings };
+  const records = Object.fromEntries(teams.map((t) => [t, eloRecord(rows.filter((r) => r.team === t))]));
+  return { season, rounds: steps, lastRound: steps[steps.length - 1], start, ratings, records };
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -427,7 +454,7 @@ export async function eloTeamView(sql: Sql, team: string, seasons = 6): Promise<
   const points = rows.map((r) => {
     const result = r.points_for > r.points_against ? "Beat" : r.points_for < r.points_against ? "Lost to" : "Drew with";
     return {
-      season: r.season, label: /^R\d+$/.test(r.round_label) ? `Round ${r.round_label.slice(1)}` : "Finals",
+      season: r.season, label: gameLabel(r.round_label),
       date: iso(r.played_on).slice(0, 10), rating: round1(r.rating_after), change: round1(r.rating_after - r.rating_before),
       text: `${result} ${r.opponent} ${r.points_for}–${r.points_against}`,
     };

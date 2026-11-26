@@ -83,7 +83,7 @@ Every planned page is designed (DESIGN_BRIEF.md, recorded in DESIGN.md) and buil
 | `/tipping` | ✅ | Tips save in the browser (`BrowserTipStore`) | 🔶 Built (step 10): with Supabase configured, the round in play from the model's data, your tips in `tips` (`SupabaseTipStore`), the comp's tally and your auto-tips after lockout; "No round to tip" in the off-season. Checked live (October 2026: "No round to tip" off-season); tipping itself waits for 2027's first predicted round | `SupabaseTipStore` from `createTipStore()`; lockout enforced by row-level security |
 | `/tipping/ladder` | ✅ | A generated 2026 season to Round 10: real games, results and Model tips; invented friends, tips, margins, forgotten tips | ✅ Built (12 October 2026, `live-ladder`): for signed-in tippers, the latest comp season (2027 on) from `ladder()`, `round_scores` and `tip_results`, read as the viewer (`lib/comp.ts`); before the comp's first decided game, "The ladder starts with Round 1" | `ladder()`, `round_scores`, `tip_results`, `prediction_of_record` (the upset's chance) |
 | `/odds` | ✅ | Real 2026 prices (aussportsbetting sheet) and test-season predictions; recomputed bets match `reports/betting_2026.md` | ✅ Live (the latest graded season; equal to the sample on 2026: 134/133/133 tips, 122 bets, +24.05 units) | `match_odds_probs`, `odds_snapshots` (The Odds API), `predictions`, `model_accuracy` |
-| `/elo` | ✅ | Real ratings 2009–2026 from `src/elo.py` (asserted equal); 2026 to Round 9 | ✅ Live (every season in `elo_ratings`) | `elo_ratings` |
+| `/teams` (was `/elo`, which redirects) | ✅ | Real ratings 2009–2026 from `src/elo.py` (asserted equal), with each season's records; 2026 to Round 9 | ✅ Live (every season in `elo_ratings`) | `elo_ratings` |
 | `/model` | ✅ | Real 2026 test-season tips to Round 9; invented tippers for the comp comparison | ✅ Live (12 October 2026, `live-ladder`): the latest graded season from `graded_games` (2026: 143/135/133 of 213, equal to `model_accuracy`), finals as FW1–FW3 and GF; the comp line only for a signed-in tipper in a comp season | `graded_games`, `matches`; `ladder()` for the comp line |
 | `/about` | ✅ | Figures from `reports/final_2026.md` and `reports/backtest.md` | n/a | Update by hand after each season's test |
 | `/join/[code]`, `/sign-in`, `/auth/callback`, `/account` | ✅ | Browser stand-in (`BrowserAuthStore`): fake Google and email sign-in, profile in the browser; sample invites | 🔶 Built (step 10): Supabase auth, **Google only** for now, `join_comp()` and `check_invite()`, deleting through `/api/account`. Not yet tried live | Supabase auth (Google, email link), `profiles`, `invites` via `createAuthStore()` |
@@ -560,7 +560,7 @@ Built pages are listed in [Website status](#website-status-october-2026) above.
 | `/round/[season]/[round]` | Any past or future round. Past rounds show the prediction of record next to the real result, marked right or wrong |
 | `/match/[id]` | One game in detail: prediction, team lists (with changes since Tuesday), odds history, Elo for both teams, head to head, the LLM preview, and what drove the prediction (SHAP, later) |
 | `/odds` | Model vs market for the round, and the season-long comparison |
-| `/elo` | Elo ratings and history |
+| `/teams` | Teams: Elo ratings, records against Elo, hot and cold, and history (`/elo` redirects here) |
 | `/tipping` | My tips for this round |
 | `/tipping/ladder` | The ladder and round-by-round results |
 | `/tipping/admin` | Invites (one use, 7 days), the tippers (remove one), this round's featured game and how it was drawn, and pipeline run status (admin only) |
@@ -614,15 +614,18 @@ Notes:
 - Just show the odds: no disclaimer or gambling message on the page (decided October 2026, see DESIGN_BRIEF.md). Bookmaker names appear as plain text only, with no logos, links or affiliate deals.
 - Odds data has terms of use. The Odds API allows display, but check the plan's terms, and credit the source.
 
-### 3.4 Elo
+### 3.4 Teams (Elo)
 
-- **Ratings table:** all 17 teams, current rating, change from last round (with an up/down arrow), rank, and rating at the start of the season.
+The Elo page became **Teams** on 26 November 2026, at `/teams` (`/elo` redirects, keeping the season and team). It is the first step of a team-stats tab: everything below reads only `elo_ratings`. Later steps, not built: a stat leaderboard, an attack-against-defence chart and a per-team percentile "fingerprint", which need `team_match_stats` published (a migration, a `publish.py` step and a sample builder; stats start in 2020).
+
+- **Ratings table:** all 17 teams, current rating, change from last round (with an up/down arrow), rank, the season's win–loss record and wins against Elo's expectation (the team's pre-match win chances added up). From 768px also points difference, the record in games decided by 6 points or fewer, the last five results as lamps, and the rating at the start of the season. Records count finals.
+- **Hot and cold:** the four teams that gained most Elo over their last five games and the four that lost most, from Round 5.
 - **Season chart:** one line per team, rating after each round. Every line is shown faint, and the user picks teams to highlight (defaulting to their favourite team if signed in). Team colours for lines, with names labelled at the end of each line instead of a legend.
 - **Season picker,** back to the earliest season with results (about 2009, per PLAN.md).
 - **Team view:** a single team's rating over several seasons, with the big rises and falls labelled by the match that caused them.
 - A short explanation of what Elo is and what a rating gap means as a win probability (e.g. "+100 points ≈ 64% before home advantage").
 
-The data comes straight from `elo_ratings`; no calculation happens in the website.
+The data comes straight from `elo_ratings`; the website only adds it up (records in `web/lib/data.ts` and `web/scripts/build_elo_sample.py`, the table and hot and cold in `web/lib/elo.ts`).
 
 ### 3.5 Tipping comp
 
